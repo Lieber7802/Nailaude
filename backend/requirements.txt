@@ -1,0 +1,20 @@
+# Web framework
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+websockets>=11.0
+
+# Database
+sqlalchemy>=2.0
+alembic>=1.12
+aiosqlite
+
+# HTTP client (for LLM API calls)
+httpx>=0.25.0
+
+# File watching
+watchdog>=3.0
+
+# Validation & config
+pydantic>=2.0
+pydantic-settings>=2.0
+python-dotenv
