@@ -592,6 +592,30 @@ ws://localhost:8000/ws/{conversation_id}
 
 > 所有下行消息为 discriminated union：`type` 字段唯一确定 `data` 结构。
 
+#### `user_message` — 用户消息已持久化
+
+```json
+{
+  "type": "user_message",
+  "data": {
+    "id": "msg-uuid-user-1",
+    "clientMessageId": "client-temp-id",
+    "conversationId": "conv-uuid-123",
+    "role": "user",
+    "agentId": null,
+    "content": "@代码工匠 生成一个登录页",
+    "contentType": "text",
+    "artifacts": [],
+    "parentMessageId": null,
+    "metadata": {},
+    "mentions": [{ "agentId": "agent-uuid-1", "agentName": "代码工匠" }],
+    "createdAt": "2026-05-21T11:00:00Z"
+  }
+}
+```
+
+> 前端可用 `clientMessageId` 将本地乐观消息替换为服务端真实消息 ID。
+
 #### `agent_thinking` — Agent 开始思考
 
 ```json

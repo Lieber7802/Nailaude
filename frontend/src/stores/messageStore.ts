@@ -1,36 +1,100 @@
 import { create } from 'zustand'
-
-interface Message {
-  id: string
-  conversationId: string
-  role: string
-  content: string
-  createdAt: string
-}
+import type { Message } from '../services/api'
 
 interface MessageState {
-  messages: Message[]
+  messagesByConversation: Record<string, Message[]>
   streamingContent: Record<string, string>
-  addMessage: (msg: Message) => void
-  appendStreamDelta: (messageId: string, delta: string) => void
-  clearStream: (messageId: string) => void
+  setMessages: (conversationId: string, messages: Message[]) => void
+  addMessage: (message: Message) => void
+  replaceOptimisticMessage: (conversationId: string, clientMessageId: string, message: Message) => void
+  appendStreamDelta: (conversationId: string, messageId: string, agentName: string, delta: string) => void
+  finalizeStream: (conversationId: string, messageId: string, agentName: string) => void
+  clearConversation: (conversationId: string) => void
 }
 
-export const useMessageStore = create<MessageState>((set) => ({
-  messages: [],
+export const useMessageStore = create<MessageState>((set, get) => ({
+  messagesByConversation: {},
   streamingContent: {},
-  addMessage: (msg) =>
-    set((state) => ({ messages: [...state.messages, msg] })),
-  appendStreamDelta: (messageId, delta) =>
+  setMessages: (conversationId, messages) =>
     set((state) => ({
-      streamingContent: {
-        ...state.streamingContent,
-        [messageId]: (state.streamingContent[messageId] || '') + delta,
+      messagesByConversation: { ...state.messagesByConversation, [conversationId]: messages },
+    })),
+  addMessage: (message) =>
+    set((state) => ({
+      messagesByConversation: {
+        ...state.messagesByConversation,
+        [message.conversationId]: [...(state.messagesByConversation[message.conversationId] || []), message],
       },
     })),
-  clearStream: (messageId) =>
+  replaceOptimisticMessage: (conversationId, clientMessageId, message) =>
     set((state) => {
-      const { [messageId]: _, ...rest } = state.streamingContent
-      return { streamingContent: rest }
+      const messages = state.messagesByConversation[conversationId] || []
+      const optimisticIndex = messages.findIndex((item) => item.metadata?.clientMessageId === clientMessageId)
+      if (optimisticIndex === -1) {
+        return {
+          messagesByConversation: {
+            ...state.messagesByConversation,
+            [conversationId]: [...messages, message],
+          },
+        }
+      }
+
+      return {
+        messagesByConversation: {
+          ...state.messagesByConversation,
+          [conversationId]: messages.map((item, index) => (index === optimisticIndex ? message : item)),
+        },
+      }
+    }),
+  appendStreamDelta: (conversationId, messageId, agentName, delta) =>
+    set((state) => {
+      const nextContent = (state.streamingContent[messageId] || '') + delta
+      const existingMessages = state.messagesByConversation[conversationId] || []
+      const hasMessage = existingMessages.some((message) => message.id === messageId)
+      const streamingMessage: Message = {
+        id: messageId,
+        conversationId,
+        role: 'agent',
+        agentId: null,
+        agentName,
+        content: nextContent,
+        contentType: 'mixed',
+        artifacts: [],
+        parentMessageId: null,
+        metadata: {},
+        createdAt: new Date().toISOString(),
+      }
+      return {
+        streamingContent: { ...state.streamingContent, [messageId]: nextContent },
+        messagesByConversation: {
+          ...state.messagesByConversation,
+          [conversationId]: hasMessage
+            ? existingMessages.map((message) =>
+                message.id === messageId ? { ...message, content: nextContent, agentName } : message
+              )
+            : [...existingMessages, streamingMessage],
+        },
+      }
+    }),
+  finalizeStream: (conversationId, messageId, agentName) => {
+    const content = get().streamingContent[messageId] || ''
+    set((state) => {
+      const { [messageId]: _removed, ...rest } = state.streamingContent
+      const messages = state.messagesByConversation[conversationId] || []
+      return {
+        streamingContent: rest,
+        messagesByConversation: {
+          ...state.messagesByConversation,
+          [conversationId]: messages.map((message) =>
+            message.id === messageId ? { ...message, content, agentName } : message
+          ),
+        },
+      }
+    })
+  },
+  clearConversation: (conversationId) =>
+    set((state) => {
+      const { [conversationId]: _removed, ...rest } = state.messagesByConversation
+      return { messagesByConversation: rest }
     }),
 }))

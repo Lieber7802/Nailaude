@@ -1,11 +1,15 @@
 """Message model"""
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import String, DateTime, Text, JSON, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
+
+
+def utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 class Message(Base):
@@ -20,4 +24,4 @@ class Message(Base):
     mentions: Mapped[list] = mapped_column(JSON, default=list)
     meta: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
     parent_message_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)

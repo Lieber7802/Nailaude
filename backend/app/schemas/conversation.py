@@ -1,18 +1,53 @@
 """Conversation schemas"""
-from pydantic import BaseModel
+from pathlib import Path
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+WORKSPACE_ROOT = (PROJECT_ROOT / "workspaces").resolve(strict=False)
+
+
+def validate_work_dir(value: str | None) -> str | None:
+    if value is None or value == "":
+        return value
+
+    raw_path = Path(value).expanduser()
+    candidate = raw_path if raw_path.is_absolute() else PROJECT_ROOT / raw_path
+    resolved = candidate.resolve(strict=False)
+    try:
+        resolved.relative_to(WORKSPACE_ROOT)
+    except ValueError as exc:
+        raise ValueError("workDir must stay under the project workspaces directory") from exc
+    return value
 
 
 class ConversationCreate(BaseModel):
     title: str = "新对话"
-    type: str = "single"  # single | group
-    work_dir: str = ""
-    participant_ids: list[str] = []
+    type: Literal["single", "group"] = "single"
+    work_dir: str = Field(default="", alias="workDir")
+    participant_ids: list[str] = Field(default_factory=list, alias="participantIds")
+
+    @field_validator("work_dir")
+    @classmethod
+    def work_dir_must_stay_in_workspaces(cls, value: str) -> str:
+        return validate_work_dir(value) or ""
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class ConversationUpdate(BaseModel):
     title: str | None = None
-    work_dir: str | None = None
-    participant_ids: list[str] | None = None
+    work_dir: str | None = Field(default=None, alias="workDir")
+    participant_ids: list[str] | None = Field(default=None, alias="participantIds")
+
+    @field_validator("work_dir")
+    @classmethod
+    def work_dir_must_stay_in_workspaces(cls, value: str | None) -> str | None:
+        return validate_work_dir(value)
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class ConversationResponse(BaseModel):
@@ -24,5 +59,4 @@ class ConversationResponse(BaseModel):
     created_at: str
     updated_at: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

@@ -1,5 +1,5 @@
 """Artifact schemas"""
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class ArtifactFileSchema(BaseModel):
@@ -18,5 +18,4 @@ class ArtifactResponse(BaseModel):
     preview_url: str
     created_at: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

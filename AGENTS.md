@@ -100,24 +100,35 @@ AgentHub/
 
 ## AI 编码规则
 
+### 标准模块化流程
+
+后续所有模块化开发（M 系列任务、后端/前端功能、WebSocket、Adapter、Artifact、预览系统）统一采用：
+
+`接收任务 → 读取契约 → 生成/更新 plan 和 checklist → 测试先行 → 按 plan 实现 → 运行验证 → 更新 DEVLOG → 总结交接`
+
+详细流程见 `docs/AI_WORKFLOW.md`。如果当前 AI 环境支持项目 skill，应使用 `.agents/skills/agenthub-module-development/SKILL.md`。
+
 ### 修改前
 
 1. **先读文档**：修改前阅读 `docs/API_SPEC.md` 和 `packages/shared/types.ts`，确认接口契约
 2. **先说计划**：在写代码前说明你打算改哪些文件、为什么改、预期效果
 3. **确认范围**：只改和当前任务相关的文件，不"顺手"重构无关代码
+4. **先沉淀计划**：模块化开发需在 `docs/plans/` 下创建或更新 `<MODULE>_PLAN.md` 和 `<MODULE>_CHECKLIST.md`
 
 ### 修改中
 
-4. **不随意改 shared types**：`packages/shared/types.ts` 是全局契约，修改需同步更新 `API_SPEC.md`
-5. **不随意引入新依赖**：新增 npm/pip 依赖前说明理由，评估包大小和必要性
-6. **Mock-first**：实现新功能时先确保 MockAdapter 能覆盖该场景
-7. **API 一致性**：后端接口的请求/响应格式必须与 `API_SPEC.md` 一致
-8. **类型安全**：前端使用 `shared/types.ts` 中的类型，不重复定义
+5. **不随意改 shared types**：`packages/shared/types.ts` 是全局契约，修改需同步更新 `API_SPEC.md`
+6. **不随意引入新依赖**：新增 npm/pip 依赖前说明理由，评估包大小和必要性
+7. **Mock-first**：实现新功能时先确保 MockAdapter 能覆盖该场景
+8. **Test-first**：功能、修复、行为变化优先写失败测试，再写实现
+9. **API 一致性**：后端接口的请求/响应格式必须与 `API_SPEC.md` 一致
+10. **类型安全**：前端使用 `shared/types.ts` 中的类型，不重复定义
 
 ### 修改后
 
-9. **总结改动**：列出修改了哪些文件、改动摘要
-10. **说明测试方式**：如何验证改动正确（启动命令、请求示例、预期结果）
+11. **总结改动**：列出修改了哪些文件、改动摘要
+12. **说明测试方式**：如何验证改动正确（启动命令、请求示例、预期结果）
+13. **沉淀 DEVLOG**：每次 AI 编码会话结束时追加 `DEVLOG.md`
 
 ### 禁止事项
 
