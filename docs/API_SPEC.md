@@ -136,7 +136,7 @@
 
 ### `POST /conversations/{id}/messages` — 发送消息（REST Fallback）
 
-**用途：** 用户发送消息的 REST 备选接口。正常流程应优先走 WebSocket `send_message`。后端接收后触发 Orchestrator 分派 + Agent 调用，通过 WebSocket 推送流式结果。
+**用途：** 用户发送消息的 REST 调试/基础 fallback 接口。M2 阶段该接口只持久化用户消息并返回确认；不会触发 Orchestrator 分派或 Agent 调用。正常执行流程必须优先走 WebSocket `send_message`，流式回复也只通过 WebSocket 推送。
 
 请求体：
 ```json
@@ -150,7 +150,7 @@
 }
 ```
 
-响应体（仅确认接收，实际回复通过 WebSocket 推送）：
+响应体（仅确认接收；M2 不会通过该 REST fallback 触发 Agent 回复）：
 ```json
 {
   "success": true,
