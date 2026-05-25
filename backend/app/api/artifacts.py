@@ -1,18 +1,33 @@
 """
 Artifact routes
 """
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.responses import api_success, raise_api_error
+from app.api.serializers import serialize_artifact
+from app.database import get_db
+from app.models.artifact import Artifact
 
 router = APIRouter()
 
 
 @router.get("/{artifact_id}")
-async def get_artifact(artifact_id: str):
+async def get_artifact(artifact_id: str, db: AsyncSession = Depends(get_db)):
     """Get artifact by ID"""
-    return {"status": "not implemented", "id": artifact_id}
+    artifact = await db.get(Artifact, artifact_id)
+    if artifact is None:
+        raise_api_error("Artifact not found", 404)
+    return api_success(serialize_artifact(artifact))
 
 
 @router.get("")
-async def list_artifacts(message_id: str | None = None):
+async def list_artifacts(message_id: str | None = None, db: AsyncSession = Depends(get_db)):
     """List artifacts, optionally filtered by message"""
-    return {"data": [], "message_id": message_id}
+    query = select(Artifact)
+    if message_id:
+        query = query.where(Artifact.message_id == message_id)
+    result = await db.scalars(query.order_by(Artifact.created_at.asc()))
+    artifacts = [serialize_artifact(artifact) for artifact in result.all()]
+    return api_success(artifacts)

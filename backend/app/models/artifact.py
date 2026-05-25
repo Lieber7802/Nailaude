@@ -1,11 +1,15 @@
 """Artifact model"""
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import String, DateTime, Integer, Text, JSON, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
+
+
+def utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 class Artifact(Base):
@@ -21,4 +25,4 @@ class Artifact(Base):
     version: Mapped[int] = mapped_column(Integer, default=1)
     previous_version_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     preview_url: Mapped[str] = mapped_column(String(500), default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)

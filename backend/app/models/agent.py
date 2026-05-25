@@ -1,11 +1,15 @@
 """Agent and AgentPlatform models"""
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import String, DateTime, Text, Boolean, JSON, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
+
+
+def utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 class AgentPlatform(Base):
@@ -16,7 +20,7 @@ class AgentPlatform(Base):
     binary_path: Mapped[str] = mapped_column(String(500), default="")
     config: Mapped[dict] = mapped_column(JSON, default=dict)
     status: Mapped[str] = mapped_column(String(20), default="available")  # available | not_installed | error
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class Agent(Base):
@@ -30,4 +34,4 @@ class Agent(Base):
     system_instruction: Mapped[str] = mapped_column(Text, default="")
     platform_id: Mapped[str] = mapped_column(String(50), ForeignKey("agent_platforms.id"), nullable=False)
     is_builtin: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)

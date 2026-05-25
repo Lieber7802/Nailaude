@@ -270,6 +270,10 @@ export interface WSArtifact {
   artifact: Artifact;
 }
 
+export interface WSUserMessage extends Message {
+  clientMessageId?: string;
+}
+
 export interface WSOrchestratorStatus {
   status: "dispatching" | "executing" | "summarizing";
   tasks: Task[];
@@ -294,6 +298,7 @@ export interface WSError {
 }
 
 export type WSServerMessage =
+  | { type: "user_message"; data: WSUserMessage }
   | { type: "agent_thinking"; data: WSAgentThinking }
   | { type: "text_delta"; data: WSTextDelta }
   | { type: "orchestrator_status"; data: WSOrchestratorStatus }
