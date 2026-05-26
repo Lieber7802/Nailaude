@@ -1,13 +1,12 @@
-import type { Artifact, Message } from './api'
+import type { SendMessageDTO, WSClientMessage, WSServerMessage } from '../../../packages/shared/types'
 
-export type WSServerMessage =
-  | { type: 'user_message'; data: Message & { clientMessageId?: string } }
-  | { type: 'agent_thinking'; data: { agentId: string; agentName: string } }
-  | { type: 'text_delta'; data: { messageId: string; agentName: string; delta: string } }
-  | { type: 'artifact'; data: { messageId: string; artifact: Artifact } }
-  | { type: 'team_activity'; data: { fromAgent: string; to: string; content: string; noteType: string } }
-  | { type: 'message_done'; data: { messageId: string; agentName: string } }
-  | { type: 'error'; data: { messageId?: string; error: string; recoverable: boolean } }
+export type { WSServerMessage }
+export type WSOutboundMessage =
+  | WSClientMessage
+  | {
+      type: 'send_message'
+      data: SendMessageDTO & { clientMessageId?: string }
+    }
 
 type MessageHandler<T extends WSServerMessage = WSServerMessage> = (message: T) => void
 type StatusHandler = (status: 'idle' | 'connecting' | 'open' | 'closed' | 'error') => void
@@ -55,7 +54,7 @@ export class WebSocketClient {
     this.emitStatus('idle')
   }
 
-  send(data: unknown): boolean {
+  send(data: WSOutboundMessage): boolean {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(data))
       return true

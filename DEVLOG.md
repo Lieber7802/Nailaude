@@ -262,3 +262,97 @@
 ### 给其他成员的提醒
 - @小马：真实 Adapter 接入前请继续沿用 MockAdapter 的 WS 事件契约，尤其是 artifacts 与 `message_done` 的顺序。
 - @洋芋：前端历史恢复已经可取回 CodeCard/PreviewPanel，后续 UI 增强可直接消费 message artifacts。
+## [2026-05-25] Codex - M2 Chat Core
+
+### 完成内容
+- 新增 M2 总计划、M2_1-M2_6 子计划和 checklist。
+- Conversation list 支持搜索最近消息、展示 lastMessage、参与者、会话类型和删除。
+- 新增新建会话弹窗，支持单聊/群聊 Agent 选择和 workDir 输入。
+- 实现 @ mention 浮层选择，发送时解析 mentions，单聊支持默认参与者 fallback。
+- 新增规则版 OrchestratorService：按 mention/participant 顺序生成 sequential DispatchPlan。
+- WebSocket 主流程接入 Orchestrator，推送 dispatching/executing/summarizing 状态，并为每个选中 Agent 运行 MockAdapter。
+- 前端接入 agent_thinking/orchestrator_status/error runtime 状态，消息气泡展示头像、角色、时间和流式状态。
+
+### 新增/修改文件
+- `docs/plans/M2_TOTAL_PLAN.md` / `docs/plans/M2_TOTAL_CHECKLIST.md` (新增)
+- `docs/plans/M2_1_PLAN.md` ... `docs/plans/M2_6_CHECKLIST.md` (新增)
+- `backend/tests/test_m2_chat_core.py` (新增)
+- `backend/app/services/orchestrator.py` (修改)
+- `backend/app/ws/handlers.py` (修改)
+- `backend/app/api/conversations.py` (修改)
+- `frontend/src/services/api.ts` / `frontend/src/services/websocket.ts` (修改)
+- `frontend/src/hooks/useWebSocket.ts` (修改)
+- `frontend/src/stores/uiStore.ts` (修改)
+- `frontend/src/pages/Workspace.tsx` (修改)
+- `frontend/src/components/chat/*` (修改/新增)
+- `frontend/src/index.css` (修改)
+
+### 接口变化
+- 无新增公开契约；复用现有 REST 和 WS 类型。
+- `GET /conversations` 现在会返回可选 `lastMessage`，并允许 `search` 命中最近消息内容。
+- WS 现在会在 Mock 执行前后推送 `orchestrator_status`。
+
+### 验证
+- `cd backend && pytest -q` -> 11 passed
+- `cd frontend && npm run build` -> passed
+
+### 下一步
+- M3 可在当前 OrchestratorService 上加入 LLM 决策、上下文工程、TeamBoard/ProjectState 更新。
+
+### 给其他成员的提醒
+- @小马：真实 Adapter 接入时继续沿用 M2 的 WS 事件顺序；M2 仍只依赖 MockAdapter。
+- @洋芋：消息流和 artifact store 已能消费多 Agent 产物，M4 可直接增强 CodeCard/PreviewPanel。
+
+## [2026-05-26] Codex - M2 Review Fixes
+
+### 完成内容
+- 按 `docs/M2_REVIEW_REPORT.md` 修复 M2 review 发现：限制 WebSocket mention 只能调度会话参与 Agent，禁止空参与者会话，Adapter 失败时 task 标记为 failed。
+- 前端修复 mention 过匹配、runtime error 粘滞、失败后 thinking 状态清理，以及会话列表 lastMessage/排序实时更新。
+- 对齐 REST message fallback 文档：M2 仅持久化用户消息，不触发 Orchestrator。
+- 清理 WebSocket 死 helper，并修复前端 lint 失败项。
+
+### 新增/修改文件
+- `backend/tests/test_m2_chat_core.py` (修改)
+- `backend/app/api/conversations.py` (修改)
+- `backend/app/schemas/conversation.py` (修改)
+- `backend/app/ws/handlers.py` (修改)
+- `frontend/src/services/api.ts` / `frontend/src/hooks/useWebSocket.ts` (修改)
+- `frontend/src/stores/conversationStore.ts` / `frontend/src/stores/messageStore.ts` / `frontend/src/stores/uiStore.ts` (修改)
+- `frontend/src/pages/Workspace.tsx` / `frontend/src/components/chat/ChatArea.tsx` (修改)
+- `frontend/src/utils/diff.ts` (修改)
+- `docs/API_SPEC.md` / `docs/plans/M2_TOTAL_PLAN.md` / `docs/plans/M2_TOTAL_CHECKLIST.md` (修改)
+
+### 接口变化
+- 无新增 WS 事件类型；失败任务继续通过现有 `error` 与 `orchestrator_status` 表达。
+- `POST /conversations` / `PATCH /conversations/{id}` 现在拒绝空 `participantIds`。
+- `GET /conversations` 的 `lastMessage` 语义保持不变。
+
+### 验证
+- `cd backend && pytest -q` -> 14 passed
+- `cd frontend && npm run lint` -> passed
+- `cd frontend && npm run build` -> passed
+
+### 下一步
+- 提交并创建 M2 PR，等待 GitHub merge。
+
+### 给其他成员的提醒
+- @小马：真实 Adapter 异常时请沿用 `error` + failed task status 的终止语义。
+- @洋芋：M4 预览增强可继续消费当前多 Agent message/artifact store。
+## [2026-05-26] Codex - M2 Review Report
+
+### 完成内容
+- 将 M2 严格代码审查结果沉淀为独立交接文档，供负责开发的 Agent 按优先级优化。
+- 文档覆盖 WebSocket 失败状态、会话 Agent 边界、空参与者 fallback、REST fallback 契约、@mention 解析、会话列表同步、runtime error、lint 和死代码清理。
+
+### 新增/修改文件
+- `docs/M2_REVIEW_REPORT.md` (新增)
+- `DEVLOG.md` (修改)
+
+### 接口变化
+- 无实现接口变化；文档指出 `POST /conversations/{id}/messages` 与 API_SPEC 存在语义不一致，需要后续修正实现或文档。
+
+### 验证
+- 本次为 review 文档沉淀，未修改业务实现；沿用 review 时的验证快照：`pytest -q` 11 passed，`frontend npm run build` passed，`frontend npm run lint` failed。
+
+### 下一步
+- 开发 Agent 优先处理 `docs/M2_REVIEW_REPORT.md` 中 P1 项，再补充对应回归测试。

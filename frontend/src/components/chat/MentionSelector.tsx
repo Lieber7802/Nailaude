@@ -1,5 +1,41 @@
-const MentionSelector = () => {
-  return <div className="mention-selector">MentionSelector</div>
+import { Empty } from 'antd'
+import type { Agent } from '../../services/api'
+
+interface MentionSelectorProps {
+  agents: Agent[]
+  query: string
+  visible: boolean
+  onSelect: (agent: Agent) => void
+}
+
+const MentionSelector = ({ agents, onSelect, query, visible }: MentionSelectorProps) => {
+  if (!visible) return null
+
+  const normalizedQuery = query.trim().toLowerCase()
+  const filteredAgents = agents.filter(
+    (agent) =>
+      !normalizedQuery ||
+      agent.name.toLowerCase().includes(normalizedQuery) ||
+      agent.capabilities.some((capability) => capability.toLowerCase().includes(normalizedQuery))
+  )
+
+  return (
+    <div className="mention-selector" role="listbox">
+      {filteredAgents.length === 0 ? (
+        <Empty description="没有匹配的 Agent" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+      ) : (
+        filteredAgents.map((agent) => (
+          <button className="mention-selector__item" key={agent.id} type="button" onMouseDown={() => onSelect(agent)}>
+            <span className="agent-row__avatar">{agent.avatar}</span>
+            <span>
+              <strong>{agent.name}</strong>
+              <small>{agent.capabilities.slice(0, 2).join(' / ')}</small>
+            </span>
+          </button>
+        ))
+      )}
+    </div>
+  )
 }
 
 export default MentionSelector

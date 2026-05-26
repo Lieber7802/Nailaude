@@ -79,7 +79,8 @@ export const useMessageStore = create<MessageState>((set, get) => ({
   finalizeStream: (conversationId, messageId, agentName) => {
     const content = get().streamingContent[messageId] || ''
     set((state) => {
-      const { [messageId]: _removed, ...rest } = state.streamingContent
+      const rest = { ...state.streamingContent }
+      delete rest[messageId]
       const messages = state.messagesByConversation[conversationId] || []
       return {
         streamingContent: rest,
@@ -94,7 +95,8 @@ export const useMessageStore = create<MessageState>((set, get) => ({
   },
   clearConversation: (conversationId) =>
     set((state) => {
-      const { [conversationId]: _removed, ...rest } = state.messagesByConversation
+      const rest = { ...state.messagesByConversation }
+      delete rest[conversationId]
       return { messagesByConversation: rest }
     }),
 }))

@@ -3,6 +3,7 @@ WebSocket endpoint handlers
 """
 import json
 from json import JSONDecodeError
+from typing import TypedDict
 
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
@@ -15,10 +16,17 @@ from app.models.agent import Agent
 from app.models.artifact import Artifact
 from app.models.conversation import Conversation
 from app.models.message import Message
+from app.services.orchestrator import OrchestratorService
 from app.services.seed import seed_builtin_data
 from app.ws.manager import manager
 
 ws_router = APIRouter()
+
+
+class StreamResult(TypedDict):
+    status: str
+    content: str
+    error: str | None
 
 
 @ws_router.websocket("/ws/{conversation_id}")
@@ -61,9 +69,13 @@ async def handle_send_message(websocket: WebSocket, conversation_id: str, payloa
         return
 
     await seed_builtin_data(db)
-    agent = await resolve_agent(db, conversation, payload.get("mentions") or [])
-    if agent is None:
-        await send_error(websocket, "Agent not found", recoverable=False)
+    try:
+        agents = await resolve_dispatch_agents(db, conversation, payload.get("mentions") or [])
+    except ValueError as exc:
+        await send_error(websocket, str(exc), recoverable=True)
+        return
+    if not agents:
+        await send_error(websocket, "Conversation has no participants", recoverable=False)
         return
 
     content = str(payload.get("content", ""))
@@ -84,8 +96,73 @@ async def handle_send_message(websocket: WebSocket, conversation_id: str, payloa
     db.add(user_message)
     await db.flush()
 
+    await db.commit()
+    await db.refresh(user_message)
+
+    user_message_data = serialize_message(user_message)
+    if payload.get("clientMessageId"):
+        user_message_data["clientMessageId"] = payload.get("clientMessageId")
+    await manager.send_personal(websocket, {"type": "user_message", "data": user_message_data})
+
+    orchestrator = OrchestratorService()
+    plan = await orchestrator.build_dispatch_plan(conversation, content, payload.get("mentions") or [], agents)
+    await send_orchestrator_status(websocket, "dispatching", plan)
+
+    adapter = MockAdapter(response_delay=0)
+    for task in plan["tasks"]:
+        plan = orchestrator.mark_task(plan, task["id"], "running")
+        await send_orchestrator_status(websocket, "executing", plan)
+        agent = next((item for item in agents if item.id == task["agentId"]), None)
+        if agent is None:
+            plan = orchestrator.mark_task(plan, task["id"], "failed", "Agent not found")
+            await send_orchestrator_status(websocket, "executing", plan)
+            continue
+
+        result = await stream_agent_task(websocket, db, conversation, user_message, agent, adapter, content)
+        task_status = "completed" if result["status"] == "success" else "failed"
+        task_result = result["content"] if result["status"] == "success" else result["error"]
+        plan = orchestrator.mark_task(plan, task["id"], task_status, task_result)
+        await send_orchestrator_status(websocket, "executing", plan)
+
+    await send_orchestrator_status(websocket, "summarizing", plan)
+
+
+async def resolve_dispatch_agents(db: AsyncSession, conversation: Conversation, mentions: list[dict]) -> list[Agent]:
+    participant_ids = list(conversation.participant_ids or [])
+    if not participant_ids:
+        return []
+
+    agent_ids: list[str] = []
+    for mention in mentions:
+        agent_id = mention.get("agentId") or mention.get("agent_id")
+        if agent_id and agent_id not in participant_ids:
+            raise ValueError("Mentioned agent is not part of this conversation")
+        if agent_id and agent_id not in agent_ids:
+            agent_ids.append(agent_id)
+
+    if not agent_ids:
+        agent_ids = participant_ids
+
+    agents = await db.scalars(select(Agent).where(Agent.id.in_(agent_ids)))
+    agents_by_id = {agent.id: agent for agent in agents.all()}
+    return [agents_by_id[agent_id] for agent_id in agent_ids if agent_id in agents_by_id]
+
+
+async def send_orchestrator_status(websocket: WebSocket, status: str, plan: dict) -> None:
+    await manager.send_personal(websocket, {"type": "orchestrator_status", "data": {"status": status, "tasks": plan["tasks"]}})
+
+
+async def stream_agent_task(
+    websocket: WebSocket,
+    db: AsyncSession,
+    conversation: Conversation,
+    user_message: Message,
+    agent: Agent,
+    adapter: MockAdapter,
+    content: str,
+) -> StreamResult:
     agent_message = Message(
-        conversation_id=conversation_id,
+        conversation_id=conversation.id,
         role="agent",
         agent_id=agent.id,
         content="",
@@ -96,26 +173,21 @@ async def handle_send_message(websocket: WebSocket, conversation_id: str, payloa
     )
     db.add(agent_message)
     await db.commit()
-    await db.refresh(user_message)
     await db.refresh(agent_message)
-
-    user_message_data = serialize_message(user_message)
-    if payload.get("clientMessageId"):
-        user_message_data["clientMessageId"] = payload.get("clientMessageId")
-    await manager.send_personal(websocket, {"type": "user_message", "data": user_message_data})
 
     await manager.send_personal(
         websocket,
         {"type": "agent_thinking", "data": {"agentId": agent.id, "agentName": agent.name}},
     )
 
-    adapter = MockAdapter(response_delay=0)
     content_parts: list[str] = []
+    stream_status = "success"
+    stream_error: str | None = None
     try:
         async for event in adapter.run_task(
             conversation.work_dir,
             content,
-            {"agentName": agent.name},
+            {"agentName": agent.name, "conversationId": conversation.id, "workDir": conversation.work_dir},
         ):
             if event.type == "text_delta":
                 content_parts.append(event.content)
@@ -161,31 +233,27 @@ async def handle_send_message(websocket: WebSocket, conversation_id: str, payloa
                     },
                 )
             elif event.type == "error":
+                stream_status = "failed"
+                stream_error = event.content
                 await send_error(websocket, event.content, message_id=agent_message.id, recoverable=True)
             elif event.type == "done":
                 agent_message.content = "".join(content_parts)
+                if stream_error:
+                    agent_message.meta = {**(agent_message.meta or {}), "status": "error", "error": stream_error}
                 await db.commit()
-                await manager.send_personal(
-                    websocket,
-                    {"type": "message_done", "data": {"messageId": agent_message.id, "agentName": agent.name}},
-                )
+                if stream_status == "success":
+                    await manager.send_personal(
+                        websocket,
+                        {"type": "message_done", "data": {"messageId": agent_message.id, "agentName": agent.name}},
+                    )
     except Exception as exc:
+        stream_status = "failed"
+        stream_error = f"Mock stream failed: {exc}"
         agent_message.content = "".join(content_parts)
-        agent_message.meta = {**(agent_message.meta or {}), "status": "error", "error": str(exc)}
+        agent_message.meta = {**(agent_message.meta or {}), "status": "error", "error": stream_error}
         await db.commit()
-        await send_error(websocket, f"Mock stream failed: {exc}", message_id=agent_message.id, recoverable=False)
-
-
-async def resolve_agent(db: AsyncSession, conversation: Conversation, mentions: list[dict]) -> Agent | None:
-    if mentions:
-        agent_id = mentions[0].get("agentId") or mentions[0].get("agent_id")
-        if agent_id:
-            return await db.get(Agent, agent_id)
-
-    if conversation.participant_ids:
-        return await db.get(Agent, conversation.participant_ids[0])
-
-    return await db.scalar(select(Agent).order_by(Agent.created_at.asc()))
+        await send_error(websocket, stream_error, message_id=agent_message.id, recoverable=False)
+    return {"status": stream_status, "content": "".join(content_parts), "error": stream_error}
 
 
 async def send_error(

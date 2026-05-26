@@ -34,6 +34,13 @@ class ConversationCreate(BaseModel):
     def work_dir_must_stay_in_workspaces(cls, value: str) -> str:
         return validate_work_dir(value) or ""
 
+    @field_validator("participant_ids")
+    @classmethod
+    def participants_must_not_be_empty(cls, value: list[str]) -> list[str]:
+        if not value:
+            raise ValueError("participantIds must include at least one agent")
+        return value
+
     model_config = ConfigDict(populate_by_name=True)
 
 
@@ -46,6 +53,13 @@ class ConversationUpdate(BaseModel):
     @classmethod
     def work_dir_must_stay_in_workspaces(cls, value: str | None) -> str | None:
         return validate_work_dir(value)
+
+    @field_validator("participant_ids")
+    @classmethod
+    def participants_must_not_be_empty(cls, value: list[str] | None) -> list[str] | None:
+        if value is not None and not value:
+            raise ValueError("participantIds must include at least one agent")
+        return value
 
     model_config = ConfigDict(populate_by_name=True)
 

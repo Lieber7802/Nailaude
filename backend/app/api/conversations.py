@@ -2,12 +2,13 @@
 Conversation CRUD routes
 """
 from fastapi import APIRouter, Depends
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.responses import api_success, paginated, raise_api_error
 from app.api.serializers import serialize_conversation
 from app.database import get_db
+from app.models.agent import Agent
 from app.models.artifact import Artifact
 from app.models.conversation import Conversation
 from app.models.message import Message
@@ -27,23 +28,64 @@ async def list_conversations(
     page = max(page, 1)
     page_size = max(min(pageSize, 100), 1)
 
-    query = select(Conversation)
+    latest_message_at = (
+        select(func.max(Message.created_at))
+        .where(Message.conversation_id == Conversation.id)
+        .correlate(Conversation)
+        .scalar_subquery()
+    )
+    latest_message_content = (
+        select(Message.content)
+        .where(Message.conversation_id == Conversation.id)
+        .order_by(Message.created_at.desc())
+        .limit(1)
+        .correlate(Conversation)
+        .scalar_subquery()
+    )
+    latest_message_role = (
+        select(Message.role)
+        .where(Message.conversation_id == Conversation.id)
+        .order_by(Message.created_at.desc())
+        .limit(1)
+        .correlate(Conversation)
+        .scalar_subquery()
+    )
+    latest_agent_name = (
+        select(Agent.name)
+        .join(Message, Message.agent_id == Agent.id)
+        .where(Message.conversation_id == Conversation.id)
+        .order_by(Message.created_at.desc())
+        .limit(1)
+        .correlate(Conversation)
+        .scalar_subquery()
+    )
+    query = select(Conversation, latest_message_content, latest_message_role, latest_agent_name, latest_message_at)
     count_query = select(func.count()).select_from(Conversation)
     if search:
-        query = query.where(Conversation.title.contains(search))
-        count_query = count_query.where(Conversation.title.contains(search))
+        search_filter = or_(Conversation.title.contains(search), latest_message_content.contains(search))
+        query = query.where(search_filter)
+        count_query = count_query.where(search_filter)
 
     total = await db.scalar(count_query)
-    result = await db.scalars(
-        query.order_by(Conversation.updated_at.desc()).offset((page - 1) * page_size).limit(page_size)
+    result = await db.execute(
+        query.order_by(func.coalesce(latest_message_at, Conversation.updated_at).desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
     )
-    items = [serialize_conversation(conversation) for conversation in result.all()]
+    items = [
+        serialize_conversation(
+            conversation,
+            last_message=format_last_message(message_content, message_role, agent_name),
+        )
+        for conversation, message_content, message_role, agent_name, _message_at in result.all()
+    ]
     return api_success(paginated(items, total or 0, page, page_size))
 
 
 @router.post("")
 async def create_conversation(payload: ConversationCreate, db: AsyncSession = Depends(get_db)):
     """Create a new conversation"""
+    await validate_participants(payload.participant_ids, db)
     conversation = Conversation(
         title=payload.title,
         type=payload.type,
@@ -77,6 +119,8 @@ async def update_conversation(
         raise_api_error("Conversation not found", 404)
 
     updates = payload.model_dump(exclude_unset=True)
+    if "participant_ids" in updates:
+        await validate_participants(updates["participant_ids"], db)
     for key, value in updates.items():
         setattr(conversation, key, value)
 
@@ -98,3 +142,23 @@ async def delete_conversation(conversation_id: str, db: AsyncSession = Depends(g
     await db.delete(conversation)
     await db.commit()
     return api_success({"id": conversation_id})
+
+
+def format_last_message(content: str | None, role: str | None, agent_name: str | None) -> str | None:
+    if content is None:
+        return None
+    prefix = "你" if role == "user" else agent_name or "Agent"
+    compact_content = " ".join(content.split())
+    if len(compact_content) > 80:
+        compact_content = f"{compact_content[:77]}..."
+    return f"{prefix}: {compact_content}"
+
+
+async def validate_participants(participant_ids: list[str], db: AsyncSession) -> None:
+    if not participant_ids:
+        raise_api_error("participantIds must include at least one agent", 400)
+    existing = await db.scalars(select(Agent.id).where(Agent.id.in_(participant_ids)))
+    existing_ids = set(existing.all())
+    missing_ids = [agent_id for agent_id in participant_ids if agent_id not in existing_ids]
+    if missing_ids:
+        raise_api_error("Participant agent not found", 400)
