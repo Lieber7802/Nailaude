@@ -36,7 +36,7 @@ Complete the demo-first M2 chat core: searchable conversations, real conversatio
 
 ## Out of Scope
 
-- Fireworks/Volcano/LLMProvider integration.
+- DeepSeek/LLMProvider integration.
 - OpenCode/Codex CLI process management.
 - Full context engineering, ProjectState, and TeamBoard mutation.
 - Monaco/Diff/iframe preview upgrades.

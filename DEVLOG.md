@@ -356,3 +356,102 @@
 
 ### 下一步
 - 开发 Agent 优先处理 `docs/M2_REVIEW_REPORT.md` 中 P1 项，再补充对应回归测试。
+## [2026-05-28] Codex - M2 UI Interactions
+
+### 完成内容
+- 新增 `M2_UI_INTERACTIONS` plan/checklist，明确本轮只实现无需后端支持的前端交互。
+- 新增 `docs/TECH_DEBT.md`，记录 UI polish 后暂未实现按钮的预期功能、当前状态和建议阶段。
+- 聊天顶部将参与数量和更新时间改为只读状态文本，避免无交互图标误导；更新时间由前端本地时钟刷新。
+- `+ 添加代理` chip 保留为未来自定义 Agent/参与者管理入口，并通过 title 标注后续扩展方向。
+- 右侧预览区桌面/平板/手机图标改为真实按钮，可切换预览 viewport。
+- 右侧预览区 `- / +` 缩放按钮接入前端状态，支持 75% / 100% / 125%。
+
+### 新增/修改文件
+- `docs/plans/M2_UI_INTERACTIONS_PLAN.md` (新增)
+- `docs/plans/M2_UI_INTERACTIONS_CHECKLIST.md` (新增)
+- `docs/TECH_DEBT.md` (新增)
+- `frontend/src/components/chat/ChatArea.tsx` (修改)
+- `frontend/src/components/preview/PreviewPanel.tsx` (修改)
+- `frontend/src/index.css` (修改)
+- `DEVLOG.md` (修改)
+
+### 接口变化
+- 无后端接口变化。
+- 无 shared types 变化。
+- 无新增依赖。
+
+### 验证
+- `cd frontend && npm run lint` -> passed
+- `cd frontend && npm run build` -> passed
+- 浏览器烟测：聊天顶部显示“X 个代理参与”和更新时间；桌面/平板/手机预览按钮均能切换 active；缩放按钮能更新到 `125%`；AgentHub 页面 console 无 error。
+
+### 下一步
+- 优先从 `docs/TECH_DEBT.md` 中挑选低成本高收益项继续补齐，例如 `@ 代理` 快捷按钮打开 mention selector、产物卡“预览”自动切换右侧预览 Tab、编辑会话标题。
+
+## [2026-05-28] Codex - M2 UI Polish
+
+### 完成内容
+- 新增 `M2_UI_POLISH` plan/checklist，明确本轮只做前端视觉优化，不修改后端、共享类型或 API 契约。
+- 按参考图重塑三栏工作台：左侧 AgentHub 品牌区、橙色新建按钮、常用代理卡片、对话列表卡片和底部操作。
+- 优化聊天区：顶部会话标题、参与 Agent chip、派生协作状态、消息卡片、协作状态卡和输入工具条。
+- 优化产物卡片：从代码块展示改为文件产物行，包含图标、文件名、类型/大小、生成状态和预览按钮。
+- 重写右侧 PreviewPanel，支持 `产出物 | 预览 | 变更` 三 Tab；HTML artifact 通过前端 `iframe srcDoc` 预览，暂不依赖后端 Preview Service。
+
+### 新增/修改文件
+- `docs/plans/M2_UI_POLISH_PLAN.md` (新增)
+- `docs/plans/M2_UI_POLISH_CHECKLIST.md` (新增)
+- `frontend/src/components/chat/ConversationList.tsx` (修改)
+- `frontend/src/components/chat/ChatArea.tsx` (修改)
+- `frontend/src/components/chat/MessageBubble.tsx` (修改)
+- `frontend/src/components/chat/MessageInput.tsx` (修改)
+- `frontend/src/components/cards/CodeCard.tsx` (修改)
+- `frontend/src/components/preview/PreviewPanel.tsx` (修改)
+- `frontend/src/index.css` (修改)
+- `DEVLOG.md` (修改)
+
+### 接口变化
+- 无后端接口变化。
+- 无 `packages/shared/types.ts` 变化。
+- 顶部状态只从现有前端数据和 WebSocket runtime 派生，不展示真实在线人数或平台健康状态。
+
+### 验证
+- `cd frontend && npm run lint` -> passed
+- `cd frontend && npm run build` -> passed
+- 浏览器烟测：`http://localhost:5173/workspace` 可打开；有产物会话中 `产出物` 能列出 `index.html`，`预览` 能显示 preview shell，`变更` 能显示空态；发送 `@代码工匠 视觉优化后再生成一次` 后 Mock 回复和产物正常出现，浏览器 console 无 error。
+
+### 下一步
+- 继续在 M2 UI polish 范围内补细节时，可优先处理空状态文案、会话时间显示真实化、Preview 面板全屏/缩放交互。
+- 进入 M3 前仍不建议加入真实 presence 文案，除非后端新增 `presence_update` 或 Agent health 状态。
+
+## [2026-05-28] Codex - M3 DeepSeek LLM Backend Docs
+
+### 完成内容
+- 新增 `M3_DEEPSEEK_LLM_BACKEND` plan/checklist，明确本轮只调整文档策略，不改运行代码、不写入 `.env`。
+- 将 PRD、技术设计、任务拆解、API 示例中的默认 LLM 后端从火山方舟调整为私人 DeepSeek API。
+- 明确 DeepSeek 是 Orchestrator / LLMProvider 的模型后端，不计入“至少两个 Agent 平台”；平台接入仍由 OpenCode + Codex 满足。
+- 记录 DeepSeek `deepseek-v4-flash` 官方价格页在 2026-05-28 查询到的预算估算，并加入赛前复核提醒。
+- 补充 API Key 安全与预算控制策略：backend-only、Mock-first、限制 max_tokens/超时/重试、记录 token usage 与估算费用。
+
+### 新增/修改文件
+- `docs/plans/M3_DEEPSEEK_LLM_BACKEND_PLAN.md` (新增)
+- `docs/plans/M3_DEEPSEEK_LLM_BACKEND_CHECKLIST.md` (新增)
+- `docs/PRD.md` (修改)
+- `docs/TECH_DESIGN.md` (修改)
+- `docs/TASK_BREAKDOWN.md` (修改)
+- `docs/API_SPEC.md` (修改)
+- `docs/plans/M1_TOTAL_PLAN.md` (修改)
+- `docs/plans/M2_TOTAL_PLAN.md` (修改)
+- `DEVLOG.md` (修改)
+
+### 接口变化
+- 无后端接口变化。
+- 无 `packages/shared/types.ts` 变化。
+- 文档中的 `llm` provider 示例配置更新为 `https://api.deepseek.com` + `deepseek-v4-flash`。
+
+### 验证
+- 文档 grep：`docs/PRD.md`、`docs/TECH_DESIGN.md`、`docs/TASK_BREAKDOWN.md`、`docs/API_SPEC.md` 中已无未来默认 LLM 后端指向火山方舟的描述。
+- 未运行代码测试：本轮仅修改文档。
+
+### 下一步
+- M3 实现时先补 `LLMProviderAdapter` 的 DeepSeek OpenAI-compatible client，再把 Orchestrator LLM 决策接到同一个 client。
+- 保留 MockAdapter 作为开发、CI、答辩兜底路径。

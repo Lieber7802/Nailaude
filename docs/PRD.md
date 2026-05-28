@@ -120,7 +120,7 @@ Agent：（基于上下文理解"导航栏"指代）
 │  │                         │  │                             │    │
 │  │  - 开源 Go CLI          │  │  - OpenAI 开源 Coding Agent │    │
 │  │  - 支持 75+ 模型后端     │  │  - 支持 full-auto 模式      │    │
-│  │  - 可接入火山方舟模型    │  │  - 支持 Responses API       │    │
+│  │  - 可接入 DeepSeek 模型   │  │  - 支持 Responses API       │    │
 │  │  - 有会话管理能力        │  │  - 内置代码执行沙箱         │    │
 │  │  - MCP 协议支持         │  │  - 支持文件读写             │    │
 │  │                         │  │                             │    │
@@ -140,8 +140,8 @@ Agent：（基于上下文理解"导航栏"指代）
 
 | 平台 | 优先级 | 特点 | 接入方式 | 模型后端 |
 |------|--------|------|---------|---------|
-| **OpenCode** | P0 | 开源 MIT、支持 75+ 模型、MCP 协议、会话管理 | CLI 子进程 / HTTP API | **火山方舟**（赛方提供） |
-| **Codex CLI** | P0 | OpenAI 官方、full-auto 模式、内置沙箱执行 | CLI 子进程 (quiet模式) | OpenAI API |
+| **OpenCode** | P0 | 开源 MIT、支持 75+ 模型、MCP 协议、会话管理 | CLI 子进程 / HTTP API | **DeepSeek API**（比赛私有 Key，OpenAI 兼容） |
+| **Codex CLI** | P0 | OpenAI 官方、full-auto 模式、内置沙箱执行 | CLI 子进程 (quiet模式) | OpenAI API / DeepSeek fallback |
 | 自定义 Agent | P1 | 用户配置任意 Agent 实例连接 | 配置化接入 | 用户自选 |
 
 ### 4.3 Agent 平台能力对比
@@ -164,8 +164,8 @@ Agent：（基于上下文理解"导航栏"指代）
 
 ```
 用户浏览器 → AgentHub 后端 → 本机上运行的 Agent 进程
-                                ├── OpenCode 实例 (火山方舟模型)
-                                └── Codex 实例 (OpenAI 模型)
+                                ├── OpenCode 实例 (DeepSeek 模型后端)
+                                └── Codex 实例 (OpenAI 模型 / DeepSeek fallback)
 ```
 
 - 后端自动管理 Agent 进程的生命周期（启动/停止/重启）
@@ -219,9 +219,9 @@ Agent：（基于上下文理解"导航栏"指代）
 ┌──────────────────────▼──────────────────────────────────────┐
 │  底层执行的（Platform 实例）                                   │
 │                                                             │
-│  代码工匠 → OpenCode 实例 (火山方舟模型)                      │
-│  审查大师 → Codex 实例 (OpenAI 模型)                         │
-│  文档专家 → OpenCode 实例 (火山方舟模型, 文档模式指令)         │
+│  代码工匠 → OpenCode 实例 (DeepSeek 模型后端)                 │
+│  审查大师 → Codex 实例 (OpenAI 模型 / DeepSeek fallback)      │
+│  文档专家 → OpenCode 实例 (DeepSeek 模型后端, 文档模式指令)    │
 │                                                             │
 │  每次调用时从对应平台新建会话实例                              │
 └─────────────────────────────────────────────────────────────┘
@@ -241,10 +241,10 @@ Agent：（基于上下文理解"导航栏"指代）
 
 | Agent 角色名 | 头像 | 能力描述（用户可见） | 底层平台（用户不可见） |
 |-------------|------|---------------------|---------------------|
-| 代码工匠 | 🛠️ | 全栈开发专家，擅长生成 React/HTML/CSS 代码 | OpenCode + 火山方舟 |
-| 审查大师 | 🔍 | 代码审查专家，关注代码质量、性能和安全性 | Codex + OpenAI |
-| 文档专家 | 📝 | 技术文档写手，擅长 PRD、API 文档、README | OpenCode + 火山方舟 |
-| UI 设计师 | 🎨 | UI/UX 专家，擅长页面布局和视觉优化 | Codex + OpenAI |
+| 代码工匠 | 🛠️ | 全栈开发专家，擅长生成 React/HTML/CSS 代码 | OpenCode + DeepSeek |
+| 审查大师 | 🔍 | 代码审查专家，关注代码质量、性能和安全性 | Codex + OpenAI / DeepSeek fallback |
+| 文档专家 | 📝 | 技术文档写手，擅长 PRD、API 文档、README | OpenCode + DeepSeek |
+| UI 设计师 | 🎨 | UI/UX 专家，擅长页面布局和视觉优化 | Codex + OpenAI / DeepSeek fallback |
 
 > 角色名和描述都是面向用户的自然语言，不含任何技术术语。
 
@@ -259,16 +259,16 @@ Agent：（基于上下文理解"导航栏"指代）
 │  ┌──────────────┐  ┌──────────────┐             │
 │  │ OpenCode     │  │ Codex CLI    │             │
 │  │ ✅ 已连接     │  │ ✅ 已连接     │             │
-│  │ 模型:火山方舟 │  │ 模型:GPT-4o  │             │
+│  │ 模型:DeepSeek│  │ 模型:OpenAI  │             │
 │  │ [配置]       │  │ [配置]       │             │
 │  └──────────────┘  └──────────────┘             │
 │                                                  │
 │  Agent 角色 → 平台绑定                            │
 │  ┌────────────────────────────────────────────┐  │
-│  │ 代码工匠  →  OpenCode (火山方舟)    [更改]  │  │
-│  │ 审查大师  →  Codex (OpenAI)        [更改]  │  │
-│  │ 文档专家  →  OpenCode (火山方舟)    [更改]  │  │
-│  │ UI设计师  →  Codex (OpenAI)        [更改]  │  │
+│  │ 代码工匠  →  OpenCode (DeepSeek)   [更改]  │  │
+│  │ 审查大师  →  Codex (OpenAI/DS)     [更改]  │  │
+│  │ 文档专家  →  OpenCode (DeepSeek)   [更改]  │  │
+│  │ UI设计师  →  Codex (OpenAI/DS)     [更改]  │  │
 │  └────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────┘
 ```
@@ -287,7 +287,7 @@ Agent：（基于上下文理解"导航栏"指代）
 │                                                                 │
 │  ┌───────────────┐  ┌───────────────┐  ┌────────────────────┐  │
 │  │  信息收集层    │  │   LLM 决策层   │  │    执行分派层       │  │
-│  │  (Python代码) │  │ (火山方舟API)  │  │    (Python代码)    │  │
+│  │  (Python代码) │  │ (DeepSeek API) │  │    (Python代码)    │  │
 │  │               │  │               │  │                    │  │
 │  │ · 读取项目结构 │  │ · 意图分析    │  │ · 调用子Agent      │  │
 │  │ · 扫描文件变更 │→ │ · 任务拆解    │→ │ · 传递上下文       │  │
@@ -305,7 +305,7 @@ Agent：（基于上下文理解"导航栏"指代）
 
 **Orchestrator 不是 Agent，它是"调度员 + 信息管家"。**
 
-- 不使用 OpenCode/Codex 实例，而是直接调用火山方舟 LLM API
+- 不使用 OpenCode/Codex 实例，而是直接调用 DeepSeek LLM API
 - Python 代码主动收集项目状态信息，作为 LLM 决策的输入
 - 兼顾速度（单次 API 调用）和决策质量（有项目实际状态辅助）
 
@@ -443,7 +443,7 @@ Step 1: 信息收集（Python）
 ├── 获取最近 git log
 └── 汇总聊天历史中的相关决策
 
-Step 2: LLM 决策（火山方舟 API）
+Step 2: LLM 决策（DeepSeek API）
 ├── 输入：项目状态 + 用户消息 + 可用 Agent 列表
 ├── 输出（结构化 JSON）：
 │   {
@@ -500,9 +500,9 @@ Step 4: 更新 Project State
 4. 决定每个 Agent 需要哪些上下文信息
 
 可用 Agent：
-- opencode: 擅长代码生成、项目搭建、文件操作（基于火山方舟模型）
+- opencode: 擅长代码生成、项目搭建、文件操作（基于 DeepSeek 模型）
 - codex: 擅长代码审查、重构建议、bug修复（基于 OpenAI 模型）
-- opencode-doc: 擅长文档撰写（基于火山方舟模型）
+- opencode-doc: 擅长文档撰写（基于 DeepSeek 模型）
 
 请以 JSON 格式输出调度方案。
 
@@ -743,7 +743,7 @@ Orchestrator 接收消息
         ▼
 各 Agent 依次回复（标识各自平台来源）
         │
-        ├── Agent A (火山方舟) 输出代码
+        ├── Agent A (DeepSeek) 输出代码
         ├── Agent B (OpenAI) 输出审查结果
         │
         ▼
@@ -767,7 +767,7 @@ Orchestrator 汇总结果
 | 5 | IM 聊天 | @ 提及 Agent | 输入 @ 弹出 Agent 选择列表，指定某个 Agent 回复 |
 | 6 | IM 聊天 | 聊天历史与上下文 | 自动将历史消息作为上下文传递给 Agent |
 | 7 | **Agent 接入** | **统一适配器层** | **抽象 AgentAdapter 接口，管理 Agent CLI 进程生命周期** |
-| 8 | **Agent 接入** | **OpenCode Adapter** | **接入 OpenCode CLI 进程，使用火山方舟作为模型后端** |
+| 8 | **Agent 接入** | **OpenCode Adapter** | **接入 OpenCode CLI 进程，使用 DeepSeek 作为比赛模型后端** |
 | 9 | **Agent 接入** | **Codex Adapter** | **接入 Codex CLI (full-auto 模式)，使用 OpenAI 作为后端** |
 | 10 | Agent 接入 | 预置 Agent 角色 (≥3个) | 代码工匠、审查大师、文档专家等，用户只看到角色名+能力描述 |
 | 11 | Agent 接入 | Agent 列表/联系人 | 展示所有可用 Agent 角色，含头像、名称、能力描述（**不暴露底层平台**） |
@@ -831,7 +831,7 @@ Orchestrator 汇总结果
 │           │                                 │                          │
 │ ┌────────┐│ ┌─────────────────────────────┐ │ ┌────────────────────┐  │
 │ │🔍搜索   ││ │ 顶部：Agent信息栏            │ │ │ Tab: 预览|代码|Diff │  │
-│ ├────────┤│ │ [头像] CodeAgent · 火山方舟  │ │ ├────────────────────┤  │
+│ ├────────┤│ │ [头像] CodeAgent · DeepSeek  │ │ ├────────────────────┤  │
 │ │        ││ │ [在线] 代码生成 · 前端       │ │ │                    │  │
 │ │ 📝会话1 ││ ├─────────────────────────────┤ │ │   ┌────────────┐   │  │
 │ │  最近消息││ │                             │ │ │   │            │   │  │
@@ -875,7 +875,7 @@ Orchestrator 汇总结果
 │    │          进入工作台            │        │
 │    └──────────────────────────────┘        │
 │                                            │
-│    Powered by 火山方舟 + OpenAI             │
+│    Powered by OpenCode + Codex + DeepSeek   │
 │                                            │
 └────────────────────────────────────────────┘
 ```
@@ -1109,7 +1109,7 @@ Orchestrator 汇总结果
 ```
 ┌──────┐    ┌──────┐    ┌────────────┐    ┌──────────────┐   ┌──────────────┐
 │ 前端  │    │ 后端  │    │Orchestrator│    │ OpenCode进程  │   │ Codex进程     │
-│      │    │      │    │            │    │ (火山方舟)    │   │ (OpenAI)     │
+│      │    │      │    │            │    │ (DeepSeek)    │   │ (OpenAI/DS)  │
 └──┬───┘    └──┬───┘    └─────┬──────┘    └──────┬───────┘   └──────┬───────┘
    │            │              │                   │                  │
    │ 发送消息    │              │                   │                  │
@@ -1267,7 +1267,7 @@ AgentPlatform（Agent 平台配置）
 ├── binary_path: string             // CLI 二进制路径
 ├── status: enum("available", "not_installed", "error")
 ├── config: JSON                    // 平台特定配置
-│     ├── model_backend: string     // opencode: 火山方舟 / codex: openai
+│     ├── model_backend: string     // opencode: deepseek / codex: openai 或 deepseek fallback
 │     ├── api_key: string (加密)
 │     └── extra_args: string[]      // 额外 CLI 参数
 
@@ -1385,7 +1385,7 @@ Artifact（产物 - 基于文件变更生成）
 │  ├── Agent Adapter 层                               │
 │  │   ├── OpenCodeAdapter                            │
 │  │   │     └── 管理 OpenCode CLI 子进程              │
-│  │   │         └── 模型后端: 火山方舟 API             │
+│  │   │         └── 模型后端: DeepSeek API             │
 │  │   ├── CodexAdapter                               │
 │  │   │     └── 管理 Codex CLI 子进程 (full-auto)     │
 │  │   │         └── 模型后端: OpenAI API              │
@@ -1395,7 +1395,7 @@ Artifact（产物 - 基于文件变更生成）
 │  └── File Watcher (监控工作目录变更→Diff 生成)        │
 ├─────────────────────────────────────────────────────┤
 │              Agent 进程层（本机运行）                  │
-│  ├── OpenCode 实例 (Go binary, 火山方舟模型)         │
+│  ├── OpenCode 实例 (Go binary, DeepSeek 模型)       │
 │  └── Codex CLI 实例 (Node.js, OpenAI 模型)          │
 ├─────────────────────────────────────────────────────┤
 │              数据存储                                 │
@@ -1473,14 +1473,27 @@ Artifact（产物 - 基于文件变更生成）
 
 | 风险 | 影响 | 应对策略 |
 |------|------|---------|
-| **OpenCode/Codex CLI 无法编程接入** | **核心路径受阻** | **三级降级：CLI → LLM 直调(火山方舟API) → MockAdapter。产品闭环不受影响，评委看到的体验一致。** |
+| **OpenCode/Codex CLI 无法编程接入** | **核心路径受阻** | **三级降级：CLI → LLM 直调(DeepSeek API) → MockAdapter。产品闭环不受影响，评委看到的体验一致。** |
 | Agent CLI 输出格式解析困难 | 无法正确提取产物 | 降级到 LLM Provider 模式（后端解析 LLM 输出写入文件） |
-| 火山方舟 API 延迟到账 | Orchestrator 和 LLM Provider 无模型 | MockAdapter 兜底全流程；OpenAI/DeepSeek API 作为临时替代 |
-| OpenAI API Key 成本 | Codex 调用受限 | 控制调用频率，Demo 时集中使用；降级时用 Mock |
+| DeepSeek API 调用失败或额度异常 | Orchestrator 和 LLM Provider 无模型 | MockAdapter 兜底全流程；保留 OpenAI 兼容配置，可临时切换其他兼容 API |
+| 私人 API Key 成本 | 调试和端到端测试产生费用 | 设置 max_tokens、超时和预算记录；开发期优先 Mock，关键链路再调用 DeepSeek |
 | 网页预览安全性问题 | iframe 执行恶意代码 | sandbox 属性 + CSP 策略限制 |
 | 前期只有组长一人 | 进度压力大 | Mock-first 策略保证第 4 天即可 Demo 核心流程 |
 | 20 天时间紧张 | 功能砍不完 | 严格按 P0→P1→P2 推进，P2 果断放弃 |
 | Agent 进程占用资源多 | 本机性能压力 | 及时释放空闲进程，设置进程数上限 |
+
+### DeepSeek API 成本估算（比赛 MVP）
+
+本项目将 DeepSeek 作为比赛期间的默认 LLM 后端，用于 Orchestrator 决策和 LLMProvider fallback；它不替代 OpenCode / Codex 这两个 Agent 平台。按 DeepSeek 官方价格页（https://api-docs.deepseek.com/quick_start/pricing）在 2026-05-28 查询到的 `deepseek-v4-flash` 价格估算：cache miss 输入约 `$0.14 / 1M tokens`，cache hit 输入约 `$0.0028 / 1M tokens`，输出约 `$0.28 / 1M tokens`。价格可能变化，赛前和答辩前需复核官方页面。
+
+| 使用阶段 | 估算输入 | 估算输出 | 估算费用 | 说明 |
+|---|---:|---:|---:|---|
+| 轻量调试 | 5M tokens | 1M tokens | 约 `$0.98` | 单模块联调、少量手动测试 |
+| 正常开发 + 调试 | 20M tokens | 5M tokens | 约 `$4.20` | M3-M5 主要开发期 |
+| 较频繁端到端测试 | 50M tokens | 15M tokens | 约 `$11.20` | 多轮 Demo 场景排练 |
+| 重度测试上限 | 100M tokens | 30M tokens | 约 `$22.40` | 远超常规比赛 MVP 需求 |
+
+预算结论：DeepSeek v4 flash 对本项目不是大开销，主要风险是误调用、循环调用或泄露 Key。控制策略：开发期默认 Mock-first；真实 LLM 调用只用于关键链路；后端限制 `max_tokens`、超时和重试次数；记录 token usage 与估算费用；`.env` 中的 `DEEPSEEK_API_KEY` 不进入仓库、不暴露给前端。
 
 ---
 
@@ -1489,10 +1502,10 @@ Artifact（产物 - 基于文件变更生成）
 | # | 问题 | 决策 |
 |---|------|------|
 | 1 | Agent 接入方式 | ✅ **直接调用第三方 Agent 平台实例（OpenCode + Codex CLI），不自研 Harness** |
-| 2 | Agent 平台选择 | ✅ **OpenCode（火山方舟模型后端）+ Codex CLI（OpenAI 后端）** |
+| 2 | Agent 平台选择 | ✅ **OpenCode + Codex CLI；比赛 LLM 后端默认使用 DeepSeek API** |
 | 3 | Agent 运行模式 | ✅ 两种模式：服务器托管（默认）+ 用户本地接入 |
 | 4 | 工作目录 | ✅ 用户指定项目目录，Agent 在其中操作文件 |
-| 5 | **Orchestrator 实现** | ✅ **火山方舟 LLM 直调 + Python 信息收集，不使用 Agent 实例** |
+| 5 | **Orchestrator 实现** | ✅ **DeepSeek LLM 直调 + Python 信息收集，不使用 Agent 实例** |
 | 6 | **上下文管理** | ✅ **分层上下文模型（4层），Orchestrator 智能筛选分配** |
 | 7 | **子Agent会话策略** | ✅ **混合策略：多轮保持 Session，新任务 Fresh Dispatch** |
 | 8 | 前端框架 | ✅ React + Vite (纯 SPA) |
@@ -1504,7 +1517,7 @@ Artifact（产物 - 基于文件变更生成）
 ### 仍待确认
 
 1. WebSocket 框架选型：原生 FastAPI WebSocket vs Socket.IO？
-2. 火山方舟具体可用的模型列表（等赛方下发 API 后确认，用于配置 OpenCode）
+2. DeepSeek v4 flash 的最终模型 ID、上下文窗口和价格（赛前按官方价格页复核）
 3. OpenCode 的具体编程接入方式（CLI 子进程 vs HTTP API vs SDK）
 4. Codex CLI 的 full-auto 模式输出格式解析细节
 

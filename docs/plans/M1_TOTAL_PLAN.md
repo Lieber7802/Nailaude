@@ -44,7 +44,7 @@
 - MockAdapter 返回流式文本和代码产物。
 - 前端能渲染流式消息和代码卡片。
 - WebSocket 连接稳定，断开后能给出可理解状态。
-- 全流程只依赖本地 Mock，不依赖 OpenCode、Codex、火山方舟或 OpenAI。
+- 全流程只依赖本地 Mock，不依赖 OpenCode、Codex 或任何外部 LLM/API。
 
 ## 推进原则
 

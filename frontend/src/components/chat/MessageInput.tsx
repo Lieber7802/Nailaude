@@ -1,4 +1,4 @@
-import { SendOutlined } from '@ant-design/icons'
+import { DownOutlined, LinkOutlined, SendOutlined } from '@ant-design/icons'
 import { Button } from 'antd'
 import { useMemo, useRef, useState } from 'react'
 import type { Agent } from '../../services/api'
@@ -62,7 +62,7 @@ const MessageInput = ({ agents, disabled, onSend }: MessageInputProps) => {
             }
           }}
           onKeyUp={(event) => setCursorIndex(event.currentTarget.selectionStart)}
-          placeholder={disabled ? '请选择会话并等待连接' : '输入任务，使用 @ 选择 Agent'}
+          placeholder={disabled ? '请选择会话并等待连接' : '输入任务，使用 @ 选择 Agent，/ 选择快捷命令'}
           value={content}
         />
         <MentionSelector
@@ -71,13 +71,25 @@ const MessageInput = ({ agents, disabled, onSend }: MessageInputProps) => {
           visible={!disabled && Boolean(mentionMatch)}
           onSelect={handleSelectMention}
         />
+        <div className="message-input__tools">
+          <button type="button">@ 代理</button>
+          <button type="button">/ 命令</button>
+          <button type="button">
+            <LinkOutlined /> 附件
+          </button>
+        </div>
       </div>
-      <Button
-        disabled={disabled || !content.trim()}
-        icon={<SendOutlined />}
-        type="primary"
-        onClick={handleSubmit}
-      />
+      <div className="message-input__send">
+        <Button
+          disabled={disabled || !content.trim()}
+          icon={<SendOutlined />}
+          type="primary"
+          onClick={handleSubmit}
+        />
+        <button aria-label="更多发送选项" type="button">
+          <DownOutlined />
+        </button>
+      </div>
     </div>
   )
 }

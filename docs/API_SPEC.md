@@ -312,16 +312,16 @@
     },
     {
       "id": "llm",
-      "name": "LLM Provider (火山方舟)",
+      "name": "LLM Provider (DeepSeek)",
       "binaryPath": "",
-      "config": { "apiBase": "https://ark.cn-beijing.volces.com/api/v3", "model": "doubao-pro-32k" },
+      "config": { "apiBase": "https://api.deepseek.com", "model": "deepseek-v4-flash" },
       "status": "available"
     },
     {
       "id": "opencode",
       "name": "OpenCode CLI",
       "binaryPath": "/usr/local/bin/opencode",
-      "config": { "provider": "volcengine" },
+      "config": { "provider": "deepseek" },
       "status": "not_installed"
     },
     {
@@ -344,9 +344,9 @@
 {
   "binaryPath": "/usr/local/bin/opencode",
   "config": {
-    "provider": "volcengine",
+    "provider": "deepseek",
     "apiKey": "sk-xxx",
-    "model": "doubao-pro-32k"
+    "model": "deepseek-v4-flash"
   }
 }
 ```

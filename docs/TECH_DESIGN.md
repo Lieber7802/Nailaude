@@ -42,13 +42,13 @@
 │                                                                 │
 │  ┌─────────────┐  ┌─────────────┐  ┌────────────────────────┐  │
 │  │  REST API   │  │  WS Server  │  │  Orchestrator Service  │  │
-│  │  /api/v1/*  │  │  /ws/{conv} │  │  (火山方舟 LLM 直调)    │  │
+│  │  /api/v1/*  │  │  /ws/{conv} │  │  (DeepSeek LLM 直调)    │  │
 │  └─────────────┘  └─────────────┘  └────────────────────────┘  │
 │                                                                 │
 │  ┌─────────────────────────────────────────────────────────┐    │
 │  │  Agent Manager (进程生命周期管理)                          │    │
-│  │  ├── OpenCodeAdapter  (CLI 子进程, 火山方舟后端)          │    │
-│  │  ├── CodexAdapter     (CLI 子进程, OpenAI 后端)          │    │
+│  │  ├── OpenCodeAdapter  (CLI 子进程, DeepSeek 后端)        │    │
+│  │  ├── CodexAdapter     (CLI 子进程, OpenAI/DeepSeek)      │    │
 │  │  └── ProcessPool      (进程池/会话复用)                   │    │
 │  └─────────────────────────────────────────────────────────┘    │
 │                                                                 │
@@ -72,7 +72,7 @@
 │  外部依赖                                                        │
 │  ├── OpenCode CLI 进程 (Go binary)                              │
 │  ├── Codex CLI 进程 (Node.js)                                   │
-│  └── 火山方舟 API (Orchestrator LLM 调用)                        │
+│  └── DeepSeek API (Orchestrator / LLMProvider 调用)              │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -170,7 +170,7 @@ AgentHub/
 │   │   │   ├── __init__.py
 │   │   │   ├── base.py           # AgentAdapter 抽象基类
 │   │   │   ├── mock.py           # MockAdapter（永久组件，开发/测试/兜底）
-│   │   │   ├── llm_provider.py   # LLM 直调 Provider（火山方舟/OpenAI 兼容）
+│   │   │   ├── llm_provider.py   # LLM 直调 Provider（DeepSeek/OpenAI 兼容）
 │   │   │   ├── opencode.py       # OpenCode 适配器
 │   │   │   └── codex.py          # Codex 适配器
 │   │   ├── models/               # 数据库模型
@@ -216,11 +216,11 @@ MockAdapter + FakeArtifactProvider → 前端完整 UI 闭环
 
 Phase 2 (Day 5-8): LLM Provider 中间层
 ─────────────────────────────────────────
-LLMProviderAdapter (火山方舟 / OpenAI 兼容 API 直调)
+LLMProviderAdapter (DeepSeek / OpenAI 兼容 API 直调)
   · 真实 LLM 生成代码文本
   · 后端解析 LLM 输出 → 写入文件 → 生成产物
   · 比 Mock 更真实，但不依赖 CLI
-目标：有了火山方舟 API 后立即可用，无需等 CLI 调通
+目标：使用私人 DeepSeek API 即可快速联调，无需等 CLI 调通
 
 Phase 3 (Day 8-14): 真实 CLI 接入
 ─────────────────────────────────────
@@ -242,7 +242,7 @@ OpenCodeAdapter / CodexAdapter (真实 CLI 子进程)
 │  · 风险：接入方式不确定，可能失败                                │
 ├────────────────────────────────────────────────────────────────┤
 │  Level 2 (降级): LLM Provider 直调                              │
-│  火山方舟 / OpenAI API + 后端代码解析 + 文件写入                  │
+│  DeepSeek / OpenAI 兼容 API + 后端代码解析 + 文件写入             │
 │  · LLM 生成代码，后端解析并写入项目目录                          │
 │  · 不如真实 Agent 强，但能展示完整产品流程                       │
 │  · 评委看到的效果与 Level 1 几乎相同                             │
@@ -539,12 +539,12 @@ class LLMProviderAdapter(AgentAdapter):
     LLM 直调适配器 — 作为 Mock 和真实 CLI 之间的中间层。
     
     工作方式：
-    1. 调用 OpenAI 兼容格式的 LLM API（火山方舟/DeepSeek/OpenAI）
+    1. 调用 OpenAI 兼容格式的 LLM API（默认 DeepSeek，也可兼容 OpenAI 等）
     2. LLM 生成包含代码的回复
     3. 后端解析回复中的代码块，写入项目目录
     4. 生成对应的产物事件
     
-    兼容：火山方舟、OpenAI、DeepSeek、Moonshot 等所有 OpenAI 格式 API。
+    兼容：DeepSeek、OpenAI、Moonshot 等 OpenAI 格式 API。
     """
     
     platform_name = "llm"
@@ -829,12 +829,15 @@ class OrchestratorService:
     """
     Orchestrator 核心逻辑：
     1. Python 信息收集
-    2. 火山方舟 LLM 决策
+    2. DeepSeek LLM 决策
     3. Python 执行分派
     """
     
-    def __init__(self, volcano_api_key: str, agent_manager: "AgentManager"):
-        self.volcano_client = VolcanoClient(api_key=volcano_api_key)
+    def __init__(self, deepseek_api_key: str, agent_manager: "AgentManager"):
+        self.llm_client = OpenAICompatibleClient(
+            api_key=deepseek_api_key,
+            base_url="https://api.deepseek.com",
+        )
         self.agent_manager = agent_manager
         self.project_state_svc = ProjectStateService()
     
@@ -847,7 +850,7 @@ class OrchestratorService:
         chat_history = await self._get_relevant_history(conversation_id)
         team_board = await self._get_team_board(conversation_id)
         
-        # Step 2: LLM 决策（火山方舟 API）
+        # Step 2: LLM 决策（DeepSeek API）
         dispatch_plan = await self._llm_decide(
             project_info=project_info,
             chat_history=chat_history,
@@ -896,11 +899,11 @@ class OrchestratorService:
         }
     
     async def _llm_decide(self, **kwargs) -> dict:
-        """调用火山方舟 LLM 进行任务决策"""
+        """调用 DeepSeek LLM 进行任务决策"""
         prompt = self._build_orchestrator_prompt(**kwargs)
         
-        response = await self.volcano_client.chat(
-            model="doubao-pro-32k",
+        response = await self.llm_client.chat(
+            model="deepseek-v4-flash",
             messages=[
                 {"role": "system", "content": ORCHESTRATOR_SYSTEM_PROMPT},
                 {"role": "user", "content": prompt},
@@ -1488,7 +1491,7 @@ alembic>=1.12
 aiosqlite             # SQLite 异步驱动（开发环境）
 asyncpg               # PostgreSQL 异步驱动（生产环境，可选）
 
-# HTTP 客户端（调火山方舟 API）
+# HTTP 客户端（调 DeepSeek/OpenAI 兼容 API）
 httpx>=0.25.0
 
 # 文件监控
@@ -1557,15 +1560,26 @@ npm run dev  # http://localhost:5173
 ```bash
 # 后端配置
 DATABASE_URL=sqlite+aiosqlite:///./agenthub.db
-VOLCANO_API_KEY=your_volcano_api_key
+DEEPSEEK_API_KEY=your_deepseek_api_key
 OPENAI_API_KEY=your_openai_api_key
 OPENCODE_BINARY_PATH=/usr/local/bin/opencode
 CODEX_BINARY_PATH=/usr/local/bin/codex
 
-# 火山方舟配置（Orchestrator 用）
-VOLCANO_MODEL=doubao-pro-32k
-VOLCANO_ENDPOINT=https://ark.cn-beijing.volces.com/api/v3
+# DeepSeek 配置（Orchestrator / LLMProvider 用）
+DEEPSEEK_MODEL=deepseek-v4-flash
+DEEPSEEK_BASE_URL=https://api.deepseek.com
 ```
+
+### 10.4 DeepSeek 成本与调用约束
+
+DeepSeek 是比赛期间默认 LLM 后端，不计入“至少两个 Agent 平台”的平台数量；平台接入仍由 OpenCode + Codex 满足。按 2026-05-28 查询 DeepSeek 官方价格页（https://api-docs.deepseek.com/quick_start/pricing），`deepseek-v4-flash` 价格为：cache miss 输入 `$0.14 / 1M tokens`，cache hit 输入 `$0.0028 / 1M tokens`，输出 `$0.28 / 1M tokens`。价格可能变化，答辩前需复核。
+
+工程约束：
+- 后端只从环境变量读取 `DEEPSEEK_API_KEY`，不得写入仓库或返回给前端。
+- LLMProvider 与 Orchestrator 默认设置单次超时、最大输出 token 和有限重试。
+- 每次真实 LLM 调用记录 input/output token、模型名和估算费用到 metadata 或开发日志。
+- 自动化测试默认使用 MockAdapter；端到端测试只在明确开启真实 LLM 时调用 DeepSeek。
+- 如果 DeepSeek API 失败，按 `CLI → LLMProvider → MockAdapter` 策略继续保证 Demo 闭环。
 
 ---
 
@@ -1593,7 +1607,7 @@ VOLCANO_ENDPOINT=https://ark.cn-beijing.volces.com/api/v3
 | 消息流渲染（含流式） | 组长 |
 | @ 提及 Agent 交互 | 组长 |
 | **LLMProviderAdapter 实现** | **小马** |
-| **火山方舟 API 接入联调** | **小马** |
+| **DeepSeek API 接入联调** | **小马** |
 | AgentAdapter 抽象基类确认 | 小马 |
 
 ### M3：真实 Agent 接入 + Orchestrator (Day 8-12，小马主导)
@@ -1650,7 +1664,7 @@ VOLCANO_ENDPOINT=https://ark.cn-beijing.volces.com/api/v3
 | **OpenCode CLI 无法编程接入** | **三级降级：CLI → LLMProvider 直调 → MockAdapter。Demo 不受影响。** |
 | **Codex full-auto 模式不稳定** | **同上降级策略。另：设置超时（60s），失败走 LLMProvider。** |
 | **CLI 输出格式无法解析** | **LLMProviderAdapter 作为永久 Plan B，可直接展示代码生成能力** |
-| 火山方舟 API 延迟到账 | Orchestrator 先用规则引擎决策；Agent 层先用 MockAdapter；API 到了切 LLMProvider |
+| DeepSeek API 调用失败或额度异常 | Orchestrator 先用规则引擎决策；Agent 层先用 MockAdapter；API 恢复后切 LLMProvider |
 | WebSocket 断连 | 前端自动重连（指数退避），重连后同步缺失消息 |
 | Agent 进程内存泄漏 | 设置进程存活时间上限（30min），超时自动回收 |
 | Diff 计算对大文件慢 | 限制 Diff 展示的文件大小（< 100KB），超出只展示摘要 |
@@ -1683,7 +1697,7 @@ VOLCANO_ENDPOINT=https://ark.cn-beijing.volces.com/api/v3
 
 1. **OpenCode 编程接入方式**：是否支持 stdin/stdout pipe？是否有 HTTP API？输出格式？→ 失败则降级 LLMProvider
 2. **Codex CLI full-auto 输出**：stdout 格式是纯文本还是结构化？如何识别任务完成？→ 失败则降级 LLMProvider
-3. **火山方舟 SDK**：Python SDK 是否支持 Function Calling？流式调用接口？→ 至少支持 OpenAI 兼容格式
+3. **DeepSeek API 细节**：确认 `deepseek-v4-flash` 模型 ID、流式输出、JSON 模式、工具调用支持和价格 → 至少支持 OpenAI 兼容格式
 4. **跨平台兼容**：Windows (开发环境) 上 OpenCode/Codex 的运行情况 → 不兼容则 Demo 时用 Linux
 5. **Monaco Editor bundle 大小**：是否需要 Code Splitting 或 Web Worker 加载 → 不影响核心流程
 

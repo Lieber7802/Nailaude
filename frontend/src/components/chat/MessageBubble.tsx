@@ -1,5 +1,4 @@
 import { LoadingOutlined } from '@ant-design/icons'
-import { Tag } from 'antd'
 import CodeCard from '../cards/CodeCard'
 import type { Agent, Artifact, Message } from '../../services/api'
 import { useArtifactStore } from '../../stores/artifactStore'
@@ -37,10 +36,10 @@ const MessageBubble = ({ agent, isStreaming = false, message }: MessageBubblePro
         <span className="message-bubble__author">
           <span className="message-bubble__avatar">{avatar}</span>
           <strong>{authorName}</strong>
-          <Tag color={isUser ? 'blue' : 'purple'}>{roleLabel[message.role]}</Tag>
+          {!isUser && <span className="role-badge">Agent</span>}
           {isStreaming && <LoadingOutlined />}
         </span>
-        <span>{new Date(message.createdAt).toLocaleTimeString()}</span>
+        <span>{formatTime(message.createdAt)}</span>
       </div>
       <div className="message-bubble__content">{message.content || (isStreaming ? '正在生成...' : '')}</div>
       {artifacts.length > 0 && (
@@ -53,5 +52,12 @@ const MessageBubble = ({ agent, isStreaming = false, message }: MessageBubblePro
     </article>
   )
 }
+
+const formatTime = (value: string) =>
+  new Intl.DateTimeFormat('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(value))
 
 export default MessageBubble

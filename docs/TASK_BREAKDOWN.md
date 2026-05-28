@@ -12,7 +12,7 @@
 | 成员 | 投入度 | 可用时间 | 擅长领域 | 核心职责 |
 |------|--------|---------|---------|---------|
 | **组长（你）** | ~50% 工作量 | Day 1 起全程 | 架构设计、前端交互、Orchestrator | 搭建基础框架、前端核心、调度逻辑、项目管理 |
-| **小马** | ~25% 工作量 | Day 5 起逐步投入，Day 7 全力 | LLM/算法方向 | Agent Adapter 层、LLM Provider、火山方舟接入 |
+| **小马** | ~25% 工作量 | Day 5 起逐步投入，Day 7 全力 | LLM/算法方向 | Agent Adapter 层、LLM Provider、DeepSeek 接入 |
 | **洋芋** | ~25% 工作量 | Day 8 起全力投入 | 全栈、什么都能做 | 产物卡片、预览系统、Diff 视图、代码编辑器 |
 
 ### 分工原则
@@ -93,8 +93,8 @@ Day:  1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19 
 | # | 任务 | 产出物 | 预估工时 |
 |---|------|--------|---------|
 | 2.7 | 理解 Adapter 接口 | 阅读 base.py 的 AgentAdapter + TaskContext + AgentEvent | 2h |
-| 2.8 | LLMProviderAdapter 实现 | 接入火山方舟 API（OpenAI 兼容格式），流式调用 + 代码块解析 | 6h |
-| 2.9 | 火山方舟 API 联调 | 验证 API Key、模型调用、流式输出、错误处理 | 3h |
+| 2.8 | LLMProviderAdapter 实现 | 接入 DeepSeek API（OpenAI 兼容格式），流式调用 + 代码块解析 | 6h |
+| 2.9 | DeepSeek API 联调 | 验证 API Key、模型调用、流式输出、错误处理和 token usage 记录 | 3h |
 | 2.10 | Agent 角色 CRUD API | 后端 agents.py：创建/更新/删除自定义 Agent 角色 | 3h |
 
 ---
@@ -118,7 +118,7 @@ Day:  1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19 
 
 | # | 任务 | 产出物 | 预估工时 |
 |---|------|--------|---------|
-| 3.7 | Orchestrator LLM 决策 | 调用火山方舟 API 做意图分析/任务拆解，输出 DispatchPlan JSON | 5h |
+| 3.7 | Orchestrator LLM 决策 | 调用 DeepSeek API 做意图分析/任务拆解，输出 DispatchPlan JSON | 5h |
 | 3.8 | 上下文分层构建 | ContextPayload 四层组装逻辑（项目状态+相关文件+历史+指令） | 4h |
 | 3.9 | Team Board 数据结构 | 后端 CRUD + 自动更新逻辑（Agent 完成后 LLM 总结更新） | 4h |
 | 3.10 | Project State 维护 | 文件树扫描 + git log 读取 + LLM 摘要 → project_state 表更新 | 3h |
@@ -219,7 +219,7 @@ Day 17-20: M6 Demo + 文档 + 视频                    ~13h
 ### 小马：Agent Adapter + LLM 接入（~25% 工作量）
 
 ```
-Day 5-8:  M2 LLMProvider + 火山方舟接入              ~14h
+Day 5-8:  M2 LLMProvider + DeepSeek 接入             ~14h
 Day 8-12: M3 CLI Agent 调研 + 接入/降级              ~27h
 Day 14-17: M5 自定义Agent页面 + SkillRule            ~11h
 Day 17-20: M6 文档 + 测试                           ~4h
@@ -227,7 +227,7 @@ Day 17-20: M6 文档 + 测试                           ~4h
 ```
 
 **关键交付节点：**
-- Day 8：LLMProviderAdapter 可用（火山方舟 API 调通）
+- Day 8：LLMProviderAdapter 可用（DeepSeek API 调通）
 - Day 12：真实 CLI 接入结论明确（成功/降级）
 - Day 17：自定义 Agent 功能可用
 
@@ -311,7 +311,7 @@ M4.4 Preview Service
 
 - [ ] 会话列表交互流畅（新建/切换/搜索）
 - [ ] @ 提及弹出 Agent 选择
-- [ ] LLMProviderAdapter 成功调用火山方舟 API
+- [ ] LLMProviderAdapter 成功调用 DeepSeek API
 - [ ] Agent 流式回复正常显示
 
 ### Day 12 验收（M3 完成）
@@ -348,7 +348,7 @@ M4.4 Preview Service
 | 风险场景 | 缓冲方案 |
 |---------|---------|
 | 组长 M1 延期 1-2 天 | M2 相应后移，但 Mock 闭环必须在 Day 6 前完成 |
-| 小马火山方舟 API 未到 | 先用 OpenAI/DeepSeek API 开发 LLMProvider，接口一致切换无成本 |
+| DeepSeek API 调用失败或额度异常 | 先用 MockAdapter 保持闭环；必要时切换任意 OpenAI 兼容 API，接口一致切换成本低 |
 | 洋芋 Day 8 无法全力投入 | 组长先做 CodeCard 基础版（已在 M1 完成），洋芋只做增强 |
 | CLI Agent 全部接入失败 | LLMProvider 作为正式方案，Demo 效果几乎一致 |
 | M5 时间不够 | 砍 SkillRule（P1）和版本历史（P1），保住 Team Activity（P0） |

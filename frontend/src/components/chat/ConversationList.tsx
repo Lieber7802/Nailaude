@@ -1,5 +1,12 @@
-import { DeleteOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
-import { Button, Empty, Input, Popconfirm, Tag } from 'antd'
+import {
+  ArrowRightOutlined,
+  DeleteOutlined,
+  HomeFilled,
+  PlusOutlined,
+  SearchOutlined,
+  SettingOutlined,
+} from '@ant-design/icons'
+import { Button, Empty, Input, Popconfirm } from 'antd'
 import type { Agent, Conversation } from '../../services/api'
 
 interface ConversationListProps {
@@ -28,11 +35,30 @@ const ConversationList = ({
   return (
     <div className="sidebar">
       <div className="sidebar__header">
-        <strong>AgentHub</strong>
-        <Button aria-label="新建会话" icon={<PlusOutlined />} size="small" type="primary" onClick={onCreate} />
+        <div className="brand-mark">
+          <span className="brand-mark__icon">
+            <HomeFilled />
+          </span>
+          <strong>AgentHub</strong>
+        </div>
       </div>
+
+      <Button className="sidebar__create" icon={<PlusOutlined />} type="primary" onClick={onCreate}>
+        新建对话
+      </Button>
+
+      <Input
+        allowClear
+        className="conversation-search"
+        placeholder="搜索对话或消息"
+        prefix={<SearchOutlined />}
+        suffix={<span className="search-shortcut">⌘K</span>}
+        value={search}
+        onChange={(event) => onSearch(event.target.value)}
+      />
+
       <section className="sidebar__section">
-        <span className="sidebar__label">Agents</span>
+        <span className="sidebar__label">常用代理</span>
         <div className="agent-list">
           {agents.map((agent) => (
             <div className="agent-row" key={agent.id}>
@@ -45,18 +71,11 @@ const ConversationList = ({
           ))}
         </div>
       </section>
+
       <section className="sidebar__section sidebar__section--fill">
         <div className="sidebar__section-title">
-          <span className="sidebar__label">Conversations</span>
+          <span className="sidebar__label">对话列表</span>
         </div>
-        <Input
-          allowClear
-          className="conversation-search"
-          placeholder="搜索会话或最近消息"
-          prefix={<SearchOutlined />}
-          value={search}
-          onChange={(event) => onSearch(event.target.value)}
-        />
         <div className="conversation-list">
           {conversations.length === 0 ? (
             <Empty description="暂无会话" image={Empty.PRESENTED_IMAGE_SIMPLE} />
@@ -71,17 +90,27 @@ const ConversationList = ({
                   key={conversation.id}
                 >
                   <button className="conversation-row__main" type="button" onClick={() => onSelect(conversation.id)}>
-                    <span className="conversation-row__title">{conversation.title}</span>
-                    <span className="conversation-row__meta">
-                      <Tag color={conversation.type === 'group' ? 'blue' : 'green'}>
-                        {conversation.type === 'group' ? '群聊' : '单聊'}
-                      </Tag>
-                      {participants.map((agent) => agent.name).join('、') || '未选择 Agent'}
+                    <span className="conversation-row__top">
+                      <span className="conversation-row__title">{conversation.title}</span>
+                      <span className="conversation-row__time">{conversation.lastMessage ? '15:50' : '新建'}</span>
                     </span>
-                    <span className="conversation-row__last">{conversation.lastMessage || '还没有消息'}</span>
+                    <span className="conversation-row__meta">
+                      {participants.map((agent) => agent.name).join('，') || '未选择 Agent'}
+                    </span>
                   </button>
-                  <Popconfirm title="删除这个会话？" okText="删除" cancelText="取消" onConfirm={() => onDelete(conversation.id)}>
-                    <Button aria-label="删除会话" icon={<DeleteOutlined />} size="small" type="text" />
+                  <Popconfirm
+                    cancelText="取消"
+                    okText="删除"
+                    title="删除这个会话？"
+                    onConfirm={() => onDelete(conversation.id)}
+                  >
+                    <Button
+                      aria-label="删除会话"
+                      className="conversation-row__delete"
+                      icon={<DeleteOutlined />}
+                      size="small"
+                      type="text"
+                    />
                   </Popconfirm>
                 </div>
               )
@@ -89,6 +118,15 @@ const ConversationList = ({
           )}
         </div>
       </section>
+
+      <div className="sidebar__footer">
+        <Button icon={<SettingOutlined />} type="text">
+          设置
+        </Button>
+        <Button icon={<ArrowRightOutlined />} type="text">
+          查看全部对话
+        </Button>
+      </div>
     </div>
   )
 }
