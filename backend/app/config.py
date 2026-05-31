@@ -18,6 +18,13 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     OPENAI_BASE_URL: str = "https://api.openai.com/v1"
 
+    # DeepSeek OpenAI-compatible backend
+    DEEPSEEK_API_KEY: str = ""
+    DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
+    DEEPSEEK_MODEL: str = "deepseek-v4-flash"
+    DEEPSEEK_TIMEOUT_SECONDS: float = 60.0
+    DEEPSEEK_MAX_TOKENS: int = 2048
+
     # CLI paths
     OPENCODE_BINARY_PATH: str = "opencode"
     CODEX_BINARY_PATH: str = "codex"

@@ -16,6 +16,7 @@ from app.models.agent import Agent
 from app.models.artifact import Artifact
 from app.models.conversation import Conversation
 from app.models.message import Message
+from app.services.agent_manager import AgentManagerService
 from app.services.orchestrator import OrchestratorService
 from app.services.seed import seed_builtin_data
 from app.ws.manager import manager
@@ -108,7 +109,7 @@ async def handle_send_message(websocket: WebSocket, conversation_id: str, payloa
     plan = await orchestrator.build_dispatch_plan(conversation, content, payload.get("mentions") or [], agents)
     await send_orchestrator_status(websocket, "dispatching", plan)
 
-    adapter = MockAdapter(response_delay=0)
+    agent_manager = AgentManagerService()
     for task in plan["tasks"]:
         plan = orchestrator.mark_task(plan, task["id"], "running")
         await send_orchestrator_status(websocket, "executing", plan)
@@ -118,6 +119,7 @@ async def handle_send_message(websocket: WebSocket, conversation_id: str, payloa
             await send_orchestrator_status(websocket, "executing", plan)
             continue
 
+        adapter = MockAdapter(response_delay=0) if agent.platform_id == "mock" else await agent_manager.get_adapter(agent.platform_id)
         result = await stream_agent_task(websocket, db, conversation, user_message, agent, adapter, content)
         task_status = "completed" if result["status"] == "success" else "failed"
         task_result = result["content"] if result["status"] == "success" else result["error"]
@@ -158,7 +160,7 @@ async def stream_agent_task(
     conversation: Conversation,
     user_message: Message,
     agent: Agent,
-    adapter: MockAdapter,
+    adapter,
     content: str,
 ) -> StreamResult:
     agent_message = Message(
@@ -248,7 +250,8 @@ async def stream_agent_task(
                     )
     except Exception as exc:
         stream_status = "failed"
-        stream_error = f"Mock stream failed: {exc}"
+        platform_label = "Mock" if agent.platform_id == "mock" else agent.platform_id
+        stream_error = f"{platform_label} stream failed: {exc}"
         agent_message.content = "".join(content_parts)
         agent_message.meta = {**(agent_message.meta or {}), "status": "error", "error": stream_error}
         await db.commit()

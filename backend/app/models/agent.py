@@ -15,7 +15,7 @@ def utcnow() -> datetime:
 class AgentPlatform(Base):
     __tablename__ = "agent_platforms"
 
-    id: Mapped[str] = mapped_column(String(50), primary_key=True)  # "mock" | "opencode" | "codex" | "llm_provider"
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)  # "mock" | "llm" | "opencode" | "codex"
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     binary_path: Mapped[str] = mapped_column(String(500), default="")
     config: Mapped[dict] = mapped_column(JSON, default=dict)

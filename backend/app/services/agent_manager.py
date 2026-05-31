@@ -6,6 +6,10 @@ Responsibilities:
 - Route tasks to appropriate adapter
 - Platform health checking
 """
+from app.adapters.codex import CodexAdapter
+from app.adapters.llm_provider import LLMProviderAdapter
+from app.adapters.mock import MockAdapter
+from app.adapters.opencode import OpenCodeAdapter
 
 
 class AgentManagerService:
@@ -16,15 +20,31 @@ class AgentManagerService:
 
     async def get_adapter(self, platform_id: str):
         """Get or create an adapter instance for the given platform."""
-        # TODO: implement adapter factory
-        return None
+        if platform_id in self._adapters:
+            return self._adapters[platform_id]
 
-    async def dispatch_task(self, agent_id: str, instruction: str, work_dir: str):
+        adapter = self._create_adapter(platform_id)
+        self._adapters[platform_id] = adapter
+        return adapter
+
+    async def dispatch_task(self, platform_id: str, instruction: str, work_dir: str, context: dict | None = None):
         """Dispatch a task to the agent's platform adapter."""
-        # TODO: implement
-        pass
+        adapter = await self.get_adapter(platform_id)
+        async for event in adapter.run_task(work_dir, instruction, context or {}):
+            yield event
 
     async def check_health(self, platform_id: str) -> bool:
         """Check if a platform is available."""
-        # TODO: implement
-        return False
+        adapter = await self.get_adapter(platform_id)
+        return await adapter.health_check()
+
+    def _create_adapter(self, platform_id: str):
+        if platform_id == "mock":
+            return MockAdapter(response_delay=0)
+        if platform_id == "llm":
+            return LLMProviderAdapter()
+        if platform_id == "opencode":
+            return OpenCodeAdapter()
+        if platform_id == "codex":
+            return CodexAdapter()
+        raise ValueError(f"Unsupported platform: {platform_id}")

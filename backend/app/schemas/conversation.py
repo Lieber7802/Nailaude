@@ -1,5 +1,6 @@
 """Conversation schemas"""
 from pathlib import Path
+import re
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -7,10 +8,14 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 WORKSPACE_ROOT = (PROJECT_ROOT / "workspaces").resolve(strict=False)
+WINDOWS_WORKSPACE_PATTERN = re.compile(r"^[A-Za-z]:[/\\].*[/\\]workspaces[/\\].+")
 
 
 def validate_work_dir(value: str | None) -> str | None:
     if value is None or value == "":
+        return value
+
+    if WINDOWS_WORKSPACE_PATTERN.match(value):
         return value
 
     raw_path = Path(value).expanduser()

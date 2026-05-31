@@ -59,6 +59,16 @@ async def get_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
 @router.patch("/{agent_id}")
 async def update_agent(agent_id: str, payload: AgentUpdate, db: AsyncSession = Depends(get_db)):
     """Update agent"""
+    return await _update_agent(agent_id, payload, db)
+
+
+@router.put("/{agent_id}")
+async def put_agent(agent_id: str, payload: AgentUpdate, db: AsyncSession = Depends(get_db)):
+    """Update agent"""
+    return await _update_agent(agent_id, payload, db)
+
+
+async def _update_agent(agent_id: str, payload: AgentUpdate, db: AsyncSession):
     agent = await db.get(Agent, agent_id)
     if agent is None:
         raise_api_error("Agent not found", 404)

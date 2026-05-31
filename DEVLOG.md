@@ -455,3 +455,42 @@
 ### 下一步
 - M3 实现时先补 `LLMProviderAdapter` 的 DeepSeek OpenAI-compatible client，再把 Orchestrator LLM 决策接到同一个 client。
 - 保留 MockAdapter 作为开发、CI、答辩兜底路径。
+
+## [2026-05-29] Codex - M2 DeepSeek Adapter Completion
+
+### 完成内容
+- 新建 `codex/m2-deepseek-completion` 开发分支。
+- 新增 `M2_DEEPSEEK_ADAPTER` plan/checklist，明确本轮只补小马 M2 后端范围：DeepSeek LLMProvider、AgentManager、API-spec PUT 兼容。
+- 实现 `LLMProviderAdapter`：读取 backend-only `DEEPSEEK_API_KEY`/base URL/model 配置，调用 DeepSeek OpenAI-compatible streaming chat completion，解析 SSE `text_delta`，缺 key 时输出 `error` + `done`，并将 fenced code block 转为 `file_created` 事件。
+- 实现 `AgentManagerService` adapter factory/cache/health check，支持 `mock | llm | opencode | codex`。
+- WebSocket dispatch 改为按 Agent `platform_id` 选择 adapter；M2 内置 Agent 仍保持 Mock-backed。
+- Agent 更新接口新增 `PUT /api/v1/agents/{id}`，与 API_SPEC 对齐，同时保留 `PATCH`。
+- 兼容 Windows 风格 `D:/.../workspaces/...` workDir 测试输入，并保持 `../outside` 路径校验。
+
+### 新增/修改文件
+- `docs/plans/M2_DEEPSEEK_ADAPTER_PLAN.md` (新增)
+- `docs/plans/M2_DEEPSEEK_ADAPTER_CHECKLIST.md` (新增)
+- `backend/tests/test_m2_deepseek_adapter.py` (新增)
+- `backend/app/adapters/llm_provider.py` (修改)
+- `backend/app/services/agent_manager.py` (修改)
+- `backend/app/ws/handlers.py` (修改)
+- `backend/app/api/agents.py` (修改)
+- `backend/app/config.py` (修改)
+- `backend/app/services/seed.py` (修改)
+- `backend/app/schemas/conversation.py` (修改)
+- `backend/requirements.txt` (修改)
+- `frontend/package-lock.json` (修改：同步 npm lockfile 以恢复 `npm ci`/build)
+
+### 接口变化
+- 新增 `PUT /api/v1/agents/{id}` 实现，匹配既有 `docs/API_SPEC.md`；`PATCH` 保持可用。
+- 无 `packages/shared/types.ts` 变化。
+- DeepSeek API Key 只从运行时环境变量读取，未写入 `.env` 或仓库。
+
+### 验证
+- `cd backend && ../.venv/bin/python -m pytest -q tests/test_m2_deepseek_adapter.py` -> 4 passed
+- `cd backend && ../.venv/bin/python -m pytest -q` -> 19 passed
+- `cd frontend && npm run build` -> passed，保留 Vite chunk size warning
+
+### 下一步
+- 若要真实联调 DeepSeek，请在本机后端运行环境设置 `DEEPSEEK_API_KEY`，不要提交到仓库。
+- M3 可继续在同一个 AgentManager 基础上接 OpenCode/Codex CLI，并保留 CLI -> LLM -> Mock 降级策略。

@@ -14,9 +14,9 @@ BUILTIN_PLATFORMS = [
     },
     {
         "id": "llm",
-        "name": "LLM Provider",
+        "name": "LLM Provider (DeepSeek)",
         "binary_path": "",
-        "config": {},
+        "config": {"apiBase": "https://api.deepseek.com", "model": "deepseek-v4-flash"},
         "status": "unknown",
     },
     {

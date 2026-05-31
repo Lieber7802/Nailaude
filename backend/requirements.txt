@@ -7,6 +7,7 @@ websockets>=11.0
 sqlalchemy>=2.0
 alembic>=1.12
 aiosqlite
+greenlet
 
 # HTTP client (for LLM API calls)
 httpx>=0.25.0
