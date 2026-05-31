@@ -5,6 +5,11 @@ import MessageBubble from './MessageBubble'
 import MessageInput from './MessageInput'
 import type { Agent, Conversation, Message, Task } from '../../services/api'
 import type { ConversationRuntimeState } from '../../stores/uiStore'
+import { useOrchestratorStore } from '../../stores/orchestratorStore'
+import OrchestratorStatus from '../cards/OrchestratorStatus'
+import OrchestratorInputCard from '../cards/OrchestratorInputCard'
+import OrchestratorApprovalCard from '../cards/OrchestratorApprovalCard'
+import TeamBoardPanel from './TeamBoardPanel'
 
 interface ChatAreaProps {
   agents: Agent[]
@@ -20,6 +25,11 @@ const ChatArea = ({ agents, conversation, messages, onSend, runtime, wsStatus }:
   const disabled = !conversation || wsStatus !== 'open' || participantAgents.length === 0
   const collaborationLabel = getCollaborationLabel(runtime, wsStatus)
   const currentTime = useMinuteClock()
+  const snapshot = useOrchestratorStore((state) => (conversation ? state.snapshots[conversation.id] : undefined))
+  const input = useOrchestratorStore((state) => (conversation ? state.inputs[conversation.id] : undefined))
+  const approval = useOrchestratorStore((state) => (conversation ? state.approvals[conversation.id] : undefined))
+  const teamBoard = useOrchestratorStore((state) => (conversation ? state.teamBoards[conversation.id] : undefined))
+  const projectState = useOrchestratorStore((state) => (conversation ? state.projectStates[conversation.id] : undefined))
 
   return (
     <div className="chat-area">
@@ -70,6 +80,10 @@ const ChatArea = ({ agents, conversation, messages, onSend, runtime, wsStatus }:
           ))
         )}
         <RuntimeBanner participantAgents={participantAgents} runtime={runtime} />
+        {snapshot && <OrchestratorStatus snapshot={snapshot} />}
+        {input && <OrchestratorInputCard runId={input.runId} result={input.result} />}
+        {approval && <OrchestratorApprovalCard reason={approval.reason} runId={approval.runId} />}
+        <TeamBoardPanel board={teamBoard} projectState={projectState} />
       </div>
 
       <MessageInput agents={participantAgents} disabled={disabled} onSend={onSend} />
@@ -132,9 +146,14 @@ const useMinuteClock = () => {
 
 const getCollaborationLabel = (runtime: ConversationRuntimeState | null, wsStatus: string) => {
   if (runtime?.error) return { text: '需处理', tone: 'warning' }
-  if (runtime?.orchestratorStatus === 'dispatching') return { text: '分派中', tone: 'active' }
+  if (runtime?.orchestratorStatus === 'queued') return { text: '排队中', tone: 'active' }
+  if (runtime?.orchestratorStatus === 'planning' || runtime?.orchestratorStatus === 'validating') {
+    return { text: '分派中', tone: 'active' }
+  }
   if (runtime?.orchestratorStatus === 'executing') return { text: '协作中', tone: 'active' }
-  if (runtime?.orchestratorStatus === 'summarizing') return { text: '已完成', tone: 'done' }
+  if (runtime?.orchestratorStatus === 'summarizing' || runtime?.orchestratorStatus === 'completed') {
+    return { text: '已完成', tone: 'done' }
+  }
   if (wsStatus === 'open') return { text: '空闲', tone: 'idle' }
   return { text: '连接中', tone: 'idle' }
 }

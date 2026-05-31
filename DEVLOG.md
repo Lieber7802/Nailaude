@@ -560,3 +560,196 @@
 - 验证：`cd frontend && npm run build` -> passed，保留 Vite chunk size warning。
 - 修复右侧网页预览无法交互的问题：主预览 iframe 的 sandbox 增加 `allow-scripts allow-forms allow-same-origin`，支持 AI 产物中的按钮事件和本地存储；聊天流缩略图仍保持不可交互。
 - 验证：`cd frontend && npm run build` -> passed，保留 Vite chunk size warning。
+## [2026-05-30] Codex - M3 Orchestrator Planner Design
+
+### 完成内容
+- 新增 M3 Orchestrator Planner v1.0 详细设计文档，沉淀已确认的 LLM-only 规划、规则校验和静态 DAG 批次推导方案。
+- 明确简单并行约束：默认并发上限为 `3`，同批最多 `1` 个 `write`，每个 `read` 任务使用独立临时副本。
+- 明确 Planner 的澄清问题、能力缺口推荐、非法计划重规划、风险确认、预算和可观测性策略。
+- 将四层上下文、Team Board 和 Project State 详细设计保留为代码实现前必须完成的后续设计项。
+
+### 新增/修改文件
+- `docs/plans/M3_ORCHESTRATOR_PLANNER_DESIGN.md` (新增)
+- `DEVLOG.md` (修改)
+
+### 接口变化
+- 无运行时代码变化。
+- 无 `packages/shared/types.ts` 变化。
+- 无 `docs/API_SPEC.md` 变化。
+- 设计文档记录了 M3 实现阶段需要同步完成的契约变更。
+
+### 验证
+- 人工复核：设计文档包含已确认的 Planner 输入、输出协议、Prompt 规则、校验流程、批次推导、并行限制、预算和 WS 事件。
+- 未运行代码测试：本轮仅新增设计文档和 DEVLOG 记录。
+
+### 下一步
+- 继续细化四层上下文的数据来源、预算、筛选、压缩和刷新规则。
+- 在整体 M3 设计确认后，再统一更新共享类型和 API 契约并开始实现。
+
+## [2026-05-31] Codex - M3 Orchestrator Coordination Design
+
+### 完成内容
+- 新增 M3 Orchestrator 协作上下文与状态设计文档，覆盖 `3.8` 至 `3.11` 的已确认方案。
+- 将原重型四层上下文收缩为 `PlannerContext + AgentHandoffEnvelope`，由 Codex/OpenCode CLI 自主探索受限工作目录。
+- 确认 Team Board 使用单快照与原子 Team Notes 混合存储，并在批次屏障统一合并。
+- 确认 Project State 使用 Python 扫描、Git Inspector 和 DeepSeek 增量摘要，摘要失败不阻塞执行。
+- 确认 OrchestratorStatus 使用完整快照、单会话单活跃 Run、FIFO 消息队列、整 Run 取消和断线恢复策略。
+
+### 新增/修改文件
+- `docs/plans/M3_ORCHESTRATOR_COORDINATION_DESIGN.md` (新增)
+- `DEVLOG.md` (修改)
+
+### 接口变化
+- 无运行时代码变化。
+- 无 `packages/shared/types.ts` 变化。
+- 无 `docs/API_SPEC.md` 变化。
+- 设计文档记录了 M3 实现阶段需要同步完成的契约变更。
+
+### 验证
+- 人工复核：联合设计文档覆盖轻量上下文交接、快照并行、Team Notes 生命周期、Team Board 合并、Project State 刷新、完整状态快照、消息队列、失败取消和断线重连。
+- 未运行代码测试：本轮仅新增设计文档和 DEVLOG 记录。
+
+### 下一步
+- 进入 M3 总体实现计划与 checklist 编写。
+- 在实施前同步更新共享类型与 API 契约。
+
+## [2026-05-31] Codex - M3 Total Implementation Plan
+
+### 完成内容
+- 新增 M3 总体实现计划和 checklist，将真实 Agent 接入、Orchestrator 增强与协作状态拆分为十一块可独立验收的实施模块。
+- 明确小马 Adapter 主线与组长 Orchestrator 主线的并行关系、依赖图、测试边界和 Day 12 验收场景。
+- 为每个模块记录目标文件、Test-first 要求、验收标准和后续子计划命名。
+
+### 新增/修改文件
+- `docs/plans/M3_TOTAL_PLAN.md` (新增)
+- `docs/plans/M3_TOTAL_CHECKLIST.md` (新增)
+- `DEVLOG.md` (修改)
+
+### 接口变化
+- 无运行时代码变化。
+- 无 `packages/shared/types.ts` 变化。
+- 无 `docs/API_SPEC.md` 变化。
+- 总体计划要求从 `M3_0` 开始同步更新共享类型和 API 契约。
+
+### 验证
+- 人工复核：总体计划覆盖 `3.1 - 3.11`、DeepSeek 依赖基线、Mock-first 测试、前后端协作状态和全链路验收。
+- 未运行代码测试：本轮仅新增计划、checklist 和 DEVLOG 记录。
+
+### 下一步
+- 从 `M3_0 契约冻结与测试骨架` 开始实施。
+- 每个模块开始前创建对应子计划和 checklist，按 Test-first 流程推进。
+
+
+## [2026-05-31] Codex - M3 Orchestrator Runtime Implementation
+
+### Completed
+- Implemented M3 contracts, DeepSeek client, LLMProvider, CLI adapters, process lifecycle management, adapter fallback, persistence models, and Alembic migration.
+- Added safe workspace scanning, Git inspection, lightweight handoffs, isolated read snapshots, planner validation, deterministic scheduling, FIFO runtime execution, cancellation, and persisted reconnect restoration.
+- Added Team Board atomic notes, deduplication, question resolution, deterministic merge, conflict `review_required` fallback, optional DeepSeek patch summarization, and non-blocking warnings.
+- Added Project State deterministic facts, optional DeepSeek summarization, summary failure warnings, GET APIs, WebSocket collaboration events, clarification resume, capability recommendation confirmation, and elevated write approval.
+- Added frontend collaboration state, stale-sequence rejection, batch display, input and approval cards, Team Board display, Project State display, and shared-state refresh handling.
+- Added `docs/M3_API_CONTRACT.md`, `docs/plans/M3_IMPLEMENTATION_REPORT.md`, child plans/checklists, and CLI research conclusions.
+
+### Verification
+- `cd backend && pytest -q`
+- `cd frontend && npm run lint`
+- `cd frontend && npm run build`
+- Empty SQLite database `alembic upgrade head`
+- Mock-first browser group-chat smoke: two Agent responses and artifact cards rendered.
+- DeepSeek real health call intentionally skipped. The supplied API key was not persisted or echoed; fake-transport coverage passed.
+- OpenCode help smoke passed. Codex desktop executable returned access denied and correctly remains a fallback case.
+
+## [2026-05-31] Codex - M3 Strict Review Optimization Checklist
+
+### Completed
+- Reviewed the M3 implementation artifacts, API contracts, runtime code paths, frontend WebSocket state handling, and milestone documentation.
+- Added `docs/plans/M3_OPTIMIZATION_CHECKLIST.md` as an agent-ready remediation document with prioritized P0, P1, and P2 findings.
+- Included evidence locations, required fixes, acceptance criteria, recommended execution order, and verification steps.
+- Recorded reproduced runtime gaps: cancellation waits for blocked Agent work, cross-conversation approval can mutate another paused job, and Project State GET increments the version on an unchanged workspace.
+
+### Added/Modified Files
+- `docs/plans/M3_OPTIMIZATION_CHECKLIST.md` (added)
+- `DEVLOG.md` (modified)
+
+### Interface Changes
+- No runtime code changes.
+- No `packages/shared/types.ts` changes.
+- No `docs/API_SPEC.md` changes.
+
+### Verification
+- Manually reviewed the checklist against the strict M3 review findings.
+- Ran `git diff --check` after writing the documentation.
+- No code tests rerun: this pass only adds review documentation and a DEVLOG entry.
+
+### Next Steps
+- Assign `docs/plans/M3_OPTIMIZATION_CHECKLIST.md` to the development Agent.
+- Fix P0 items before M3 acceptance, then complete P1 stabilization in the documented order.
+
+## [2026-05-31] Codex - M3 Strict Review Stabilization Complete
+
+### Completed
+- Closed all P0, P1, and P2 items in `docs/plans/M3_OPTIMIZATION_CHECKLIST.md`.
+- Added prompt cancellation for active Agent work, per-task workspace audits,
+  write-task no-op failure rules, bounded snapshots, safe read-only adapter
+  fallback, global CLI concurrency limits, and resilient broadcasts.
+- Stabilized Planner and WebSocket state handling: `cannot_plan` is recoverable,
+  clarification answers submit atomically, paused jobs validate conversation
+  ownership, stale frontend snapshots have no side effects, and reconnect uses
+  bounded backoff.
+- Refreshed Team Board and Project State after every batch, made Project State
+  reads idempotent, hardened Team Board merges, and reconciled stale persisted
+  runs explicitly after restart.
+- Switched DeepSeek handling to incremental SSE streaming, aligned Alembic with
+  application configuration, and lazy-loaded heavy frontend routes and preview
+  UI.
+
+### Interface Changes
+- Clarification responses send all required answers atomically.
+- A Planner `cannot_plan` result is surfaced as a failed snapshot and
+  recoverable WebSocket error instead of an input card.
+- Persisted non-terminal runs are reconciled to failed after backend restart
+  when their memory-only execution state cannot be restored.
+- Write tasks complete only when their workspace audit records a real file
+  change; downgrade and audit warnings remain user-visible.
+
+### Verification
+- `cd backend && python -u -m pytest -q` -> `114 passed`
+- `cd frontend && npm test` -> `3 passed`
+- `cd frontend && npm run lint` -> passed
+- `cd frontend && npm run build` -> passed without chunk warning
+- `git diff --check` -> passed
+- Temporary SQLite `alembic upgrade head` smoke -> passed
+- Targeted Mock-first, blocked cancellation, and restart reconciliation smoke
+  suite -> `4 passed`
+
+## [2026-05-31] Codex - M3 Main Integration
+
+### Completed
+- Fast-forwarded `codex/m3-main-integration` to `origin/main` after PR `#3`
+  (`codex/m2-deepseek-adapter-ready`) and PR `#4`
+  (`codex-m4-artifact-preview-system`) were merged.
+- Resolved shared-entry conflicts in `DEVLOG.md`, `llm_provider.py`, `main.py`,
+  `agent_manager.py`, and `ws/handlers.py`.
+- Preserved the reusable M3 `LLMClient` streaming, retry, and health-check path
+  while restoring M2 fenced-code artifact extraction and AsyncClient test
+  injection compatibility.
+- Preserved M3 queue, cancellation, handoff, fallback, and shared-state refresh
+  behavior while routing file events through the M4 `ArtifactService`.
+- Preserved M4 preview routing and removed duplicate DeepSeek Settings fields
+  introduced by the automatic merge.
+- Replaced PreviewPanel synchronous effect state updates with render-derived tab
+  selection keyed by artifact id and open revision, preserving repeat-open tab
+  reset behavior while satisfying React lint rules.
+
+### Verification
+- Conflict-focused backend suite -> `35 passed`
+- `cd backend && python -u -m pytest -q` -> `122 passed`
+- `cd frontend && npm test` -> `3 passed`
+- `cd frontend && npm run lint` -> passed
+- `cd frontend && npm run build` -> passed
+- `git diff --check` -> passed
+- Temporary SQLite `alembic upgrade head` -> passed
+
+### Teammate Notes
+- Safety stash `safety: m3 before origin-main integration` intentionally remains
+  until the integrated M3 work is committed.

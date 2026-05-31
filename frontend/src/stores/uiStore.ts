@@ -1,9 +1,10 @@
 import { create } from 'zustand'
 import type { Task } from '../services/api'
+import type { OrchestratorRunStatus } from '../../../packages/shared/types'
 
 export interface ConversationRuntimeState {
   thinkingAgents: string[]
-  orchestratorStatus: 'dispatching' | 'executing' | 'summarizing' | null
+  orchestratorStatus: OrchestratorRunStatus | null
   tasks: Task[]
   error: string | null
 }
@@ -91,7 +92,7 @@ export const useUIStore = create<UIState>((set) => ({
           ...state.runtimeByConversation,
           [conversationId]: {
             ...current,
-            error: status === 'dispatching' ? null : current.error,
+            error: status === 'planning' ? null : current.error,
             orchestratorStatus: status,
             tasks,
           },

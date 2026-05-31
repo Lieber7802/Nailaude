@@ -5,7 +5,9 @@ This adapter simulates agent behavior without any external dependencies.
 It is NOT a temporary component - it stays in production as a fallback.
 """
 import asyncio
+from pathlib import Path
 from typing import AsyncGenerator
+import uuid
 
 from app.adapters.base import AgentAdapter, AgentEvent
 
@@ -33,6 +35,7 @@ class MockAdapter(AgentAdapter):
                 await asyncio.sleep(self.response_delay)
             yield AgentEvent(type="text_delta", content=chunk)
 
+        generation_id = str(uuid.uuid4())
         html = """<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -46,6 +49,7 @@ class MockAdapter(AgentAdapter):
   </style>
 </head>
 <body>
+  <!-- mock-generation: MOCK_GENERATION_ID -->
   <main>
     <h1>AgentHub Mock 页面</h1>
     <p>这是 MockAdapter 为当前任务生成的演示产物。</p>
@@ -53,7 +57,11 @@ class MockAdapter(AgentAdapter):
   </main>
 </body>
 </html>
-"""
+""".replace("MOCK_GENERATION_ID", generation_id)
+        if (context.get("workspace") or {}).get("accessMode") == "write":
+            workspace = Path(work_dir)
+            workspace.mkdir(parents=True, exist_ok=True)
+            Path(workspace, "index.html").write_text(html, encoding="utf-8")
         yield AgentEvent(
             type="file_created",
             content="index.html",

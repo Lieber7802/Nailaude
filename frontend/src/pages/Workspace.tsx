@@ -1,10 +1,9 @@
 import { message as antdMessage } from 'antd'
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import ChatArea from '../components/chat/ChatArea'
 import ConversationList from '../components/chat/ConversationList'
 import NewConversationModal from '../components/chat/NewConversationModal'
 import Layout from '../components/common/Layout'
-import PreviewPanel from '../components/preview/PreviewPanel'
 import {
   agentApi,
   conversationApi,
@@ -20,8 +19,11 @@ import { useArtifactStore } from '../stores/artifactStore'
 import { useConversationStore } from '../stores/conversationStore'
 import { useMessageStore } from '../stores/messageStore'
 import { useUIStore } from '../stores/uiStore'
+import { useOrchestratorStore } from '../stores/orchestratorStore'
+import { orchestratorApi } from '../services/orchestratorApi'
 
 const EMPTY_MESSAGES: Message[] = []
+const PreviewPanel = lazy(() => import('../components/preview/PreviewPanel'))
 
 const Workspace = () => {
   const [search, setSearch] = useState('')
@@ -46,6 +48,8 @@ const Workspace = () => {
   const setArtifactsFromMessages = useArtifactStore((state) => state.setArtifactsFromMessages)
   const runtime = useUIStore((state) => (activeId ? state.runtimeByConversation[activeId] || null : null))
   const setRuntimeError = useUIStore((state) => state.setRuntimeError)
+  const setTeamBoard = useOrchestratorStore((state) => state.setTeamBoard)
+  const setProjectState = useOrchestratorStore((state) => state.setProjectState)
   const activeConversation = conversations.find((conversation) => conversation.id === activeId) || null
   const participantAgents = useMemo(
     () => agents.filter((agent) => activeConversation?.participantIds.includes(agent.id)),
@@ -89,6 +93,16 @@ const Workspace = () => {
         void antdMessage.error(error.message)
       })
   }, [activeId, setArtifactsFromMessages, setConversationError, setMessages])
+
+  useEffect(() => {
+    if (!activeId) return
+    void Promise.all([orchestratorApi.teamBoard(activeId), orchestratorApi.projectState(activeId)])
+      .then(([board, projectState]) => {
+        setTeamBoard(activeId, board)
+        setProjectState(activeId, projectState)
+      })
+      .catch(() => undefined)
+  }, [activeId, setProjectState, setTeamBoard])
 
   const handleCreateConversation = async (payload: CreateConversationInput) => {
     setCreating(true)
@@ -187,7 +201,11 @@ const Workspace = () => {
             onSend={handleSend}
           />
         }
-        right={<PreviewPanel />}
+        right={
+          <Suspense fallback={<div className="preview-empty">Loading preview...</div>}>
+            <PreviewPanel />
+          </Suspense>
+        }
       />
       <NewConversationModal
         agents={agents}

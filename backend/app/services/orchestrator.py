@@ -36,6 +36,41 @@ class OrchestratorService:
 
         return {"tasks": tasks, "executionMode": "sequential"}
 
+    async def build_mock_planner_result(
+        self,
+        conversation: Conversation,
+        content: str,
+        mentions: list[dict],
+        agents: list[Agent],
+    ) -> dict:
+        """Deterministic Mock-first Planner used only by the built-in demo path."""
+        selected_agents = self._select_agents(conversation, mentions, agents)
+        tasks = []
+        for index, agent in enumerate(selected_agents, start=1):
+            access_mode = "write" if index == 1 and conversation.work_dir else "read"
+            tasks.append(
+                {
+                    "id": f"task-{index}",
+                    "title": f"{agent.name} 处理请求",
+                    "agentId": agent.id,
+                    "agentName": agent.name,
+                    "objective": content,
+                    "instruction": content,
+                    "acceptanceCriteria": ["返回可展示的执行结果"],
+                    "constraints": ["遵循当前工作目录边界"],
+                    "accessMode": access_mode,
+                    "status": "pending",
+                    "dependsOn": [],
+                    "priority": 100 - index,
+                    "riskHints": {
+                        "mayDeleteOrRenameFiles": False,
+                        "mayTouchConfigFiles": False,
+                        "estimatedFilesTouched": 1 if access_mode == "write" else 0,
+                    },
+                }
+            )
+        return {"status": "ready", "reasoningSummary": "Mock-first 演示计划：实现与审查可在同一批次协作。", "tasks": tasks}
+
     def mark_task(self, plan: dict, task_id: str, status: str, result: str | None = None) -> dict:
         tasks = []
         for task in plan["tasks"]:

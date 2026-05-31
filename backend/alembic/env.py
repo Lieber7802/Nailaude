@@ -1,4 +1,5 @@
 import sys
+import os
 from pathlib import Path
 from logging.config import fileConfig
 
@@ -11,11 +12,14 @@ from alembic import context
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.database import Base
+from app.config import settings
 from app.models import *  # noqa: F401, F403 - import all models for autogenerate
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
+database_url = os.environ.get("ALEMBIC_DATABASE_URL") or settings.DATABASE_URL
+config.set_main_option("sqlalchemy.url", database_url.replace("+aiosqlite", ""))
 
 # Interpret the config file for Python logging.
 if config.config_file_name is not None:

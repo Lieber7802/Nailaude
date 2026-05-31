@@ -9,8 +9,8 @@ from app.main import app
 
 
 @pytest.fixture
-def client():
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+def client(tmp_path):
+    engine = create_async_engine(f"sqlite+aiosqlite:///{(tmp_path / 'agenthub-test.db').as_posix()}")
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
     async def create_schema():

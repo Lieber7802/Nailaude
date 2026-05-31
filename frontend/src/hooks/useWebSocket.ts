@@ -5,6 +5,8 @@ import { useArtifactStore } from '../stores/artifactStore'
 import { useConversationStore } from '../stores/conversationStore'
 import { useMessageStore } from '../stores/messageStore'
 import { useUIStore } from '../stores/uiStore'
+import { useOrchestratorStore } from '../stores/orchestratorStore'
+import { orchestratorApi } from '../services/orchestratorApi'
 
 export function useWebSocket(conversationId: string | null) {
   const [status, setStatus] = useState<'idle' | 'connecting' | 'open' | 'closed' | 'error'>('idle')
@@ -19,6 +21,11 @@ export function useWebSocket(conversationId: string | null) {
   const setOrchestratorStatus = useUIStore((state) => state.setOrchestratorStatus)
   const setRuntimeError = useUIStore((state) => state.setRuntimeError)
   const resetRuntime = useUIStore((state) => state.resetRuntime)
+  const acceptSnapshot = useOrchestratorStore((state) => state.acceptSnapshot)
+  const setInput = useOrchestratorStore((state) => state.setInput)
+  const setApproval = useOrchestratorStore((state) => state.setApproval)
+  const setTeamBoard = useOrchestratorStore((state) => state.setTeamBoard)
+  const setProjectState = useOrchestratorStore((state) => state.setProjectState)
 
   useEffect(() => {
     if (!conversationId) return
@@ -49,7 +56,22 @@ export function useWebSocket(conversationId: string | null) {
       addArtifact(message.data.messageId, message.data.artifact)
     }
     const handleOrchestratorStatus = (message: Extract<WSServerMessage, { type: 'orchestrator_status' }>) => {
+      if (!acceptSnapshot(conversationId, message.data)) return
       setOrchestratorStatus(conversationId, message.data.status, message.data.tasks)
+      if (message.data.status !== 'awaiting_input') setInput(conversationId, undefined)
+      if (message.data.status !== 'awaiting_approval') setApproval(conversationId, undefined)
+    }
+    const handleInputRequired = (message: Extract<WSServerMessage, { type: 'orchestrator_input_required' }>) => {
+      setInput(conversationId, message.data)
+    }
+    const handleApprovalRequired = (message: Extract<WSServerMessage, { type: 'orchestrator_approval_required' }>) => {
+      setApproval(conversationId, { runId: message.data.runId, reason: message.data.reason })
+    }
+    const handleTeamBoardUpdated = () => {
+      void orchestratorApi.teamBoard(conversationId).then((board) => setTeamBoard(conversationId, board))
+    }
+    const handleProjectStateUpdated = () => {
+      void orchestratorApi.projectState(conversationId).then((projectState) => setProjectState(conversationId, projectState))
     }
     const handleError = (message: Extract<WSServerMessage, { type: 'error' }>) => {
       setRuntimeError(conversationId, message.data.error)
@@ -63,6 +85,10 @@ export function useWebSocket(conversationId: string | null) {
     wsClient.on('message_done', handleDone)
     wsClient.on('artifact', handleArtifact)
     wsClient.on('orchestrator_status', handleOrchestratorStatus)
+    wsClient.on('orchestrator_input_required', handleInputRequired)
+    wsClient.on('orchestrator_approval_required', handleApprovalRequired)
+    wsClient.on('team_board_updated', handleTeamBoardUpdated)
+    wsClient.on('project_state_updated', handleProjectStateUpdated)
     wsClient.on('error', handleError)
     wsClient.connect(conversationId)
 
@@ -74,11 +100,16 @@ export function useWebSocket(conversationId: string | null) {
       wsClient.off('message_done', handleDone)
       wsClient.off('artifact', handleArtifact)
       wsClient.off('orchestrator_status', handleOrchestratorStatus)
+      wsClient.off('orchestrator_input_required', handleInputRequired)
+      wsClient.off('orchestrator_approval_required', handleApprovalRequired)
+      wsClient.off('team_board_updated', handleTeamBoardUpdated)
+      wsClient.off('project_state_updated', handleProjectStateUpdated)
       wsClient.off('error', handleError)
       wsClient.disconnect()
     }
   }, [
     addArtifact,
+    acceptSnapshot,
     appendStreamDelta,
     clearThinkingAgent,
     clearThinkingAgents,
@@ -87,7 +118,11 @@ export function useWebSocket(conversationId: string | null) {
     replaceOptimisticMessage,
     resetRuntime,
     setOrchestratorStatus,
+    setInput,
+    setApproval,
+    setProjectState,
     setRuntimeError,
+    setTeamBoard,
     setThinkingAgent,
     touchConversation,
   ])
