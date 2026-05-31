@@ -19,6 +19,7 @@ class AgentUpdate(BaseModel):
     description: str | None = None
     capabilities: list[str] | None = None
     system_instruction: str | None = Field(default=None, alias="systemInstruction")
+    platform_id: str | None = Field(default=None, alias="platformId")
 
     model_config = ConfigDict(populate_by_name=True)
 

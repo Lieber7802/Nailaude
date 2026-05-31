@@ -13,10 +13,10 @@ from app.adapters.mock import MockAdapter
 from app.api.serializers import serialize_artifact, serialize_message
 from app.database import get_db
 from app.models.agent import Agent
-from app.models.artifact import Artifact
 from app.models.conversation import Conversation
 from app.models.message import Message
 from app.services.agent_manager import AgentManagerService
+from app.services.artifact_service import ArtifactService
 from app.services.orchestrator import OrchestratorService
 from app.services.seed import seed_builtin_data
 from app.ws.manager import manager
@@ -185,6 +185,7 @@ async def stream_agent_task(
     content_parts: list[str] = []
     stream_status = "success"
     stream_error: str | None = None
+    artifact_service = ArtifactService()
     try:
         async for event in adapter.run_task(
             conversation.work_dir,
@@ -200,27 +201,22 @@ async def stream_agent_task(
                         "data": {"messageId": agent_message.id, "agentName": agent.name, "delta": event.content},
                     },
                 )
-            elif event.type == "file_created":
-                artifact = Artifact(
+            elif event.type in {"file_created", "file_modified"}:
+                artifacts = await artifact_service.create_from_agent_event(
+                    db,
                     message_id=agent_message.id,
-                    type="code",
-                    title=str(event.metadata.get("title") or event.content),
-                    files=event.metadata.get("files") or [],
-                    diff_data=None,
-                    version=1,
-                    previous_version_id=None,
-                    preview_url=event.metadata.get("previewUrl") or "",
+                    conversation_id=conversation.id,
+                    work_dir=conversation.work_dir,
+                    event=event,
                 )
-                db.add(artifact)
-                await db.commit()
-                await db.refresh(artifact)
-                await manager.send_personal(
-                    websocket,
-                    {
-                        "type": "artifact",
-                        "data": {"messageId": agent_message.id, "artifact": serialize_artifact(artifact)},
-                    },
-                )
+                for artifact in artifacts:
+                    await manager.send_personal(
+                        websocket,
+                        {
+                            "type": "artifact",
+                            "data": {"messageId": agent_message.id, "artifact": serialize_artifact(artifact)},
+                        },
+                    )
             elif event.type == "team_note":
                 await manager.send_personal(
                     websocket,

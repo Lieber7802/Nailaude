@@ -1,5 +1,7 @@
 import { LoadingOutlined } from '@ant-design/icons'
 import CodeCard from '../cards/CodeCard'
+import DiffCard from '../cards/DiffCard'
+import WebPreviewCard from '../cards/WebPreviewCard'
 import type { Agent, Artifact, Message } from '../../services/api'
 import { useArtifactStore } from '../../stores/artifactStore'
 
@@ -21,7 +23,7 @@ const roleLabel: Record<Message['role'], string> = {
 
 const MessageBubble = ({ agent, isStreaming = false, message }: MessageBubbleProps) => {
   const storedArtifacts = useArtifactStore((state) => state.artifactsByMessage[message.id] || EMPTY_ARTIFACTS)
-  const setActiveArtifact = useArtifactStore((state) => state.setActiveArtifact)
+  const openArtifact = useArtifactStore((state) => state.openArtifact)
   const isUser = message.role === 'user'
   const authorName = isUser ? '你' : message.agentName || agent?.name || roleLabel[message.role]
   const avatar = isUser ? 'U' : agent?.avatar || authorName.slice(0, 1)
@@ -45,12 +47,19 @@ const MessageBubble = ({ agent, isStreaming = false, message }: MessageBubblePro
       {artifacts.length > 0 && (
         <div className="message-bubble__artifacts">
           {artifacts.map((artifact) => (
-            <CodeCard artifact={artifact} key={artifact.id} onOpen={setActiveArtifact} />
+            <ArtifactCard artifact={artifact} key={artifact.id} onOpen={openArtifact} />
           ))}
         </div>
       )}
     </article>
   )
+}
+
+const ArtifactCard = ({ artifact, onOpen }: { artifact: Artifact; onOpen: (artifact: Artifact) => void }) => {
+  const handleOpen = () => onOpen(artifact)
+  if (artifact.type === 'diff') return <DiffCard artifact={artifact} onOpen={handleOpen} />
+  if (artifact.type === 'webpage') return <WebPreviewCard artifact={artifact} onOpen={handleOpen} />
+  return <CodeCard artifact={artifact} onOpen={handleOpen} />
 }
 
 const formatTime = (value: string) =>

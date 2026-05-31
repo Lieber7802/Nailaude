@@ -3,13 +3,15 @@ AgentHub Backend - FastAPI Application Entry Point
 """
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.exceptions import HTTPException, RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.router import api_router
 from app.api.responses import api_error, validation_api_error
-from app.database import Base, async_session, engine
+from app.database import Base, async_session, engine, get_db
+from app.services.preview_service import PreviewService
 from app.services.seed import seed_builtin_data
 from app.ws.handlers import ws_router
 
@@ -44,6 +46,11 @@ app.include_router(api_router, prefix="/api/v1")
 
 # Mount WebSocket routes
 app.include_router(ws_router)
+
+
+@app.get("/preview/{conversation_id}/{file_path:path}")
+async def preview_file(conversation_id: str, file_path: str, db: AsyncSession = Depends(get_db)):
+    return await PreviewService().file_response(db, conversation_id, file_path)
 
 
 @app.exception_handler(HTTPException)

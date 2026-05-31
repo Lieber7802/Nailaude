@@ -22,6 +22,25 @@ async def get_artifact(artifact_id: str, db: AsyncSession = Depends(get_db)):
     return api_success(serialize_artifact(artifact))
 
 
+@router.get("/{artifact_id}/versions")
+async def get_artifact_versions(artifact_id: str, db: AsyncSession = Depends(get_db)):
+    """Get a compact version chain for an artifact."""
+    artifact = await db.get(Artifact, artifact_id)
+    if artifact is None:
+        raise_api_error("Artifact not found", 404)
+    result = await db.scalars(
+        select(Artifact)
+        .where(Artifact.message_id == artifact.message_id, Artifact.title == artifact.title)
+        .order_by(Artifact.version.asc(), Artifact.created_at.asc())
+    )
+    return api_success(
+        [
+            {"id": item.id, "version": item.version, "createdAt": item.created_at.isoformat()}
+            for item in result.all()
+        ]
+    )
+
+
 @router.get("")
 async def list_artifacts(message_id: str | None = None, db: AsyncSession = Depends(get_db)):
     """List artifacts, optionally filtered by message"""

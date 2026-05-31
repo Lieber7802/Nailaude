@@ -167,6 +167,18 @@ def test_update_conversation_rejects_empty_participants(client):
     assert "participantIds" in payload["error"]
 
 
+def test_update_agent_accepts_platform_id_alias(client):
+    agents, _ids = _agent_ids(client)
+    agent = agents[0]
+
+    response = client.patch(f"/api/v1/agents/{agent['id']}", json={"platformId": "llm"})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["success"] is True
+    assert payload["data"]["platformId"] == "llm"
+
+
 def test_ws_rejects_mentioned_agent_not_in_conversation(client):
     agents, agent_ids = _agent_ids(client)
     conversation = client.post(
