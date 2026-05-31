@@ -168,22 +168,87 @@ export interface Artifact {
 // Orchestrator 任务调度
 // ─────────────────────────────────────────────────
 
-export type TaskStatus = "pending" | "running" | "completed" | "failed";
+export type TaskStatus = "pending" | "ready" | "running" | "completed" | "failed" | "blocked" | "cancelled";
 export type ExecutionMode = "sequential" | "parallel";
+export type AccessMode = "read" | "write";
+export type BatchStatus = "pending" | "running" | "completed" | "partial" | "failed" | "cancelled";
+export type OrchestratorRunStatus =
+  | "queued"
+  | "planning"
+  | "awaiting_input"
+  | "validating"
+  | "replanning"
+  | "awaiting_approval"
+  | "executing"
+  | "summarizing"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+export interface RiskHints {
+  mayDeleteOrRenameFiles: boolean;
+  mayTouchConfigFiles: boolean;
+  estimatedFilesTouched: number;
+}
 
 export interface Task {
   id: string;
   agentId: UUID;          // 分派给哪个 Agent
   agentName: string;      // 冗余：Agent 角色名
+  title: string;
+  objective: string;
   instruction: string;    // 任务指令
+  acceptanceCriteria: string[];
+  constraints: string[];
+  accessMode: AccessMode;
   status: TaskStatus;
-  dependsOn: string | null; // 依赖的前置任务 ID
+  dependsOn: string[];     // 语义依赖的前置任务 ID
+  priority: number;
+  riskHints: RiskHints;
   result?: string;        // 完成后的结果摘要
 }
 
 export interface DispatchPlan {
   tasks: Task[];
   executionMode: ExecutionMode;
+}
+
+export interface PlanningQuestionOption {
+  id: string;
+  label: string;
+  recommended: boolean;
+}
+
+export interface PlanningQuestion {
+  id: string;
+  question: string;
+  reason: string;
+  options: PlanningQuestionOption[];
+  allowCustomInput: boolean;
+}
+
+export interface RecommendedAgent {
+  agentId: UUID;
+  reason: string;
+}
+
+export type PlannerResult =
+  | { status: "ready"; reasoningSummary: string; tasks: Task[] }
+  | { status: "needs_clarification"; questions: PlanningQuestion[] }
+  | { status: "capability_gap"; missingCapabilities: string[]; recommendedAgents: RecommendedAgent[] }
+  | { status: "cannot_plan"; reason: string; recoverable: boolean };
+
+export interface PlannerContext {
+  userRequest: string;
+  mentions: Mention[];
+  clarificationAnswers: Record<string, string>[];
+  participants: Pick<Agent, "id" | "name" | "description" | "capabilities">[];
+  availableAgentCatalog: Pick<Agent, "id" | "name" | "description" | "capabilities">[];
+  projectPlanningSummary: Partial<ProjectState>;
+  teamBoardSummary: Partial<TeamBoard>;
+  recentConversationSummary: Array<Pick<Message, "role" | "content">>;
+  fileTreeSummary: string[];
+  previousValidationErrors: string[];
 }
 
 // ─────────────────────────────────────────────────
@@ -214,6 +279,34 @@ export interface AgentOutput {
   teamNote: TeamNote | null;
   artifacts: Artifact[];
   error?: string;          // status 为 failed/partial 时的错误描述
+}
+
+export interface TaskResult {
+  status: AgentOutputStatus;
+  summary: string;
+  filesRead: string[];
+  filesChanged: string[];
+  filesCreated: string[];
+  filesDeleted: string[];
+  warnings: string[];
+  teamNotes: TeamNote[];
+  error?: string;
+}
+
+export interface AgentHandoffEnvelope {
+  runId: UUID;
+  taskId: string;
+  batchId: string;
+  workspace: { path: string; accessMode: AccessMode; snapshotId: string };
+  task: Task;
+  collaboration: {
+    projectSummary: string;
+    teamStandards: CodeStandard[];
+    relevantTeamNotes: TeamNote[];
+    dependencyResults: TaskResult[];
+  };
+  navigationHints: { inspectFirst: string[]; changedFiles: string[]; diffSummary: string };
+  manifest: { estimatedTokens: number; warnings: string[]; omittedItems: string[] };
 }
 
 // ─────────────────────────────────────────────────
@@ -250,7 +343,21 @@ export interface WSStopGeneration {
   data: { messageId: UUID };
 }
 
-export type WSClientMessage = WSSendMessage | WSStopGeneration;
+export interface WSOrchestratorInputResponse {
+  type: "orchestrator_input_response";
+  data: { runId: UUID; answers?: Record<string, string>; approvedAgentIds?: UUID[] };
+}
+
+export interface WSOrchestratorApprovalResponse {
+  type: "orchestrator_approval_response";
+  data: { runId: UUID; approved: boolean };
+}
+
+export type WSClientMessage =
+  | WSSendMessage
+  | WSStopGeneration
+  | WSOrchestratorInputResponse
+  | WSOrchestratorApprovalResponse;
 
 // ── 服务器 → 客户端 ──
 
@@ -274,9 +381,29 @@ export interface WSUserMessage extends Message {
   clientMessageId?: string;
 }
 
+export interface OrchestratorBatch {
+  id: string;
+  index: number;
+  status: BatchStatus;
+  taskIds: string[];
+}
+
 export interface WSOrchestratorStatus {
-  status: "dispatching" | "executing" | "summarizing";
+  runId: UUID;
+  sequence: number;
+  status: OrchestratorRunStatus;
+  message: string;
+  reasoningSummary: string;
+  currentBatchIndex: number | null;
+  totalBatches: number;
   tasks: Task[];
+  batches: OrchestratorBatch[];
+  warnings: string[];
+  queuePosition?: number;
+  teamBoardVersion: number;
+  projectStateVersion: number;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
 
 export interface WSTeamActivity {
@@ -304,6 +431,10 @@ export type WSServerMessage =
   | { type: "orchestrator_status"; data: WSOrchestratorStatus }
   | { type: "artifact"; data: WSArtifact }
   | { type: "team_activity"; data: WSTeamActivity }
+  | { type: "orchestrator_input_required"; data: { runId: UUID; result: Extract<PlannerResult, { status: "needs_clarification" | "capability_gap" }> } }
+  | { type: "orchestrator_approval_required"; data: { runId: UUID; reason: string; tasks: Task[] } }
+  | { type: "team_board_updated"; data: { conversationId: UUID; version: number } }
+  | { type: "project_state_updated"; data: { conversationId: UUID; version: number } }
   | { type: "message_done"; data: WSMessageDone }
   | { type: "error"; data: WSError };
 
@@ -312,33 +443,71 @@ export type WSServerMessage =
 // ─────────────────────────────────────────────────
 
 export interface TeamNote {
-  from: string;         // Agent 角色名
-  to: string;           // "all" 或指定 Agent 名
-  decisions: string[];
-  headsUp: string;
-  questions: string[];
+  id: UUID;
+  conversationId: UUID;
+  sourceTaskId: string;
+  fromAgentId: UUID;
+  fromAgentName: string;
+  to: { type: "all" } | { type: "agent"; agentId: UUID };
+  type: "decision" | "standard" | "heads_up" | "question" | "answer";
+  content: string;
+  relatedFiles: string[];
+  relatedTaskIds: string[];
+  resolvesNoteId?: UUID;
+  status: "active" | "resolved" | "superseded" | "archived";
+  injectionCount: number;
+  lastInjectedAt?: Timestamp;
   createdAt: Timestamp;
+  resolvedAt?: Timestamp;
 }
 
 export interface TeamDecision {
-  decision: string;
-  madeBy: string;       // Agent 角色名
-  reason: string;
-  agreedBy?: string;
+  id: UUID;
+  content: string;
+  rationale: string;
+  madeByAgentId: UUID;
+  madeByAgentName: string;
+  sourceTaskId: string;
+  status: "active" | "review_required" | "superseded";
+  supersedesDecisionId?: UUID;
   createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface CodeStandard {
+  id: UUID;
+  category: "naming" | "structure" | "style" | "testing" | "security" | "other";
+  content: string;
+  sourceTaskId: string;
+  status: "active" | "review_required" | "superseded";
+  supersedesStandardId?: UUID;
+  updatedAt: Timestamp;
+}
+
+export interface TeamQuestion {
+  id: UUID;
+  content: string;
+  sourceTaskId: string;
+  status: "active" | "resolved";
+}
+
+export interface TeamProgress {
+  completedTaskIds: string[];
+  activeTaskIds: string[];
+  blockedTaskIds: string[];
+  pendingTaskIds: string[];
+  currentFocus: string;
 }
 
 export interface TeamBoard {
   conversationId: UUID;
-  teamMembers: Array<{ name: string; role: string; strengths: string }>;
-  teamDecisions: TeamDecision[];
-  codeStandards: Record<string, string>;
-  progress: {
-    completed: string[];
-    inProgress: { agent: string; task: string } | null;
-    pending: string[];
-  };
-  agentNotes: TeamNote[];
+  version: number;
+  teamMembers: Array<{ agentId: UUID; name: string; role: string; capabilities: string[] }>;
+  decisions: TeamDecision[];
+  codeStandards: CodeStandard[];
+  openQuestions: TeamQuestion[];
+  progress: TeamProgress;
+  recentNotes: TeamNote[];
   updatedAt: Timestamp;
 }
 
@@ -347,17 +516,36 @@ export interface TeamBoard {
 // ─────────────────────────────────────────────────
 
 export interface ProjectState {
-  name: string;
+  conversationId: UUID;
+  version: number;
+  workspace: {
+    name: string;
+    workDir: string;
+    scannedAt: Timestamp;
+    fingerprint: string;
+  };
   techStack: string[];
-  fileTree: string[];
-  decisions: string[];
-  preferences: string[];
-  progress: string;
+  fileTree: { totalFiles: number; paths: string[]; truncated: boolean };
+  git: {
+    isRepository: boolean;
+    branch?: string;
+    headCommit?: string;
+    dirty: boolean;
+    recentCommits: Array<{ sha: string; message: string }>;
+  };
+  progressSummary: string;
   recentChanges: Array<{
     file: string;
+    changeType: "created" | "modified" | "deleted" | "renamed";
     summary: string;
-    agent: string;
+    source: "agent" | "external";
+    agentId?: UUID;
+    taskId?: string;
+    batchId?: string;
+    createdAt: Timestamp;
   }>;
+  warnings: string[];
+  updatedAt: Timestamp;
 }
 
 // ─────────────────────────────────────────────────

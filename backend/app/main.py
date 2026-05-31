@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.router import api_router
 from app.api.responses import api_error, validation_api_error
+from app.config import settings
 from app.database import Base, async_session, engine, get_db
 from app.services.preview_service import PreviewService
 from app.services.seed import seed_builtin_data
@@ -18,8 +19,9 @@ from app.ws.handlers import ws_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    if settings.AUTO_CREATE_SCHEMA:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
     async with async_session() as session:
         await seed_builtin_data(session)
     yield

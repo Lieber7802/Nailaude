@@ -3,6 +3,7 @@
 > 版本：v1.1 | 基于 PRD v1.6 + TECH_DESIGN v1.1 + shared/types.ts  
 > Base URL: `http://localhost:8000/api/v1`  
 > WebSocket: `ws://localhost:8000/ws/{conversation_id}`  
+> M3 authoritative collaboration contract: [`docs/M3_API_CONTRACT.md`](./M3_API_CONTRACT.md)
 > Preview: `http://localhost:8000/preview/{conversation_id}/*`（不经过 /api/v1）
 
 ---
@@ -646,14 +647,38 @@ ws://localhost:8000/ws/{conversation_id}
 {
   "type": "orchestrator_status",
   "data": {
+    "runId": "run-uuid-1",
+    "sequence": 12,
     "status": "executing",
+    "message": "正在执行第 1 / 2 批任务",
+    "reasoningSummary": "实现和审查可以并行。",
+    "currentBatchIndex": 0,
+    "totalBatches": 2,
     "tasks": [
-      { "id": "task-1", "agentId": "agent-uuid-1", "agentName": "代码工匠", "instruction": "生成 Todo 页面", "status": "running", "dependsOn": null },
-      { "id": "task-2", "agentId": "agent-uuid-2", "agentName": "审查大师", "instruction": "代码审查", "status": "pending", "dependsOn": "task-1" }
-    ]
+      { "id": "task-1", "title": "生成 Todo 页面", "agentId": "agent-uuid-1", "agentName": "代码工匠", "objective": "完成页面实现", "instruction": "生成 Todo 页面", "acceptanceCriteria": ["页面可打开"], "constraints": [], "accessMode": "write", "status": "running", "dependsOn": [], "priority": 80, "riskHints": { "mayDeleteOrRenameFiles": false, "mayTouchConfigFiles": false, "estimatedFilesTouched": 2 } },
+      { "id": "task-2", "title": "代码审查", "agentId": "agent-uuid-2", "agentName": "审查大师", "objective": "审查页面实现", "instruction": "代码审查", "acceptanceCriteria": ["列出明确问题"], "constraints": [], "accessMode": "read", "status": "pending", "dependsOn": ["task-1"], "priority": 60, "riskHints": { "mayDeleteOrRenameFiles": false, "mayTouchConfigFiles": false, "estimatedFilesTouched": 0 } }
+    ],
+    "batches": [
+      { "id": "batch-1", "index": 0, "status": "running", "taskIds": ["task-1"] },
+      { "id": "batch-2", "index": 1, "status": "pending", "taskIds": ["task-2"] }
+    ],
+    "warnings": [],
+    "teamBoardVersion": 1,
+    "projectStateVersion": 1,
+    "createdAt": "2026-05-31T10:00:00Z",
+    "updatedAt": "2026-05-31T10:00:01Z"
   }
 }
 ```
+
+`sequence` 在同一 Run 内单调递增。前端必须忽略旧快照。M3 额外支持：
+
+- `orchestrator_input_required`：Planner 需要澄清或推荐加入 Agent。
+- `orchestrator_input_response`：用户提交回答或确认加入 Agent。
+- `orchestrator_approval_required`：高风险写操作需要审批。
+- `orchestrator_approval_response`：用户批准或拒绝写操作。
+- `team_board_updated`：Team Board 版本刷新。
+- `project_state_updated`：Project State 版本刷新。
 
 #### `artifact` — 产物卡片推送
 

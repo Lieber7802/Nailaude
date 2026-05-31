@@ -1,6 +1,9 @@
 import pytest
+import shutil
+import uuid
 
 from app.adapters.base import AgentEvent
+from app.schemas.conversation import WORKSPACE_ROOT
 from app.services.orchestrator import OrchestratorService
 import app.ws.handlers as ws_handlers
 from app.ws.manager import manager
@@ -72,13 +75,15 @@ async def test_orchestrator_builds_sequential_plan_from_mentions():
 
 
 def test_group_websocket_pushes_orchestrator_status_and_runs_mentioned_agents(client):
+    work_dir = WORKSPACE_ROOT / f"pytest-m2-group-{uuid.uuid4()}"
+    work_dir.mkdir(parents=True)
     agents, agent_ids = _agent_ids(client)
     conversation = client.post(
         "/api/v1/conversations",
         json={
             "title": "M2 Group Dispatch",
             "type": "group",
-            "workDir": "workspaces/m2-group-dispatch",
+            "workDir": str(work_dir),
             "participantIds": agent_ids[:2],
         },
     ).json()["data"]
@@ -104,7 +109,7 @@ def test_group_websocket_pushes_orchestrator_status_and_runs_mentioned_agents(cl
             events.append(event)
             if (
                 event["type"] == "orchestrator_status"
-                and event["data"]["status"] == "summarizing"
+                and event["data"]["status"] == "completed"
                 and all(task["status"] == "completed" for task in event["data"]["tasks"])
             ):
                 break
@@ -116,9 +121,10 @@ def test_group_websocket_pushes_orchestrator_status_and_runs_mentioned_agents(cl
     assert event_types.count("message_done") == 2
 
     status_events = [event for event in events if event["type"] == "orchestrator_status"]
-    assert status_events[0]["data"]["status"] == "dispatching"
-    assert status_events[-1]["data"]["status"] == "summarizing"
-    assert [task["agentName"] for task in status_events[0]["data"]["tasks"]] == [
+    assert status_events[0]["data"]["status"] == "queued"
+    assert status_events[-1]["data"]["status"] == "completed"
+    first_planned_status = next(event for event in status_events if event["data"]["tasks"])
+    assert [task["agentName"] for task in first_planned_status["data"]["tasks"]] == [
         agents[0]["name"],
         agents[1]["name"],
     ]
@@ -128,6 +134,7 @@ def test_group_websocket_pushes_orchestrator_status_and_runs_mentioned_agents(cl
     assert [message["agentName"] for message in messages[1:]] == [agents[0]["name"], agents[1]["name"]]
 
     assert conversation["id"] not in manager.active_connections
+    shutil.rmtree(work_dir)
 
 
 def test_create_conversation_rejects_empty_participants(client):
@@ -243,14 +250,14 @@ def test_ws_marks_task_failed_when_adapter_raises(client, monkeypatch):
             }
         )
         events = []
-        for _ in range(12):
+        for _ in range(16):
             event = websocket.receive_json()
             events.append(event)
-            if event["type"] == "orchestrator_status" and event["data"]["status"] == "summarizing":
+            if event["type"] == "orchestrator_status" and event["data"]["status"] == "completed":
                 break
 
     event_types = [event["type"] for event in events]
     assert "error" in event_types
     final_status = [event for event in events if event["type"] == "orchestrator_status"][-1]
     assert final_status["data"]["tasks"][0]["status"] == "failed"
-    assert final_status["data"]["tasks"][0]["result"] == "Mock stream failed: adapter exploded"
+    assert final_status["data"]["tasks"][0]["result"] == "Agent stream failed: adapter exploded"

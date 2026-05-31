@@ -31,10 +31,10 @@ def test_websocket_send_message_streams_mock_events_and_persists_results(client)
         assert first_event["type"] == "user_message"
         assert first_event["data"]["clientMessageId"] == "client-1"
 
-        for _ in range(8):
+        for _ in range(24):
             event = websocket.receive_json()
             events.append(event)
-            if event["type"] == "message_done":
+            if event["type"] == "orchestrator_status" and event["data"]["status"] == "completed":
                 break
 
     event_types = [event["type"] for event in events]
@@ -42,7 +42,8 @@ def test_websocket_send_message_streams_mock_events_and_persists_results(client)
     assert "text_delta" in event_types
     assert "artifact" in event_types
     assert "team_activity" in event_types
-    assert event_types[-1] == "message_done"
+    assert "message_done" in event_types
+    assert events[-1]["data"]["status"] == "completed"
 
     artifact_event = next(event for event in events if event["type"] == "artifact")
     artifact = artifact_event["data"]["artifact"]

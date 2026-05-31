@@ -9,11 +9,6 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./agenthub.db"
 
-    # Volcano Engine (Orchestrator)
-    VOLCANO_API_KEY: str = ""
-    VOLCANO_MODEL: str = "doubao-pro-32k"
-    VOLCANO_ENDPOINT: str = "https://ark.cn-beijing.volces.com/api/v3"
-
     # OpenAI compatible
     OPENAI_API_KEY: str = ""
     OPENAI_BASE_URL: str = "https://api.openai.com/v1"
@@ -28,6 +23,11 @@ class Settings(BaseSettings):
     # CLI paths
     OPENCODE_BINARY_PATH: str = "opencode"
     CODEX_BINARY_PATH: str = "codex"
+    CLI_TIMEOUT_SECONDS: float = 120.0
+    CLI_MAX_CONCURRENCY: int = 4
+
+    # Schema creation is convenient for disposable local/test environments only.
+    AUTO_CREATE_SCHEMA: bool = False
 
     # Server
     HOST: str = "0.0.0.0"

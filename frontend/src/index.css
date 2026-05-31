@@ -745,6 +745,36 @@ button {
   border-top: 1px solid #f0ddca;
 }
 
+.orchestrator-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.orchestrator-warning {
+  color: #be5a00 !important;
+}
+
+.team-board-panel {
+  width: min(620px, 100%);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.76);
+  padding: 12px 14px;
+  color: var(--muted);
+}
+
+.team-board-panel summary {
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.team-board-panel p {
+  margin-top: 6px;
+}
+
 .task-pill {
   display: inline-flex;
   align-items: center;

@@ -1,5 +1,5 @@
 import { CodeOutlined, ExpandOutlined, FileTextOutlined, GlobalOutlined } from '@ant-design/icons'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { Artifact } from '../../services/api'
 import { useArtifactStore } from '../../stores/artifactStore'
 import CodeEditor from './CodeEditor'
@@ -13,7 +13,11 @@ const MIN_ZOOM = 75
 const MAX_ZOOM = 125
 
 const PreviewPanel = () => {
-  const [activeTab, setActiveTab] = useState<PreviewTab>('preview')
+  const [tabSelection, setTabSelection] = useState<{
+    artifactId: string | null
+    openRevision: number
+    tab: PreviewTab
+  }>({ artifactId: null, openRevision: -1, tab: 'preview' })
   const [viewport, setViewport] = useState<PreviewViewport>('desktop')
   const [zoom, setZoom] = useState(100)
   const [fullscreen, setFullscreen] = useState(false)
@@ -32,12 +36,12 @@ const PreviewPanel = () => {
   const activeArtifact =
     storedActiveArtifact || artifacts.find((artifact) => artifact.id === activeArtifactId) || artifacts[0]
   const firstFile = activeArtifact?.files[0]
-
-  useEffect(() => {
-    if (activeArtifact?.type === 'diff') setActiveTab('changes')
-    else if (activeArtifact?.type === 'code') setActiveTab('code')
-    else if (activeArtifact?.type === 'webpage') setActiveTab('preview')
-  }, [activeArtifact?.id, activeArtifact?.type, openRevision])
+  const activeTab =
+    tabSelection.artifactId === (activeArtifact?.id || null) && tabSelection.openRevision === openRevision
+      ? tabSelection.tab
+      : tabForArtifact(activeArtifact)
+  const setActiveTab = (tab: PreviewTab) =>
+    setTabSelection({ artifactId: activeArtifact?.id || null, openRevision, tab })
 
   return (
     <div className={fullscreen ? 'preview-panel preview-panel--fullscreen' : 'preview-panel'}>
@@ -140,6 +144,12 @@ const OutputsTab = ({
 const iconForArtifact = (artifact: Artifact) => {
   if (artifact.type === 'webpage') return <GlobalOutlined />
   return <CodeOutlined />
+}
+
+const tabForArtifact = (artifact?: Artifact): PreviewTab => {
+  if (artifact?.type === 'diff') return 'changes'
+  if (artifact?.type === 'code') return 'code'
+  return 'preview'
 }
 
 const formatBytes = (chars: number) => {
