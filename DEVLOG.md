@@ -494,3 +494,69 @@
 ### 下一步
 - 若要真实联调 DeepSeek，请在本机后端运行环境设置 `DEEPSEEK_API_KEY`，不要提交到仓库。
 - M3 可继续在同一个 AgentManager 基础上接 OpenCode/Codex CLI，并保留 CLI -> LLM -> Mock 降级策略。
+
+## [2026-05-31] Codex - M4 Artifact Preview System
+
+### 完成内容
+- 当前工作已在 `codex-m4-artifact-preview-system` 分支上继续。
+- 按 `agenthub-module-development` workflow 新增 `M4_ARTIFACT_PREVIEW` plan/checklist，确认洋芋当前阶段负责 M4 产物与预览系统。
+- 新增 M4 后端测试用例，覆盖 Mock 生成网页产物、`/preview/{conversation_id}/index.html` 原始文件预览、FileWatcher 修改 diff。
+- 实现 `FileWatcherService` 目录快照与 created/modified/deleted 变更检测，输出契约内 `DiffData`。
+- 实现 `ArtifactService`：从 `file_created/file_modified` AgentEvent 生成 webpage/code/diff Artifact，写入 workspace 文件，并生成 preview URL。
+- 新增 `/preview/{conversation_id}/{filepath}` 根路径预览路由，包含路径穿越保护、Content-Type、CSP 与 nosniff header。
+- 新增 `GET /conversations/{conversation_id}/artifacts`，补齐 `GET /artifacts/{id}/versions` 简版查询。
+- WebSocket artifact 生成改为走 ArtifactService；Mock HTML 现在会作为 `webpage` 产物推送。
+- 前端替换 CodeCard/DiffCard/WebPreviewCard/PreviewPanel/CodeEditor/DiffViewer/IframePreview 占位，实现聊天流卡片、iframe 预览、Monaco 只读代码和 Diff 视图。
+- Vite dev server 代理新增 `/preview` 到后端。
+
+### 新增/修改文件
+- `docs/plans/M4_ARTIFACT_PREVIEW_PLAN.md`
+- `docs/plans/M4_ARTIFACT_PREVIEW_CHECKLIST.md`
+- `backend/tests/test_m4_artifact_preview.py`
+- `backend/tests/test_m1_2_websocket.py`
+- `backend/app/services/artifact_service.py`
+- `backend/app/services/file_watcher.py`
+- `backend/app/services/preview_service.py`
+- `backend/app/main.py`
+- `backend/app/ws/handlers.py`
+- `backend/app/api/conversations.py`
+- `backend/app/api/artifacts.py`
+- `frontend/src/components/cards/*`
+- `frontend/src/components/preview/*`
+- `frontend/src/components/chat/MessageBubble.tsx`
+- `frontend/src/index.css`
+- `frontend/vite.config.ts`
+
+### 接口变化
+- 无 `packages/shared/types.ts` 变化。
+- 新增实现：`GET /preview/{conversation_id}/{filepath}` 原始静态文件响应。
+- 新增实现：`GET /api/v1/conversations/{conversation_id}/artifacts`。
+- `MockAdapter` HTML 文件产物从 `code` 升级为更符合契约的 `webpage` artifact，并带可用 `previewUrl`（当 workDir 可写）。
+- `GET /api/v1/conversations/{conversation_id}/artifacts` 的 `type` 重复查询参数显式使用 FastAPI `Query`，匹配 `?type=code&type=webpage`。
+
+### 验证
+- `git status --short --branch` -> 当前分支 `codex-m4-artifact-preview-system`
+- `cd backend && python -m compileall app` -> passed
+- `cd backend && .\.venv\Scripts\python.exe -m pytest -q tests/test_m4_artifact_preview.py` -> 2 passed
+- `cd backend && .\.venv\Scripts\python.exe -m pytest -q` -> 23 passed
+- `cd frontend && npm run build` -> passed
+- 剩余 warning：Starlette/httpx deprecation warning、pytest cache warning、Vite chunk size warning
+- 修复验证中暴露的问题：M4 测试改用项目 `workspaces/` 目录，避免 schema 拒绝临时目录；移除前端未使用 `ZOOM_STEP`；相对 `workDir` 统一解析到项目根目录。
+
+### 下一步
+- M5 可在当前 DiffData 和 PreviewPanel 基础上继续做一键应用 Diff、版本历史切换、多文件预览增强。
+- 后续可考虑拆分 Monaco/AntD 相关 chunk，消除 Vite 500 kB chunk warning。
+
+### 追加修复
+- 修复聊天流产物卡片“打开”无明显反应的问题：`artifactStore` 现在保存完整 `activeArtifact`，卡片打开动作会携带 artifact 对象，PreviewPanel 即使遇到历史消息或 store 未同步列表也能展示对应产物。
+- 验证：`cd frontend && npm run build` -> passed，保留 Vite chunk size warning。
+- 修复 Agent 更新接口忽略 `platformId` 的问题：`AgentUpdate` schema 现在接收 `platformId` alias，支持把内置 Agent 从 `mock` 切到 `llm`。
+- 验证：`cd backend && .\.venv\Scripts\python.exe -m pytest -q tests/test_m2_chat_core.py tests/test_m4_artifact_preview.py` -> 10 passed。
+- 修复真实 LLM 长 HTML 回复没有闭合 fenced code block 时不生成 artifact 的问题：LLMProvider 现在允许代码块延续到文本结尾，仍可提取 `file_created` 事件。
+- 验证：`cd backend && .\.venv\Scripts\python.exe -m pytest -q tests/test_m2_deepseek_adapter.py tests/test_m2_chat_core.py tests/test_m4_artifact_preview.py` -> 15 passed。
+- 明确聊天卡片“打开”语义：它会在右侧 PreviewPanel 选中该 artifact 并切到对应 tab，不会新开浏览器窗口。为重复点击同一产物增加 `openRevision`，确保即使 active artifact 未变化，也会把右侧切回预览/代码/变更 tab。
+- 验证：`cd frontend && npm run build` -> passed，保留 Vite chunk size warning。
+- 将产物卡片主操作文案从“打开”改为“在右侧查看”；网页产物额外提供外链图标按钮，用于新标签页打开 `previewUrl`。
+- 验证：`cd frontend && npm run build` -> passed，保留 Vite chunk size warning。
+- 修复右侧网页预览无法交互的问题：主预览 iframe 的 sandbox 增加 `allow-scripts allow-forms allow-same-origin`，支持 AI 产物中的按钮事件和本地存储；聊天流缩略图仍保持不可交互。
+- 验证：`cd frontend && npm run build` -> passed，保留 Vite chunk size warning。

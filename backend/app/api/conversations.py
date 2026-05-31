@@ -1,12 +1,12 @@
 """
 Conversation CRUD routes
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.responses import api_success, paginated, raise_api_error
-from app.api.serializers import serialize_conversation
+from app.api.serializers import serialize_artifact, serialize_conversation
 from app.database import get_db
 from app.models.agent import Agent
 from app.models.artifact import Artifact
@@ -96,6 +96,29 @@ async def create_conversation(payload: ConversationCreate, db: AsyncSession = De
     await db.commit()
     await db.refresh(conversation)
     return api_success(serialize_conversation(conversation))
+
+
+@router.get("/{conversation_id}/artifacts")
+async def list_conversation_artifacts(
+    conversation_id: str,
+    type: list[str] | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """List artifacts for a conversation."""
+    conversation = await db.get(Conversation, conversation_id)
+    if conversation is None:
+        raise_api_error("Conversation not found", 404)
+
+    query = (
+        select(Artifact)
+        .join(Message, Artifact.message_id == Message.id)
+        .where(Message.conversation_id == conversation_id)
+        .order_by(Artifact.created_at.asc())
+    )
+    if type:
+        query = query.where(Artifact.type.in_(type))
+    result = await db.scalars(query)
+    return api_success([serialize_artifact(artifact) for artifact in result.all()])
 
 
 @router.get("/{conversation_id}")

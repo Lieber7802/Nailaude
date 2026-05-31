@@ -51,6 +51,27 @@ async def test_llm_provider_reports_missing_api_key_without_network_call():
 
 
 @pytest.mark.asyncio
+async def test_llm_provider_extracts_unclosed_html_fence_as_artifact():
+    async def handler(request: httpx.Request) -> httpx.Response:
+        chunks = [
+            _sse_chunk({"choices": [{"delta": {"content": "Here is the file:\n```html\n<!DOCTYPE html>\n"}}]}),
+            _sse_chunk({"choices": [{"delta": {"content": "<html><body>Todo</body></html>"}}]}),
+            b"data: [DONE]\n\n",
+        ]
+        return httpx.Response(200, content=b"".join(chunks))
+
+    adapter = LLMProviderAdapter(api_key="test-key", client=httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+
+    events = [event async for event in adapter.run_task("workspaces/demo", "build html", {})]
+    artifact = next(event for event in events if event.type == "file_created")
+
+    assert artifact.content == "llm-output-1.html"
+    assert artifact.metadata["files"][0]["language"] == "html"
+    assert "<body>Todo</body>" in artifact.metadata["files"][0]["content"]
+    assert events[-1].type == "done"
+
+
+@pytest.mark.asyncio
 async def test_agent_manager_returns_cached_llm_adapter(monkeypatch):
     monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
     manager = AgentManagerService()

@@ -46,7 +46,7 @@ def test_websocket_send_message_streams_mock_events_and_persists_results(client)
 
     artifact_event = next(event for event in events if event["type"] == "artifact")
     artifact = artifact_event["data"]["artifact"]
-    assert artifact["type"] == "code"
+    assert artifact["type"] == "webpage"
     assert artifact["files"][0]["name"] == "index.html"
     assert artifact["messageId"] == artifact_event["data"]["messageId"]
 

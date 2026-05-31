@@ -16,7 +16,7 @@ from app.config import settings
 
 
 FENCED_BLOCK_PATTERN = re.compile(
-    r"```(?P<info>[^\n`]*)\n(?P<content>.*?)\n```",
+    r"```(?P<info>[^\n`]*)\n(?P<content>.*?)(?:\n```|$)",
     re.DOTALL,
 )
 
@@ -139,7 +139,9 @@ class LLMProviderAdapter(AgentAdapter):
         artifacts: list[AgentEvent] = []
         for index, match in enumerate(FENCED_BLOCK_PATTERN.finditer(content), start=1):
             info = match.group("info").strip()
-            code = match.group("content")
+            code = match.group("content").strip()
+            if not code:
+                continue
             language, filename = self._parse_fence_info(info, index)
             artifacts.append(
                 AgentEvent(
