@@ -1,4 +1,5 @@
 import asyncio
+import os
 import sys
 from time import perf_counter
 
@@ -64,3 +65,38 @@ async def test_process_pool_limits_cli_concurrency_across_pool_instances(tmp_pat
 
     assert perf_counter() - started >= 0.25
     assert first.active_count == second.active_count == 0
+
+
+@pytest.mark.asyncio
+async def test_process_pool_passes_explicit_environment_to_child_process(tmp_path):
+    pool = ProcessPool(default_timeout=2)
+    env = os.environ.copy()
+    env["AGENTHUB_CHILD_ENV"] = "isolated"
+
+    result = await pool.run(
+        [sys.executable, "-c", "import os; print(os.environ['AGENTHUB_CHILD_ENV'])"],
+        cwd=str(tmp_path),
+        env=env,
+    )
+
+    assert result.stdout.strip() == "isolated"
+
+
+@pytest.mark.asyncio
+async def test_process_pool_returns_when_exited_parent_leaves_inherited_pipe_handle(tmp_path):
+    pool = ProcessPool(default_timeout=1)
+
+    result = await pool.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import subprocess, sys; "
+                "subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(2)']); "
+                "print('parent exited')"
+            ),
+        ],
+        cwd=str(tmp_path),
+    )
+
+    assert result.stdout.strip() == "parent exited"
