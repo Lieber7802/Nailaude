@@ -99,7 +99,7 @@ class WorkspaceSnapshotService:
         scanner = WorkspaceScanner()
         warnings: list[str] = []
         total_size = 0
-        for path in source.rglob("*"):
+        for path in sorted(source.rglob("*")):
             relative = path.relative_to(source)
             if any(part in EXCLUDED_DIRS for part in relative.parts):
                 continue
