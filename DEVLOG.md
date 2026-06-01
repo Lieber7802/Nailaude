@@ -859,3 +859,89 @@
 - `cd backend && ../.venv/bin/python -m pytest tests/test_m3_cli_adapters.py -q` -> `11 passed`
 - `cd backend && ../.venv/bin/python -m pytest -q` -> `141 passed`
 - Adapter fake raw JSONL 烟测：聊天输出为简短中文摘要，raw `unknown.raw` / `sessionID` 未进入文本，文件变更仍发出 `file_created`。
+
+## [2026-06-01] Codex - 内置 Agent 默认切换到 OpenCode
+
+### 完成内容
+- 将 `代码工匠`、`审查大师`、`文档专家` 的后端 seed 默认 `platform_id` 全部改为 `opencode`。
+- `seed_builtin_data()` 现在会把已有数据库中的这三个内置 Agent 规范化到 `opencode`，避免旧本地库继续停留在 `mock`。
+- 调整 Mock 相关 WebSocket 测试，显式创建测试用 Mock Agent，不再依赖内置 Agent 默认是 Mock。
+- 更新 Agent API 示例和 M3 计划/checklist。
+
+### 新增/修改文件
+- `backend/app/services/seed.py` (修改)
+- `backend/tests/conftest.py` (修改)
+- `backend/tests/test_m1_1_api.py` (修改)
+- `backend/tests/test_m1_2_websocket.py` (修改)
+- `backend/tests/test_m2_chat_core.py` (修改)
+- `backend/tests/test_m3_e2e.py` (修改)
+- `backend/tests/test_m3_websocket_interactions.py` (修改)
+- `backend/tests/test_m3_websocket_runtime.py` (修改)
+- `backend/tests/test_m4_artifact_preview.py` (修改)
+- `docs/API_SPEC.md` (修改)
+- `docs/plans/M3_BUILTIN_AGENT_OPENCODE_PLAN.md` (新增)
+- `docs/plans/M3_BUILTIN_AGENT_OPENCODE_CHECKLIST.md` (新增)
+- `DEVLOG.md` (修改)
+
+### 接口变更
+- 无 shared types、REST 或 WebSocket 结构变更。
+- `GET /api/v1/agents` 中三个内置 Agent 的 `platformId` 默认值变为 `opencode`。
+
+### 验证
+- RED：新增 `test_builtin_agents_are_backed_by_opencode` 后，旧 seed 返回 `mock`，测试失败。
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m1_1_api.py::test_builtin_agents_are_backed_by_opencode -q` -> `1 passed`
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m1_1_api.py tests/test_m1_2_websocket.py tests/test_m2_chat_core.py tests/test_m3_websocket_runtime.py tests/test_m3_websocket_interactions.py tests/test_m3_e2e.py tests/test_m4_artifact_preview.py -q` -> `37 passed`
+- `cd backend && ../.venv/bin/python -m pytest -q` -> `142 passed`
+- 本地 `backend/agenthub.db` 查询确认三位内置 Agent 均为 `opencode`。
+
+## [2026-06-01] Codex - OpenCode 群聊摘要与预览产物修复
+
+### 完成内容
+- 修复 OpenCode JSON 输出解析：对象型 `message`、工具 payload、`sessionID` 等 raw 结构不再直接进入聊天 `text_delta`。
+- 保留简短中文执行摘要和工作过程提示；完整文件内容继续只通过 artifact 卡片展示。
+- 对写入型“小程序/页面/预览”等任务追加 AgentHub 预览约束，明确要求创建或更新 `index.html`。
+- 如果 OpenCode 第一轮只写了 README/文档、没有任何 HTML 预览入口，会自动追加一次聚焦修复执行，要求补齐 `index.html`。
+- 新增群聊 WebSocket 回归，确认 opencode 群聊任务能广播 `webpage` artifact 且带 `/preview/{conversationId}/index.html`。
+
+### 新增/修改文件
+- `backend/app/adapters/opencode.py` (修改)
+- `backend/tests/test_m3_cli_adapters.py` (修改)
+- `backend/tests/test_m3_websocket_runtime.py` (修改)
+- `docs/plans/M3_OPENCODE_GROUP_PREVIEW_FIX_PLAN.md` (新增)
+- `docs/plans/M3_OPENCODE_GROUP_PREVIEW_FIX_CHECKLIST.md` (新增)
+- `DEVLOG.md` (修改)
+
+### 接口变更
+- 无 shared types、REST 或 WebSocket 结构变更。
+- OpenCode adapter 行为变更：聊天流更保守，预览任务会要求并补救生成 HTML 入口。
+
+### 验证
+- RED：对象型 OpenCode `message` 会把 `sessionID` / dict raw 串进聊天；修复后通过。
+- RED：小程序/预览任务 prompt 未要求 `index.html`；修复后通过。
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m3_cli_adapters.py -q` -> `14 passed`
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m3_cli_adapters.py tests/test_m3_websocket_runtime.py tests/test_m4_artifact_preview.py -q` -> `27 passed`
+- `cd backend && ../.venv/bin/python -m pytest -q` -> `146 passed`
+
+## [2026-06-02] Codex - OpenCode 工具读取内容泄漏修复
+
+### 完成内容
+- 查看最近一次群聊 `d9fd2714-8eda-4248-83e3-846639a490ac`，确认 raw 来源是 OpenCode 工具读取文件时返回的行号 HTML、`</content>`、`metadata.preview` 和 `sessionID`，不是普通 assistant 回复。
+- 扩展 OpenCode 文本提取逻辑：对疑似工具读取结果文本、带行号文件片段、HTML 预览内容和工具 metadata 只生成工作摘要，不推送到聊天 `text_delta`。
+- 保留正常 assistant 文本、文件 artifact、diff artifact 和网页 preview。
+- 清理最近一次群聊中已持久化的 3 条 raw agent 消息正文，保留原有 artifacts 和 `/preview/.../index.html`。
+
+### 新增/修改文件
+- `backend/app/adapters/opencode.py` (修改)
+- `backend/tests/test_m3_cli_adapters.py` (修改)
+- `DEVLOG.md` (修改)
+
+### 接口变更
+- 无 shared types、REST 或 WebSocket 结构变更。
+- OpenCode adapter 对工具读取结果文本的过滤更严格。
+
+### 验证
+- RED：复现真实泄漏格式 `232: ... <script> ... </content>","metadata"... "sessionID"` 会进入聊天；修复后通过。
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m3_cli_adapters.py -q` -> `15 passed`
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m3_cli_adapters.py tests/test_m3_websocket_runtime.py tests/test_m4_artifact_preview.py -q` -> `28 passed`
+- `cd backend && ../.venv/bin/python -m pytest -q` -> `147 passed`
+- 最近群聊消息 raw 残留查询：`0`；artifact 查询仍保留 `webpage index.html` 及相关文档产物。

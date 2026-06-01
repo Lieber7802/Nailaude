@@ -1,4 +1,5 @@
 import asyncio
+import uuid
 
 import pytest
 from fastapi.testclient import TestClient
@@ -31,3 +32,23 @@ def client(tmp_path):
 
     app.dependency_overrides.clear()
     asyncio.run(engine.dispose())
+
+
+@pytest.fixture
+def create_agent(client):
+    def _create_agent(platform_id="mock", name=None):
+        response = client.post(
+            "/api/v1/agents",
+            json={
+                "name": name or f"测试Agent-{uuid.uuid4()}",
+                "avatar": "T",
+                "description": "测试用 Agent",
+                "capabilities": ["测试"],
+                "systemInstruction": "你是测试用 Agent。",
+                "platformId": platform_id,
+            },
+        )
+        assert response.status_code == 200
+        return response.json()["data"]
+
+    return _create_agent

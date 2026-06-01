@@ -259,7 +259,7 @@
       "avatar": "🔍",
       "description": "代码审查专家，关注代码质量、性能和安全性",
       "capabilities": ["代码审查", "最佳实践", "安全"],
-      "platformId": "codex",
+      "platformId": "opencode",
       "isBuiltin": true,
       "createdAt": "2026-05-20T00:00:00Z"
     }

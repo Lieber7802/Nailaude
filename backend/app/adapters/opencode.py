@@ -17,6 +17,22 @@ from app.services.workspace_scanner import WorkspaceScanner
 
 
 MAX_CHAT_SUMMARY_CHARS = 1200
+PREVIEW_REQUEST_KEYWORDS = (
+    "app",
+    "application",
+    "page",
+    "webpage",
+    "website",
+    "preview",
+    "html",
+    "页面",
+    "网页",
+    "小程序",
+    "应用",
+    "预览",
+    "右侧",
+    "可视化",
+)
 
 
 class OpenCodeAdapter(AgentAdapter):
@@ -37,6 +53,8 @@ class OpenCodeAdapter(AgentAdapter):
         cancel_event = context.get("_cancel_event")
         root = Path(work_dir).expanduser().resolve()
         before = self._snapshot_workspace(root)
+        public_context = {key: value for key, value in context.items() if not key.startswith("_")}
+        preview_required = self._should_require_preview_entry(instruction, public_context)
         prompt = self._build_prompt(instruction, context)
         try:
             result = await self.pool.run(
@@ -56,8 +74,28 @@ class OpenCodeAdapter(AgentAdapter):
                 cancel_event=cancel_event,
             )
             after = self._snapshot_workspace(root)
+            stdout = result.stdout
+            if preview_required and not self._has_preview_entry(after):
+                repair_result = await self.pool.run(
+                    [
+                        self.binary_path,
+                        "run",
+                        "--format",
+                        "json",
+                        "--model",
+                        settings.OPENCODE_MODEL,
+                        "--dir",
+                        str(root),
+                        "--dangerously-skip-permissions",
+                        self._build_preview_repair_prompt(instruction, public_context),
+                    ],
+                    cwd=str(root),
+                    cancel_event=cancel_event,
+                )
+                stdout = "\n".join(part for part in (stdout, repair_result.stdout) if part)
+                after = self._snapshot_workspace(root)
             file_events = self._file_events(before, after)
-            content = self._extract_text(result.stdout, file_events)
+            content = self._extract_text(stdout, file_events)
             if content:
                 yield AgentEvent(type="text_delta", content=content)
             for event in file_events:
@@ -77,10 +115,12 @@ class OpenCodeAdapter(AgentAdapter):
 
     def _build_prompt(self, instruction: str, context: dict) -> str:
         public_context = {key: value for key, value in context.items() if not key.startswith("_")}
+        preview_contract = self._preview_contract(instruction, public_context)
         return (
             f"{instruction}\n\n"
             "AgentHub handoff context follows as JSON. Respect the task boundary, "
             "write files only inside the provided workspace, and summarize the result.\n"
+            f"{preview_contract}"
             f"{json.dumps(public_context, ensure_ascii=False, default=str)}"
         )
 
@@ -104,24 +144,29 @@ class OpenCodeAdapter(AgentAdapter):
                 continue
             saw_json_event = True
             event_type = str(event.get("type") or "")
-            delta = event.get("delta") or event.get("text") or event.get("content")
+            delta = self._text_value(event.get("delta") or event.get("text") or event.get("content"))
             if event_type in {"message.delta", "message_delta", "assistant_delta", "agent_message_delta"} and delta:
-                deltas.append(str(delta))
+                deltas.append(delta)
                 continue
-            message = event.get("message") or event.get("text") or event.get("content")
+            message = self._text_value(event.get("message") or event.get("text") or event.get("content"))
             if event_type in {"message", "assistant_message", "agent_message"} and message:
-                messages.append(str(message))
+                messages.append(message)
                 continue
             if event_type in {"message.part.updated", "message.part.added"}:
                 part = event.get("part") or {}
-                if isinstance(part, dict) and part.get("type") == "text" and part.get("text"):
-                    messages.append(str(part["text"]))
+                self._collect_work_step(event, work_steps)
+                text = self._part_text(part)
+                if text and self._looks_like_tool_result_text(text):
+                    self._collect_text_work_step(text, work_steps)
+                    continue
+                if text:
+                    messages.append(text)
                 continue
             self._collect_work_step(event, work_steps)
             if event_type in {"session.idle", "task_complete", "turn_complete", "completed"}:
-                summary = event.get("last_agent_message") or event.get("message") or event.get("output")
+                summary = self._text_value(event.get("last_agent_message") or event.get("message") or event.get("output"))
                 if summary:
-                    messages.append(str(summary))
+                    messages.append(summary)
         if messages:
             return self._limit_chat_text(messages[-1])
         if deltas:
@@ -134,6 +179,60 @@ class OpenCodeAdapter(AgentAdapter):
 
     def _looks_like_json_event(self, line: str) -> bool:
         return line.startswith("{") or line.startswith("[")
+
+    def _text_value(self, value) -> str:
+        if isinstance(value, str):
+            return value
+        if isinstance(value, list):
+            parts: list[str] = []
+            for item in value:
+                text = self._part_text(item)
+                if text:
+                    parts.append(text)
+            return "\n".join(parts)
+        return ""
+
+    def _part_text(self, part) -> str:
+        if isinstance(part, str):
+            return part
+        if not isinstance(part, dict):
+            return ""
+        if part.get("type") not in {None, "text", "markdown"}:
+            return ""
+        text = part.get("text") or part.get("content")
+        return text if isinstance(text, str) else ""
+
+    def _looks_like_tool_result_text(self, text: str) -> bool:
+        stripped = text.strip()
+        if not stripped:
+            return False
+        indicators = (
+            "</content>",
+            '"metadata"',
+            "'metadata'",
+            '"sessionID"',
+            "'sessionID'",
+            "(End of file - total",
+            "<!DOCTYPE html",
+            "<html",
+            "<script",
+        )
+        if any(indicator in stripped for indicator in indicators):
+            return True
+        lines = stripped.splitlines()
+        numbered_lines = sum(1 for line in lines[:20] if self._is_numbered_file_line(line))
+        return numbered_lines >= 3
+
+    def _is_numbered_file_line(self, line: str) -> bool:
+        head, sep, tail = line.partition(":")
+        return bool(sep and head.strip().isdigit() and (tail.startswith(" ") or tail == ""))
+
+    def _collect_text_work_step(self, text: str, work_steps: set[str]) -> None:
+        lowered = text.lower()
+        if any(token in lowered for token in ("</content>", "(end of file - total", "<!doctype html", "<html")):
+            work_steps.add("正在查看项目文件。")
+        else:
+            work_steps.add("正在处理工具输出。")
 
     def _collect_work_step(self, event: dict, work_steps: set[str]) -> None:
         event_type = str(event.get("type") or "").lower()
@@ -163,6 +262,46 @@ class OpenCodeAdapter(AgentAdapter):
         if len(normalized) <= MAX_CHAT_SUMMARY_CHARS:
             return normalized
         return f"{normalized[:MAX_CHAT_SUMMARY_CHARS].rstrip()}...\n（已截断，完整产物请查看下方卡片。）"
+
+    def _preview_contract(self, instruction: str, context: dict) -> str:
+        if not self._should_require_preview_entry(instruction, context):
+            return ""
+        return (
+            "AgentHub preview contract: 用户要求的是可预览应用/页面/小程序。"
+            "必须创建或更新 index.html 作为右侧预览入口，并把主要交互、样式和脚本放在可直接打开的前端文件中。"
+            "不要只创建 README.md、说明文档或纯文字总结；README 只能作为补充。\n"
+        )
+
+    def _should_require_preview_entry(self, instruction: str, context: dict) -> bool:
+        workspace = context.get("workspace") or {}
+        task = context.get("task") or {}
+        if workspace.get("accessMode") != "write" and task.get("accessMode") != "write":
+            return False
+        text = " ".join(
+            str(value)
+            for value in (
+                instruction,
+                task.get("title"),
+                task.get("objective"),
+                task.get("instruction"),
+                " ".join(str(item) for item in task.get("acceptanceCriteria") or []),
+            )
+            if value
+        ).lower()
+        return any(keyword in text for keyword in PREVIEW_REQUEST_KEYWORDS)
+
+    def _has_preview_entry(self, snapshot: dict[str, str]) -> bool:
+        return any(name.lower().endswith((".html", ".htm")) for name in snapshot)
+
+    def _build_preview_repair_prompt(self, instruction: str, context: dict) -> str:
+        return (
+            "上一轮执行没有创建可供 AgentHub 右侧预览的 HTML 入口。"
+            "必须创建或更新 index.html，实现用户要求的可交互小程序/页面。"
+            "不要只创建 README.md 或说明文字；必须产出可直接在浏览器 iframe 中打开的 index.html。\n\n"
+            f"原始用户要求：{instruction}\n\n"
+            "AgentHub handoff context follows as JSON.\n"
+            f"{json.dumps(context, ensure_ascii=False, default=str)}"
+        )
 
     def _snapshot_workspace(self, root: Path) -> dict[str, str]:
         if not root.exists():

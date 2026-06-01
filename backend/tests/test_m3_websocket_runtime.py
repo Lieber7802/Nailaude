@@ -55,10 +55,10 @@ async def test_connection_manager_broadcast_removes_failed_socket_and_reaches_he
     assert healthy.messages == [{"type": "team_board_updated", "data": {"version": 2}}]
 
 
-def test_group_websocket_emits_full_monotonic_runtime_snapshots(client):
+def test_group_websocket_emits_full_monotonic_runtime_snapshots(client, create_agent):
     work_dir = WORKSPACE_ROOT / f"pytest-runtime-{uuid.uuid4()}"
     work_dir.mkdir(parents=True)
-    agents = client.get("/api/v1/agents").json()["data"]
+    agents = [create_agent(), create_agent()]
     conversation = client.post(
         "/api/v1/conversations",
         json={"type": "group", "workDir": str(work_dir), "participantIds": [agents[0]["id"], agents[1]["id"]]},
@@ -81,11 +81,109 @@ def test_group_websocket_emits_full_monotonic_runtime_snapshots(client):
     shutil.rmtree(work_dir)
 
 
-def test_websocket_reconnect_restores_persisted_snapshot_when_memory_cache_is_empty(client):
-    agents = client.get("/api/v1/agents").json()["data"]
+def test_group_opencode_preview_request_emits_webpage_artifact(client, monkeypatch, create_agent):
+    work_dir = WORKSPACE_ROOT / f"pytest-opencode-preview-{uuid.uuid4()}"
+    work_dir.mkdir(parents=True)
+
+    class PreviewRepairAdapter:
+        async def health_check(self):
+            return True
+
+        async def run_task(self, work_dir, instruction, context):
+            Path(work_dir, "README.md").write_text("# Notes only\n", encoding="utf-8")
+            Path(work_dir, "index.html").write_text("<!doctype html><h1>天气小程序</h1>\n", encoding="utf-8")
+            yield AgentEvent(type="text_delta", content="OpenCode 已完成本次执行。\n检测到 2 个文件变更，已生成对应产物卡片。")
+            yield AgentEvent(
+                type="file_created",
+                content="README.md",
+                metadata={
+                    "title": "README.md",
+                    "files": [{"name": "README.md", "content": "# Notes only\n", "language": "markdown"}],
+                    "previewUrl": None,
+                },
+            )
+            yield AgentEvent(
+                type="file_created",
+                content="index.html",
+                metadata={
+                    "title": "index.html",
+                    "files": [
+                        {
+                            "name": "index.html",
+                            "content": "<!doctype html><h1>天气小程序</h1>\n",
+                            "language": "html",
+                        }
+                    ],
+                    "previewUrl": None,
+                },
+            )
+            yield AgentEvent(type="done")
+
+    monkeypatch.setattr(
+        ws_handlers,
+        "agent_manager",
+        AgentManagerService(factories={"opencode": PreviewRepairAdapter, "llm": PreviewRepairAdapter, "mock": PreviewRepairAdapter}),
+    )
+    agents = [
+        create_agent(platform_id="opencode", name="代码工匠 Opencode"),
+        create_agent(platform_id="opencode", name="审查大师 Opencode"),
+    ]
     conversation = client.post(
         "/api/v1/conversations",
-        json={"type": "single", "workDir": "", "participantIds": [agents[0]["id"]]},
+        json={"type": "group", "workDir": str(work_dir), "participantIds": [agents[0]["id"], agents[1]["id"]]},
+    ).json()["data"]
+
+    async def fake_plan_job(job, db):
+        agent = job["agents"][0]
+        return {
+            "status": "ready",
+            "reasoningSummary": "preview artifact regression",
+            "tasks": [
+                {
+                    "id": "task-1",
+                    "title": "生成天气小程序",
+                    "agentId": agent.id,
+                    "agentName": agent.name,
+                    "objective": "生成可预览天气小程序",
+                    "instruction": "请实现一个天气小程序，右侧需要预览",
+                    "acceptanceCriteria": ["创建 index.html 并可预览"],
+                    "constraints": [],
+                    "accessMode": "write",
+                    "dependsOn": [],
+                    "priority": 100,
+                    "riskHints": {},
+                }
+            ],
+        }
+
+    monkeypatch.setattr(ws_handlers, "plan_job", fake_plan_job)
+
+    with client.websocket_connect(f"/ws/{conversation['id']}") as websocket:
+        websocket.send_json({"type": "send_message", "data": {"content": "请实现一个天气小程序，右侧需要预览", "mentions": []}})
+        events = []
+        for _ in range(40):
+            event = websocket.receive_json()
+            events.append(event)
+            if event["type"] == "orchestrator_status" and event["data"]["status"] == "completed":
+                break
+
+    text_events = [event for event in events if event["type"] == "text_delta"]
+    assert text_events
+    assert all("sessionID" not in event["data"]["delta"] for event in text_events)
+    artifacts = [event["data"]["artifact"] for event in events if event["type"] == "artifact"]
+    webpage_artifacts = [artifact for artifact in artifacts if artifact["type"] == "webpage"]
+    assert webpage_artifacts
+    assert webpage_artifacts[0]["title"] == "index.html"
+    assert webpage_artifacts[0]["previewUrl"] == f"/preview/{conversation['id']}/index.html"
+    assert client.get(webpage_artifacts[0]["previewUrl"]).status_code == 200
+    shutil.rmtree(work_dir)
+
+
+def test_websocket_reconnect_restores_persisted_snapshot_when_memory_cache_is_empty(client, create_agent):
+    agent = create_agent()
+    conversation = client.post(
+        "/api/v1/conversations",
+        json={"type": "single", "workDir": "", "participantIds": [agent["id"]]},
     ).json()["data"]
 
     with client.websocket_connect(f"/ws/{conversation['id']}") as websocket:
@@ -103,7 +201,7 @@ def test_websocket_reconnect_restores_persisted_snapshot_when_memory_cache_is_em
     assert restored == completed
 
 
-def test_websocket_queues_second_message_until_active_run_finishes(client, monkeypatch):
+def test_websocket_queues_second_message_until_active_run_finishes(client, monkeypatch, create_agent):
     class SlowAdapter:
         def __init__(self, response_delay=0):
             pass
@@ -114,10 +212,10 @@ def test_websocket_queues_second_message_until_active_run_finishes(client, monke
             yield AgentEvent(type="done")
 
     monkeypatch.setattr(ws_handlers, "MockAdapter", SlowAdapter)
-    agents = client.get("/api/v1/agents").json()["data"]
+    agent = create_agent()
     conversation = client.post(
         "/api/v1/conversations",
-        json={"type": "single", "workDir": "", "participantIds": [agents[0]["id"]]},
+        json={"type": "single", "workDir": "", "participantIds": [agent["id"]]},
     ).json()["data"]
 
     with client.websocket_connect(f"/ws/{conversation['id']}") as websocket:
@@ -139,7 +237,7 @@ def test_websocket_queues_second_message_until_active_run_finishes(client, monke
     assert completed == list(dict.fromkeys(queued))
 
 
-def test_websocket_executes_same_batch_in_parallel_with_handoff_context(client, monkeypatch):
+def test_websocket_executes_same_batch_in_parallel_with_handoff_context(client, monkeypatch, create_agent):
     active = 0
     max_active = 0
     contexts = []
@@ -160,7 +258,7 @@ def test_websocket_executes_same_batch_in_parallel_with_handoff_context(client, 
             yield AgentEvent(type="done")
 
     monkeypatch.setattr(ws_handlers, "MockAdapter", ObservingAdapter)
-    agents = client.get("/api/v1/agents").json()["data"]
+    agents = [create_agent(), create_agent()]
     conversation = client.post(
         "/api/v1/conversations",
         json={"type": "group", "workDir": str(work_dir), "participantIds": [agents[0]["id"], agents[1]["id"]]},
@@ -180,7 +278,7 @@ def test_websocket_executes_same_batch_in_parallel_with_handoff_context(client, 
     shutil.rmtree(work_dir)
 
 
-def test_stop_generation_cancels_active_run(client, monkeypatch):
+def test_stop_generation_cancels_active_run(client, monkeypatch, create_agent):
     class SlowAdapter:
         def __init__(self, response_delay=0):
             pass
@@ -190,10 +288,10 @@ def test_stop_generation_cancels_active_run(client, monkeypatch):
             yield AgentEvent(type="done")
 
     monkeypatch.setattr(ws_handlers, "MockAdapter", SlowAdapter)
-    agents = client.get("/api/v1/agents").json()["data"]
+    agent = create_agent()
     conversation = client.post(
         "/api/v1/conversations",
-        json={"type": "single", "workDir": "", "participantIds": [agents[0]["id"]]},
+        json={"type": "single", "workDir": "", "participantIds": [agent["id"]]},
     ).json()["data"]
 
     with client.websocket_connect(f"/ws/{conversation['id']}") as websocket:
@@ -283,7 +381,7 @@ def test_write_task_downgraded_to_text_only_llm_fails_with_visible_warning(clien
     shutil.rmtree(work_dir)
 
 
-def test_downstream_handoff_receives_prior_batch_audit_and_real_batch_id(client, monkeypatch):
+def test_downstream_handoff_receives_prior_batch_audit_and_real_batch_id(client, monkeypatch, create_agent):
     contexts = []
     work_dir = WORKSPACE_ROOT / f"pytest-handoff-audit-{uuid.uuid4()}"
     work_dir.mkdir(parents=True)
@@ -337,7 +435,7 @@ def test_downstream_handoff_receives_prior_batch_audit_and_real_batch_id(client,
 
     monkeypatch.setattr(ws_handlers, "MockAdapter", AuditingAdapter)
     monkeypatch.setattr(ws_handlers, "plan_job", fake_plan_job)
-    agents = client.get("/api/v1/agents").json()["data"]
+    agents = [create_agent(), create_agent()]
     conversation = client.post(
         "/api/v1/conversations",
         json={"type": "group", "workDir": str(work_dir), "participantIds": [agents[0]["id"], agents[1]["id"]]},
