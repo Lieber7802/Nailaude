@@ -2,10 +2,13 @@
 
 ## OpenCode
 
-- Local command is available.
-- `opencode run [message..] --format json --dir <workspace>` provides a one-shot integration path.
+- Official install paths include `npm install -g opencode-ai`, `brew install anomalyco/tap/opencode`, and `curl -fsSL https://opencode.ai/install | bash`.
+- `opencode run [message..] --format json --model deepseek/deepseek-v4-flash --dir <workspace>` provides the one-shot integration path.
+- DeepSeek is a built-in Models.dev provider for OpenCode. It uses `DEEPSEEK_API_KEY`; Models.dev currently lists provider id `deepseek` with models including `deepseek-chat`, `deepseek-reasoner`, `deepseek-v4-flash`, and `deepseek-v4-pro`.
 - `--session`, `--continue`, and `--fork` expose optional session reuse.
+- `--dangerously-skip-permissions` allows non-interactive AgentHub execution in a bounded workspace.
 - `ProcessPool` terminates the process on timeout or cancellation.
+- The adapter snapshots the workspace before and after execution and converts created/modified text files into standard AgentHub file events.
 
 ## Codex
 
@@ -24,6 +27,6 @@ CLI availability is optional. CI and the stable demo path use deterministic fake
 ## M3 Verification Record
 
 - DeepSeek: fake-transport JSON, streaming, timeout/retry, usage, planner, and summarizer coverage passed. A real API health call was intentionally skipped; no API key was written to `.env`.
-- OpenCode: `opencode --help` and `opencode run --help` succeeded locally. The supported one-shot adapter command is recorded above.
+- OpenCode: npm registry downloads were slow, so Homebrew install was used. `opencode` 1.15.13 is installed at `/opt/homebrew/bin/opencode`; `opencode --version` and `opencode run --help` succeeded locally. The supported one-shot adapter command is recorded above.
 - Codex: real local adapter smoke succeeded. `CodexAdapter.run_task()` created `adapter_smoke.txt`, emitted a `text_delta`, emitted `file_created`, and finished with `done`.
 - Mock-first browser smoke: group chat produced two Agent responses and artifact cards.

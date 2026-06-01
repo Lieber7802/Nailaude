@@ -783,3 +783,34 @@
 ### Next Steps
 - For full product acceptance, run a browser/WebSocket conversation with a Codex-backed Agent selected in the database and confirm the chat artifact appears in the UI.
 - OpenCode remains a one-shot minimal adapter; session support is still out of scope for this pass.
+
+## [2026-06-01] Codex - M3 OpenCode DeepSeek Integration
+
+### Completed
+- Installed OpenCode through Homebrew after npm registry download stalls; verified `/opt/homebrew/bin/opencode` version `1.15.13` and `opencode run --help`.
+- Updated `OpenCodeAdapter` to run the real one-shot CLI path:
+  `opencode run --format json --model deepseek/deepseek-v4-flash --dir <workspace> --dangerously-skip-permissions <prompt>`.
+- Added JSONL text extraction and before/after workspace snapshots so OpenCode-created and OpenCode-modified text files emit standard `file_created` / `file_modified` events.
+- Recorded DeepSeek provider/model findings from OpenCode docs and Models.dev in `docs/CLI_AGENT_RESEARCH.md`.
+
+### Added/Modified Files
+- `backend/app/adapters/opencode.py` (modified)
+- `backend/app/config.py` (modified)
+- `backend/tests/test_m3_cli_adapters.py` (modified)
+- `docs/CLI_AGENT_RESEARCH.md` (modified)
+- `docs/plans/M3_2_CLI_ADAPTERS_CHECKLIST.md` (modified)
+- `DEVLOG.md` (modified)
+
+### Interface Changes
+- No shared type, REST, or WebSocket contract changes.
+- Added backend-only `OPENCODE_MODEL`, defaulting to `deepseek/deepseek-v4-flash`.
+
+### Verification
+- `opencode --version` -> `1.15.13`
+- `opencode run --help` -> confirmed `--format`, `--model`, `--dir`, and `--dangerously-skip-permissions`.
+- `/tmp/agenthub-test-venv311/bin/python -m pytest backend/tests/test_m3_cli_adapters.py backend/tests/test_m3_process_pool.py backend/tests/test_m3_agent_manager.py` -> `15 passed`
+- `git diff --check` -> passed
+
+### Next Steps
+- Configure `DEEPSEEK_API_KEY` in the runtime environment before a real OpenCode task smoke; no `.env` secrets were edited.
+- Session reuse remains out of scope; M3 uses one-shot `opencode run`.
