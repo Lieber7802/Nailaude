@@ -753,3 +753,33 @@
 ### Teammate Notes
 - Safety stash `safety: m3 before origin-main integration` intentionally remains
   until the integrated M3 work is committed.
+
+## [2026-06-01] Codex - M3 Codex CLI Integration
+
+### Completed
+- Added `M3_CODEX_CLI_INTEGRATION` plan/checklist for the remaining 小马 M3 Agent 接入 gap.
+- Updated `CodexAdapter` to use the current local CLI path:
+  `codex --ask-for-approval never exec --json --cd <workspace> --sandbox workspace-write --skip-git-repo-check <prompt>`.
+- Parsed real Codex JSONL `item.completed` agent messages into `text_delta`.
+- Added workspace before/after snapshots so Codex-created and Codex-modified text files emit standard `file_created` / `file_modified` events for ArtifactService.
+- Normalized real DeepSeek Planner output variants (`Ready`, `plan.tasks`, `readWriteAccess`, `description`, string `acceptanceCriteria`) before M3 schema validation.
+- Made M3 workspace snapshot copying deterministic by sorting traversal order before applying total-size limits.
+- Refreshed `docs/CLI_AGENT_RESEARCH.md` to replace the stale access-denied Codex finding with the working local CLI smoke result.
+
+### Interface Changes
+- No shared type, REST, or WebSocket contract changes.
+- Existing `AgentAdapter` and `AgentEvent` contracts are preserved.
+
+### Verification
+- `cd backend && ../.venv/bin/python -m pytest -q tests/test_m3_cli_adapters.py` -> `4 passed`
+- `cd backend && ../.venv/bin/python -m pytest -q tests/test_m3_planner.py` -> `6 passed`
+- `cd backend && ../.venv/bin/python -m pytest -q tests/test_m3_planner.py tests/test_m3_cli_adapters.py` -> `10 passed`
+- `cd backend && ../.venv/bin/python -m pytest -q tests/test_m3_cli_adapters.py tests/test_m3_agent_manager.py tests/test_m3_websocket_runtime.py` -> `18 passed`
+- `cd backend && ../.venv/bin/python -m pytest -q tests/test_m3_workspace_snapshot.py tests/test_m3_cli_adapters.py tests/test_m3_agent_manager.py tests/test_m3_websocket_runtime.py` -> `21 passed`
+- `cd backend && ../.venv/bin/python -m pytest -q` -> `124 passed`
+- Real local Codex adapter smoke: `CodexAdapter.run_task()` created `adapter_smoke.txt`, emitted `text_delta`, emitted `file_created`, then emitted `done`.
+- Real DeepSeek Planner + Codex WebSocket smoke: generated `deepseek_codex_smoke.txt`, emitted `artifact`, and finished `completed`.
+
+### Next Steps
+- For full product acceptance, run a browser/WebSocket conversation with a Codex-backed Agent selected in the database and confirm the chat artifact appears in the UI.
+- OpenCode remains a one-shot minimal adapter; session support is still out of scope for this pass.
