@@ -61,7 +61,7 @@
 ### 完成内容
 - 沉淀 M1 总计划、M1_1 实施计划和 M1_1 checklist 到 `docs/plans/`
 - 实现 REST 统一响应、内置平台/Agent seed、Conversation/Message/Agent 基础 API
-- 增加 pytest 覆盖 Agent seed、会话 CRUD、消息 REST fallback 和错误响应格式
+- 增加 pytest 覆盖 Agent seed、会话 CRUD、消息 REST 降级接口 和错误响应格式
 
 ### 新增/修改文件
 - `docs/plans/M1_TOTAL_PLAN.md` (新增)
@@ -78,7 +78,7 @@
 
 ### 下一步
 - 进入 M1_2：WebSocket + MockAdapter 流式闭环
-- 将 REST fallback 的消息持久化逻辑复用到 WS `send_message`
+- 将 REST 降级接口 的消息持久化逻辑复用到 WS `send_message`
 
 ### 给其他成员的提醒
 - @小马：Agent 列表现在有 mock seed，可用作后续 Adapter/LLMProvider 联调入口
@@ -212,10 +212,10 @@
 ### 给其他成员的提醒
 - @小马：M1 的 Mock WS 事件已经可作为真实 Adapter 输出契约参考
 - @洋芋：M1 的 CodeCard/PreviewPanel 是基础版，占位清晰，后续可专注增强产物体验
-## [2026-05-25] Codex - M1 稳定性优化与 review 修复
+## [2026-05-25] Codex - M1 稳定性优化与审查修复
 
 ### 完成内容
-- 新增 M1 optimization plan/checklist，并按 review 发现逐项修复。
+- 新增 M1 优化 plan/checklist，并按审查发现逐项修复。
 - 后端补齐历史消息 artifacts/agentName、统一 422 错误格式、workDir/type/content 校验和 WS 异常清理。
 - WebSocket 新增 `user_message` 下行事件，前端可用 `clientMessageId` 对齐乐观消息与服务端真实消息。
 - 前端修复 stale socket 状态竞态、历史 artifact hydrate、发送失败反馈和关键中文文案。
@@ -252,8 +252,8 @@
 - FastAPI 422 validation error 统一为 `ApiResponse` 错误格式。
 
 ### 验证
-- `cd backend && pytest -q` -> 8 passed
-- `cd frontend && npm run build` -> passed
+- `cd backend && pytest -q` -> 8 项通过
+- `cd frontend && npm run build` -> 通过
 - `cd frontend && npm audit --audit-level=moderate` -> found 0 vulnerabilities
 
 ### 下一步
@@ -262,13 +262,13 @@
 ### 给其他成员的提醒
 - @小马：真实 Adapter 接入前请继续沿用 MockAdapter 的 WS 事件契约，尤其是 artifacts 与 `message_done` 的顺序。
 - @洋芋：前端历史恢复已经可取回 CodeCard/PreviewPanel，后续 UI 增强可直接消费 message artifacts。
-## [2026-05-25] Codex - M2 Chat Core
+## [2026-05-25] Codex - M2 聊天核心
 
 ### 完成内容
 - 新增 M2 总计划、M2_1-M2_6 子计划和 checklist。
 - Conversation list 支持搜索最近消息、展示 lastMessage、参与者、会话类型和删除。
 - 新增新建会话弹窗，支持单聊/群聊 Agent 选择和 workDir 输入。
-- 实现 @ mention 浮层选择，发送时解析 mentions，单聊支持默认参与者 fallback。
+- 实现 @ 提及 浮层选择，发送时解析 提及，单聊支持默认参与者降级逻辑。
 - 新增规则版 OrchestratorService：按 mention/participant 顺序生成 sequential DispatchPlan。
 - WebSocket 主流程接入 Orchestrator，推送 dispatching/executing/summarizing 状态，并为每个选中 Agent 运行 MockAdapter。
 - 前端接入 agent_thinking/orchestrator_status/error runtime 状态，消息气泡展示头像、角色、时间和流式状态。
@@ -293,8 +293,8 @@
 - WS 现在会在 Mock 执行前后推送 `orchestrator_status`。
 
 ### 验证
-- `cd backend && pytest -q` -> 11 passed
-- `cd frontend && npm run build` -> passed
+- `cd backend && pytest -q` -> 11 项通过
+- `cd frontend && npm run build` -> 通过
 
 ### 下一步
 - M3 可在当前 OrchestratorService 上加入 LLM 决策、上下文工程、TeamBoard/ProjectState 更新。
@@ -303,11 +303,11 @@
 - @小马：真实 Adapter 接入时继续沿用 M2 的 WS 事件顺序；M2 仍只依赖 MockAdapter。
 - @洋芋：消息流和 artifact store 已能消费多 Agent 产物，M4 可直接增强 CodeCard/PreviewPanel。
 
-## [2026-05-26] Codex - M2 Review Fixes
+## [2026-05-26] Codex - M2 审查修复
 
 ### 完成内容
-- 按 `docs/M2_REVIEW_REPORT.md` 修复 M2 review 发现：限制 WebSocket mention 只能调度会话参与 Agent，禁止空参与者会话，Adapter 失败时 task 标记为 failed。
-- 前端修复 mention 过匹配、runtime error 粘滞、失败后 thinking 状态清理，以及会话列表 lastMessage/排序实时更新。
+- 按 `docs/M2_REVIEW_REPORT.md` 修复 M2 审查发现：限制 WebSocket 提及只能调度会话参与 Agent，禁止空参与者会话，Adapter 失败时将任务标记为失败。
+- 前端修复 mention 过匹配、运行时错误 粘滞、失败后 thinking 状态清理，以及会话列表 lastMessage/排序实时更新。
 - 对齐 REST message fallback 文档：M2 仅持久化用户消息，不触发 Orchestrator。
 - 清理 WebSocket 死 helper，并修复前端 lint 失败项。
 
@@ -328,21 +328,21 @@
 - `GET /conversations` 的 `lastMessage` 语义保持不变。
 
 ### 验证
-- `cd backend && pytest -q` -> 14 passed
-- `cd frontend && npm run lint` -> passed
-- `cd frontend && npm run build` -> passed
+- `cd backend && pytest -q` -> 14 项通过
+- `cd frontend && npm run lint` -> 通过
+- `cd frontend && npm run build` -> 通过
 
 ### 下一步
 - 提交并创建 M2 PR，等待 GitHub merge。
 
 ### 给其他成员的提醒
-- @小马：真实 Adapter 异常时请沿用 `error` + failed task status 的终止语义。
+- @小马：真实 Adapter 异常时请沿用 `error` + 任务失败状态的终止语义。
 - @洋芋：M4 预览增强可继续消费当前多 Agent message/artifact store。
-## [2026-05-26] Codex - M2 Review Report
+## [2026-05-26] Codex - M2 审查报告
 
 ### 完成内容
 - 将 M2 严格代码审查结果沉淀为独立交接文档，供负责开发的 Agent 按优先级优化。
-- 文档覆盖 WebSocket 失败状态、会话 Agent 边界、空参与者 fallback、REST fallback 契约、@mention 解析、会话列表同步、runtime error、lint 和死代码清理。
+- 文档覆盖 WebSocket 失败状态、会话 Agent 边界、空参与者降级逻辑、REST 降级接口 契约、@mention 解析、会话列表同步、运行时错误、lint 和死代码清理。
 
 ### 新增/修改文件
 - `docs/M2_REVIEW_REPORT.md` (新增)
@@ -352,7 +352,7 @@
 - 无实现接口变化；文档指出 `POST /conversations/{id}/messages` 与 API_SPEC 存在语义不一致，需要后续修正实现或文档。
 
 ### 验证
-- 本次为 review 文档沉淀，未修改业务实现；沿用 review 时的验证快照：`pytest -q` 11 passed，`frontend npm run build` passed，`frontend npm run lint` failed。
+- 本次为审查文档沉淀，未修改业务实现；沿用审查时的验证快照：`pytest -q` 11 项通过，`frontend npm run build` 通过，`frontend npm run lint` 失败。
 
 ### 下一步
 - 开发 Agent 优先处理 `docs/M2_REVIEW_REPORT.md` 中 P1 项，再补充对应回归测试。
@@ -381,8 +381,8 @@
 - 无新增依赖。
 
 ### 验证
-- `cd frontend && npm run lint` -> passed
-- `cd frontend && npm run build` -> passed
+- `cd frontend && npm run lint` -> 通过
+- `cd frontend && npm run build` -> 通过
 - 浏览器烟测：聊天顶部显示“X 个代理参与”和更新时间；桌面/平板/手机预览按钮均能切换 active；缩放按钮能更新到 `125%`；AgentHub 页面 console 无 error。
 
 ### 下一步
@@ -415,22 +415,22 @@
 - 顶部状态只从现有前端数据和 WebSocket runtime 派生，不展示真实在线人数或平台健康状态。
 
 ### 验证
-- `cd frontend && npm run lint` -> passed
-- `cd frontend && npm run build` -> passed
+- `cd frontend && npm run lint` -> 通过
+- `cd frontend && npm run build` -> 通过
 - 浏览器烟测：`http://localhost:5173/workspace` 可打开；有产物会话中 `产出物` 能列出 `index.html`，`预览` 能显示 preview shell，`变更` 能显示空态；发送 `@代码工匠 视觉优化后再生成一次` 后 Mock 回复和产物正常出现，浏览器 console 无 error。
 
 ### 下一步
 - 继续在 M2 UI polish 范围内补细节时，可优先处理空状态文案、会话时间显示真实化、Preview 面板全屏/缩放交互。
 - 进入 M3 前仍不建议加入真实 presence 文案，除非后端新增 `presence_update` 或 Agent health 状态。
 
-## [2026-05-28] Codex - M3 DeepSeek LLM Backend Docs
+## [2026-05-28] Codex - M3 DeepSeek LLM 后端文档
 
 ### 完成内容
 - 新增 `M3_DEEPSEEK_LLM_BACKEND` plan/checklist，明确本轮只调整文档策略，不改运行代码、不写入 `.env`。
 - 将 PRD、技术设计、任务拆解、API 示例中的默认 LLM 后端从火山方舟调整为私人 DeepSeek API。
 - 明确 DeepSeek 是 Orchestrator / LLMProvider 的模型后端，不计入“至少两个 Agent 平台”；平台接入仍由 OpenCode + Codex 满足。
 - 记录 DeepSeek `deepseek-v4-flash` 官方价格页在 2026-05-28 查询到的预算估算，并加入赛前复核提醒。
-- 补充 API Key 安全与预算控制策略：backend-only、Mock-first、限制 max_tokens/超时/重试、记录 token usage 与估算费用。
+- 补充 API Key 安全与预算控制策略：仅后端使用、Mock-first、限制 max_tokens/超时/重试、记录 token usage 与估算费用。
 
 ### 新增/修改文件
 - `docs/plans/M3_DEEPSEEK_LLM_BACKEND_PLAN.md` (新增)
@@ -453,16 +453,16 @@
 - 未运行代码测试：本轮仅修改文档。
 
 ### 下一步
-- M3 实现时先补 `LLMProviderAdapter` 的 DeepSeek OpenAI-compatible client，再把 Orchestrator LLM 决策接到同一个 client。
+- M3 实现时先补 `LLMProviderAdapter` 的 DeepSeek OpenAI 兼容客户端，再把 Orchestrator LLM 决策接到同一个 client。
 - 保留 MockAdapter 作为开发、CI、答辩兜底路径。
 
-## [2026-05-29] Codex - M2 DeepSeek Adapter Completion
+## [2026-05-29] Codex - M2 DeepSeek Adapter 接入完成
 
 ### 完成内容
 - 新建 `codex/m2-deepseek-completion` 开发分支。
 - 新增 `M2_DEEPSEEK_ADAPTER` plan/checklist，明确本轮只补小马 M2 后端范围：DeepSeek LLMProvider、AgentManager、API-spec PUT 兼容。
-- 实现 `LLMProviderAdapter`：读取 backend-only `DEEPSEEK_API_KEY`/base URL/model 配置，调用 DeepSeek OpenAI-compatible streaming chat completion，解析 SSE `text_delta`，缺 key 时输出 `error` + `done`，并将 fenced code block 转为 `file_created` 事件。
-- 实现 `AgentManagerService` adapter factory/cache/health check，支持 `mock | llm | opencode | codex`。
+- 实现 `LLMProviderAdapter`：读取 仅后端使用的 `DEEPSEEK_API_KEY`/base URL/model 配置，调用 DeepSeek OpenAI 兼容的流式聊天补全接口，解析 SSE `text_delta`，缺 key 时输出 `error` + `done`，并将 围栏代码块 转为 `file_created` 事件。
+- 实现 `AgentManagerService` Adapter 工厂、缓存和健康检查，支持 `mock | llm | opencode | codex`。
 - WebSocket dispatch 改为按 Agent `platform_id` 选择 adapter；M2 内置 Agent 仍保持 Mock-backed。
 - Agent 更新接口新增 `PUT /api/v1/agents/{id}`，与 API_SPEC 对齐，同时保留 `PATCH`。
 - 兼容 Windows 风格 `D:/.../workspaces/...` workDir 测试输入，并保持 `../outside` 路径校验。
@@ -487,15 +487,15 @@
 - DeepSeek API Key 只从运行时环境变量读取，未写入 `.env` 或仓库。
 
 ### 验证
-- `cd backend && ../.venv/bin/python -m pytest -q tests/test_m2_deepseek_adapter.py` -> 4 passed
-- `cd backend && ../.venv/bin/python -m pytest -q` -> 19 passed
-- `cd frontend && npm run build` -> passed，保留 Vite chunk size warning
+- `cd backend && ../.venv/bin/python -m pytest -q tests/test_m2_deepseek_adapter.py` -> 4 项通过
+- `cd backend && ../.venv/bin/python -m pytest -q` -> 19 项通过
+- `cd frontend && npm run build` -> 通过，保留 Vite chunk 大小警告
 
 ### 下一步
 - 若要真实联调 DeepSeek，请在本机后端运行环境设置 `DEEPSEEK_API_KEY`，不要提交到仓库。
 - M3 可继续在同一个 AgentManager 基础上接 OpenCode/Codex CLI，并保留 CLI -> LLM -> Mock 降级策略。
 
-## [2026-05-31] Codex - M4 Artifact Preview System
+## [2026-05-31] Codex - M4 Artifact 预览系统
 
 ### 完成内容
 - 当前工作已在 `codex-m4-artifact-preview-system` 分支上继续。
@@ -507,7 +507,7 @@
 - 新增 `GET /conversations/{conversation_id}/artifacts`，补齐 `GET /artifacts/{id}/versions` 简版查询。
 - WebSocket artifact 生成改为走 ArtifactService；Mock HTML 现在会作为 `webpage` 产物推送。
 - 前端替换 CodeCard/DiffCard/WebPreviewCard/PreviewPanel/CodeEditor/DiffViewer/IframePreview 占位，实现聊天流卡片、iframe 预览、Monaco 只读代码和 Diff 视图。
-- Vite dev server 代理新增 `/preview` 到后端。
+- Vite 开发服务器代理新增 `/preview` 到后端。
 
 ### 新增/修改文件
 - `docs/plans/M4_ARTIFACT_PREVIEW_PLAN.md`
@@ -536,31 +536,31 @@
 
 ### 验证
 - `git status --short --branch` -> 当前分支 `codex-m4-artifact-preview-system`
-- `cd backend && python -m compileall app` -> passed
-- `cd backend && .\.venv\Scripts\python.exe -m pytest -q tests/test_m4_artifact_preview.py` -> 2 passed
-- `cd backend && .\.venv\Scripts\python.exe -m pytest -q` -> 23 passed
-- `cd frontend && npm run build` -> passed
-- 剩余 warning：Starlette/httpx deprecation warning、pytest cache warning、Vite chunk size warning
+- `cd backend && python -m compileall app` -> 通过
+- `cd backend && .\.venv\Scripts\python.exe -m pytest -q tests/test_m4_artifact_preview.py` -> 2 项通过
+- `cd backend && .\.venv\Scripts\python.exe -m pytest -q` -> 23 项通过
+- `cd frontend && npm run build` -> 通过
+- 剩余警告：Starlette/httpx 弃用警告、pytest 缓存警告、Vite chunk 大小警告
 - 修复验证中暴露的问题：M4 测试改用项目 `workspaces/` 目录，避免 schema 拒绝临时目录；移除前端未使用 `ZOOM_STEP`；相对 `workDir` 统一解析到项目根目录。
 
 ### 下一步
 - M5 可在当前 DiffData 和 PreviewPanel 基础上继续做一键应用 Diff、版本历史切换、多文件预览增强。
-- 后续可考虑拆分 Monaco/AntD 相关 chunk，消除 Vite 500 kB chunk warning。
+- 后续可考虑拆分 Monaco/AntD 相关 chunk，消除 Vite 500 kB chunk 大小警告。
 
 ### 追加修复
 - 修复聊天流产物卡片“打开”无明显反应的问题：`artifactStore` 现在保存完整 `activeArtifact`，卡片打开动作会携带 artifact 对象，PreviewPanel 即使遇到历史消息或 store 未同步列表也能展示对应产物。
-- 验证：`cd frontend && npm run build` -> passed，保留 Vite chunk size warning。
+- 验证：`cd frontend && npm run build` -> 通过，保留 Vite chunk 大小警告。
 - 修复 Agent 更新接口忽略 `platformId` 的问题：`AgentUpdate` schema 现在接收 `platformId` alias，支持把内置 Agent 从 `mock` 切到 `llm`。
-- 验证：`cd backend && .\.venv\Scripts\python.exe -m pytest -q tests/test_m2_chat_core.py tests/test_m4_artifact_preview.py` -> 10 passed。
-- 修复真实 LLM 长 HTML 回复没有闭合 fenced code block 时不生成 artifact 的问题：LLMProvider 现在允许代码块延续到文本结尾，仍可提取 `file_created` 事件。
-- 验证：`cd backend && .\.venv\Scripts\python.exe -m pytest -q tests/test_m2_deepseek_adapter.py tests/test_m2_chat_core.py tests/test_m4_artifact_preview.py` -> 15 passed。
+- 验证：`cd backend && .\.venv\Scripts\python.exe -m pytest -q tests/test_m2_chat_core.py tests/test_m4_artifact_preview.py` -> 10 项通过。
+- 修复真实 LLM 长 HTML 回复没有闭合 围栏代码块 时不生成 artifact 的问题：LLMProvider 现在允许代码块延续到文本结尾，仍可提取 `file_created` 事件。
+- 验证：`cd backend && .\.venv\Scripts\python.exe -m pytest -q tests/test_m2_deepseek_adapter.py tests/test_m2_chat_core.py tests/test_m4_artifact_preview.py` -> 15 项通过。
 - 明确聊天卡片“打开”语义：它会在右侧 PreviewPanel 选中该 artifact 并切到对应 tab，不会新开浏览器窗口。为重复点击同一产物增加 `openRevision`，确保即使 active artifact 未变化，也会把右侧切回预览/代码/变更 tab。
-- 验证：`cd frontend && npm run build` -> passed，保留 Vite chunk size warning。
+- 验证：`cd frontend && npm run build` -> 通过，保留 Vite chunk 大小警告。
 - 将产物卡片主操作文案从“打开”改为“在右侧查看”；网页产物额外提供外链图标按钮，用于新标签页打开 `previewUrl`。
-- 验证：`cd frontend && npm run build` -> passed，保留 Vite chunk size warning。
+- 验证：`cd frontend && npm run build` -> 通过，保留 Vite chunk 大小警告。
 - 修复右侧网页预览无法交互的问题：主预览 iframe 的 sandbox 增加 `allow-scripts allow-forms allow-same-origin`，支持 AI 产物中的按钮事件和本地存储；聊天流缩略图仍保持不可交互。
-- 验证：`cd frontend && npm run build` -> passed，保留 Vite chunk size warning。
-## [2026-05-30] Codex - M3 Orchestrator Planner Design
+- 验证：`cd frontend && npm run build` -> 通过，保留 Vite chunk 大小警告。
+## [2026-05-30] Codex - M3 Orchestrator Planner 设计
 
 ### 完成内容
 - 新增 M3 Orchestrator Planner v1.0 详细设计文档，沉淀已确认的 LLM-only 规划、规则校验和静态 DAG 批次推导方案。
@@ -586,7 +586,7 @@
 - 继续细化四层上下文的数据来源、预算、筛选、压缩和刷新规则。
 - 在整体 M3 设计确认后，再统一更新共享类型和 API 契约并开始实现。
 
-## [2026-05-31] Codex - M3 Orchestrator Coordination Design
+## [2026-05-31] Codex - M3 Orchestrator 协作设计
 
 ### 完成内容
 - 新增 M3 Orchestrator 协作上下文与状态设计文档，覆盖 `3.8` 至 `3.11` 的已确认方案。
@@ -613,7 +613,7 @@
 - 进入 M3 总体实现计划与 checklist 编写。
 - 在实施前同步更新共享类型与 API 契约。
 
-## [2026-05-31] Codex - M3 Total Implementation Plan
+## [2026-05-31] Codex - M3 总体实施计划
 
 ### 完成内容
 - 新增 M3 总体实现计划和 checklist，将真实 Agent 接入、Orchestrator 增强与协作状态拆分为十一块可独立验收的实施模块。
@@ -640,146 +640,167 @@
 - 每个模块开始前创建对应子计划和 checklist，按 Test-first 流程推进。
 
 
-## [2026-05-31] Codex - M3 Orchestrator Runtime Implementation
+## [2026-05-31] Codex - M3 Orchestrator 运行时实现
 
-### Completed
-- Implemented M3 contracts, DeepSeek client, LLMProvider, CLI adapters, process lifecycle management, adapter fallback, persistence models, and Alembic migration.
-- Added safe workspace scanning, Git inspection, lightweight handoffs, isolated read snapshots, planner validation, deterministic scheduling, FIFO runtime execution, cancellation, and persisted reconnect restoration.
-- Added Team Board atomic notes, deduplication, question resolution, deterministic merge, conflict `review_required` fallback, optional DeepSeek patch summarization, and non-blocking warnings.
-- Added Project State deterministic facts, optional DeepSeek summarization, summary failure warnings, GET APIs, WebSocket collaboration events, clarification resume, capability recommendation confirmation, and elevated write approval.
-- Added frontend collaboration state, stale-sequence rejection, batch display, input and approval cards, Team Board display, Project State display, and shared-state refresh handling.
-- Added `docs/M3_API_CONTRACT.md`, `docs/plans/M3_IMPLEMENTATION_REPORT.md`, child plans/checklists, and CLI research conclusions.
+### 完成内容
+- 实现 M3 契约、DeepSeek 客户端、LLMProvider、CLI Adapter、进程生命周期管理、Adapter 降级、持久化模型和 Alembic 迁移。
+- 新增安全 workspace 扫描、Git 检查、轻量交接、隔离只读快照、Planner 校验、确定性调度、FIFO 运行时执行、取消和持久化重连恢复。
+- 新增 Team Board 原子笔记、去重、问题解决、确定性合并、冲突时 `review_required` 降级、可选 DeepSeek patch 摘要和非阻塞警告。
+- 新增 Project State 确定性事实、可选 DeepSeek 摘要、摘要失败警告、GET API、WebSocket 协作事件、澄清恢复、能力推荐确认和提权写入审批。
+- 新增前端协作状态、过期序列拒绝、批次展示、输入卡片和审批卡片、Team Board 展示、Project State 展示和共享状态刷新处理。
+- 新增 `docs/M3_API_CONTRACT.md`、`docs/plans/M3_IMPLEMENTATION_REPORT.md`、子计划/checklist 和 CLI 调研结论。
 
-### Verification
+### 验证
 - `cd backend && pytest -q`
 - `cd frontend && npm run lint`
 - `cd frontend && npm run build`
-- Empty SQLite database `alembic upgrade head`
-- Mock-first browser group-chat smoke: two Agent responses and artifact cards rendered.
-- DeepSeek real health call intentionally skipped. The supplied API key was not persisted or echoed; fake-transport coverage passed.
-- OpenCode help smoke passed. Codex desktop executable returned access denied and correctly remains a fallback case.
+- 空 SQLite 数据库执行 `alembic upgrade head`
+- Mock-first 浏览器群聊烟测：成功渲染两个 Agent 回复和产物卡片。
+- 有意跳过 DeepSeek 真实健康检查。传入的 API Key 未持久化、未回显；fake transport 覆盖通过。
+- OpenCode help 烟测通过。Codex 桌面可执行文件返回拒绝访问，按预期保持为降级场景。
 
-## [2026-05-31] Codex - M3 Strict Review Optimization Checklist
+## [2026-05-31] Codex - M3 严格审查优化 Checklist
 
-### Completed
-- Reviewed the M3 implementation artifacts, API contracts, runtime code paths, frontend WebSocket state handling, and milestone documentation.
-- Added `docs/plans/M3_OPTIMIZATION_CHECKLIST.md` as an agent-ready remediation document with prioritized P0, P1, and P2 findings.
-- Included evidence locations, required fixes, acceptance criteria, recommended execution order, and verification steps.
-- Recorded reproduced runtime gaps: cancellation waits for blocked Agent work, cross-conversation approval can mutate another paused job, and Project State GET increments the version on an unchanged workspace.
+### 完成内容
+- 审查 M3 实现产物、API 契约、运行时代码路径、前端 WebSocket 状态处理和里程碑文档。
+- 新增 `docs/plans/M3_OPTIMIZATION_CHECKLIST.md`，作为可直接交给 Agent 执行的整改文档，按优先级记录 P0、P1 和 P2 问题。
+- 补充证据位置、必需修复项、验收标准、推荐执行顺序和验证步骤。
+- 记录已复现的运行时缺口：取消操作会等待阻塞中的 Agent 工作、跨会话审批可能修改另一个暂停任务、Project State GET 在 workspace 未变化时仍会增加版本号。
 
-### Added/Modified Files
-- `docs/plans/M3_OPTIMIZATION_CHECKLIST.md` (added)
-- `DEVLOG.md` (modified)
+### 新增/修改文件
+- `docs/plans/M3_OPTIMIZATION_CHECKLIST.md`（新增）
+- `DEVLOG.md`（修改）
 
-### Interface Changes
-- No runtime code changes.
-- No `packages/shared/types.ts` changes.
-- No `docs/API_SPEC.md` changes.
+### 接口变更
+- 无运行时代码变更。
+- 未修改 `packages/shared/types.ts`。
+- 未修改 `docs/API_SPEC.md`。
 
-### Verification
-- Manually reviewed the checklist against the strict M3 review findings.
-- Ran `git diff --check` after writing the documentation.
-- No code tests rerun: this pass only adds review documentation and a DEVLOG entry.
+### 验证
+- 根据 M3 严格审查结果人工复核 checklist。
+- 写入文档后运行 `git diff --check`。
+- 未重新运行代码测试：本轮只新增审查文档和 DEVLOG 记录。
 
-### Next Steps
-- Assign `docs/plans/M3_OPTIMIZATION_CHECKLIST.md` to the development Agent.
-- Fix P0 items before M3 acceptance, then complete P1 stabilization in the documented order.
+### 下一步
+- 将 `docs/plans/M3_OPTIMIZATION_CHECKLIST.md` 交给开发 Agent。
+- 在 M3 验收前修复 P0 项，再按文档顺序完成 P1 稳定性改进。
 
-## [2026-05-31] Codex - M3 Strict Review Stabilization Complete
+## [2026-05-31] Codex - M3 严格审查稳定性修复完成
 
-### Completed
-- Closed all P0, P1, and P2 items in `docs/plans/M3_OPTIMIZATION_CHECKLIST.md`.
-- Added prompt cancellation for active Agent work, per-task workspace audits,
-  write-task no-op failure rules, bounded snapshots, safe read-only adapter
-  fallback, global CLI concurrency limits, and resilient broadcasts.
-- Stabilized Planner and WebSocket state handling: `cannot_plan` is recoverable,
-  clarification answers submit atomically, paused jobs validate conversation
-  ownership, stale frontend snapshots have no side effects, and reconnect uses
-  bounded backoff.
-- Refreshed Team Board and Project State after every batch, made Project State
-  reads idempotent, hardened Team Board merges, and reconciled stale persisted
-  runs explicitly after restart.
-- Switched DeepSeek handling to incremental SSE streaming, aligned Alembic with
-  application configuration, and lazy-loaded heavy frontend routes and preview
-  UI.
+### 完成内容
+- 关闭 `docs/plans/M3_OPTIMIZATION_CHECKLIST.md` 中的全部 P0、P1 和 P2 项。
+- 新增活跃 Agent 工作的 prompt 取消、逐任务 workspace 审计、写任务无实际修改时判定失败、有限快照、安全只读 Adapter 降级、全局 CLI 并发限制和弹性广播。
+- 稳定 Planner 和 WebSocket 状态处理：`cannot_plan` 可恢复、澄清答案原子提交、暂停任务校验会话归属、过期前端快照无副作用、重连使用有限退避。
+- 每批任务后刷新 Team Board 和 Project State，使 Project State 读取幂等，增强 Team Board 合并，并在重启后显式协调过期的持久化运行记录。
+- 将 DeepSeek 处理改为增量 SSE 流式传输，使 Alembic 与应用配置一致，并延迟加载较重的前端路由和预览 UI。
 
-### Interface Changes
-- Clarification responses send all required answers atomically.
-- A Planner `cannot_plan` result is surfaced as a failed snapshot and
-  recoverable WebSocket error instead of an input card.
-- Persisted non-terminal runs are reconciled to failed after backend restart
-  when their memory-only execution state cannot be restored.
-- Write tasks complete only when their workspace audit records a real file
-  change; downgrade and audit warnings remain user-visible.
+### 接口变更
+- 澄清响应会原子发送全部必填答案。
+- Planner 返回 `cannot_plan` 时，输出失败快照和可恢复 WebSocket 错误，不再输出输入卡片。
+- 后端重启后，无法恢复仅存在于内存中的执行状态时，持久化的未终止运行记录会协调为失败。
+- 只有 workspace 审计记录到真实文件变化时，写任务才会完成；降级和审计警告仍对用户可见。
 
-### Verification
-- `cd backend && python -u -m pytest -q` -> `114 passed`
-- `cd frontend && npm test` -> `3 passed`
-- `cd frontend && npm run lint` -> passed
-- `cd frontend && npm run build` -> passed without chunk warning
-- `git diff --check` -> passed
-- Temporary SQLite `alembic upgrade head` smoke -> passed
-- Targeted Mock-first, blocked cancellation, and restart reconciliation smoke
-  suite -> `4 passed`
+### 验证
+- `cd backend && python -u -m pytest -q` -> `114 项通过`
+- `cd frontend && npm test` -> `3 项通过`
+- `cd frontend && npm run lint` -> 通过
+- `cd frontend && npm run build` -> 通过，无 chunk 警告
+- `git diff --check` -> 通过
+- 临时 SQLite `alembic upgrade head` 烟测 -> 通过
+- 定向 Mock-first、阻塞取消和重启协调烟测套件 -> `4 项通过`
 
-## [2026-05-31] Codex - M3 Main Integration
+## [2026-05-31] Codex - M3 主分支集成
 
-### Completed
-- Fast-forwarded `codex/m3-main-integration` to `origin/main` after PR `#3`
-  (`codex/m2-deepseek-adapter-ready`) and PR `#4`
-  (`codex-m4-artifact-preview-system`) were merged.
-- Resolved shared-entry conflicts in `DEVLOG.md`, `llm_provider.py`, `main.py`,
-  `agent_manager.py`, and `ws/handlers.py`.
-- Preserved the reusable M3 `LLMClient` streaming, retry, and health-check path
-  while restoring M2 fenced-code artifact extraction and AsyncClient test
-  injection compatibility.
-- Preserved M3 queue, cancellation, handoff, fallback, and shared-state refresh
-  behavior while routing file events through the M4 `ArtifactService`.
-- Preserved M4 preview routing and removed duplicate DeepSeek Settings fields
-  introduced by the automatic merge.
-- Replaced PreviewPanel synchronous effect state updates with render-derived tab
-  selection keyed by artifact id and open revision, preserving repeat-open tab
-  reset behavior while satisfying React lint rules.
+### 完成内容
+- PR `#3`（`codex/m2-deepseek-adapter-ready`）和 PR `#4`（`codex-m4-artifact-preview-system`）合并后，将 `codex/m3-main-integration` 快进到 `origin/main`。
+- 解决 `DEVLOG.md`、`llm_provider.py`、`main.py`、`agent_manager.py` 和 `ws/handlers.py` 中共享入口的冲突。
+- 保留可复用的 M3 `LLMClient` 流式传输、重试和健康检查路径，同时恢复 M2 fenced code 产物提取和 AsyncClient 测试注入兼容性。
+- 保留 M3 队列、取消、交接、降级和共享状态刷新行为，同时通过 M4 `ArtifactService` 路由文件事件。
+- 保留 M4 预览路由，并移除自动合并引入的重复 DeepSeek Settings 字段。
+- 将 PreviewPanel 同步 effect 状态更新替换为基于 artifact ID 和打开版本派生的 Tab 选择；保留重复打开时重置 Tab 的行为，同时满足 React lint 规则。
 
-### Verification
-- Conflict-focused backend suite -> `35 passed`
-- `cd backend && python -u -m pytest -q` -> `122 passed`
-- `cd frontend && npm test` -> `3 passed`
-- `cd frontend && npm run lint` -> passed
-- `cd frontend && npm run build` -> passed
-- `git diff --check` -> passed
-- Temporary SQLite `alembic upgrade head` -> passed
+### 验证
+- 冲突相关后端套件 -> `35 项通过`
+- `cd backend && python -u -m pytest -q` -> `122 项通过`
+- `cd frontend && npm test` -> `3 项通过`
+- `cd frontend && npm run lint` -> 通过
+- `cd frontend && npm run build` -> 通过
+- `git diff --check` -> 通过
+- 临时 SQLite `alembic upgrade head` -> 通过
 
-### Teammate Notes
-- Safety stash `safety: m3 before origin-main integration` intentionally remains
-  until the integrated M3 work is committed.
+### 给其他成员的提醒
+- 安全 stash `safety: m3 before origin-main integration` 会有意保留，直到集成后的 M3 工作完成提交。
 
-## [2026-06-01] Codex - M3 Codex CLI Integration
+## [2026-06-01] Codex - M3 Codex CLI 集成
 
-### Completed
-- Added `M3_CODEX_CLI_INTEGRATION` plan/checklist for the remaining 小马 M3 Agent 接入 gap.
-- Updated `CodexAdapter` to use the current local CLI path:
-  `codex --ask-for-approval never exec --json --cd <workspace> --sandbox workspace-write --skip-git-repo-check <prompt>`.
-- Parsed real Codex JSONL `item.completed` agent messages into `text_delta`.
-- Added workspace before/after snapshots so Codex-created and Codex-modified text files emit standard `file_created` / `file_modified` events for ArtifactService.
-- Normalized real DeepSeek Planner output variants (`Ready`, `plan.tasks`, `readWriteAccess`, `description`, string `acceptanceCriteria`) before M3 schema validation.
-- Made M3 workspace snapshot copying deterministic by sorting traversal order before applying total-size limits.
-- Refreshed `docs/CLI_AGENT_RESEARCH.md` to replace the stale access-denied Codex finding with the working local CLI smoke result.
+### 完成内容
+- 为剩余的小马 M3 Agent 接入缺口新增 `M3_CODEX_CLI_INTEGRATION` plan/checklist。
+- 更新 `CodexAdapter`，使用当前本地 CLI 路径：
+  `codex --ask-for-approval never exec --json --cd <workspace> --sandbox workspace-write --skip-git-repo-check <prompt>`。
+- 将真实 Codex JSONL `item.completed` Agent 消息解析为 `text_delta`。
+- 新增 workspace 执行前后快照，使 Codex 创建和修改的文本文件通过 ArtifactService 发出标准 `file_created` / `file_modified` 事件。
+- 在 M3 schema 校验前，规范化真实 DeepSeek Planner 输出变体（`Ready`、`plan.tasks`、`readWriteAccess`、`description`、字符串 `acceptanceCriteria`）。
+- 在应用总大小限制前对遍历顺序排序，使 M3 workspace 快照复制保持确定性。
+- 刷新 `docs/CLI_AGENT_RESEARCH.md`，使用已通过的本地 CLI 烟测结果替换过期的 Codex 拒绝访问结论。
 
-### Interface Changes
-- No shared type, REST, or WebSocket contract changes.
-- Existing `AgentAdapter` and `AgentEvent` contracts are preserved.
+### 接口变更
+- 无 shared types、REST 或 WebSocket 契约变更。
+- 保留现有 `AgentAdapter` 和 `AgentEvent` 契约。
 
-### Verification
-- `cd backend && ../.venv/bin/python -m pytest -q tests/test_m3_cli_adapters.py` -> `4 passed`
-- `cd backend && ../.venv/bin/python -m pytest -q tests/test_m3_planner.py` -> `6 passed`
-- `cd backend && ../.venv/bin/python -m pytest -q tests/test_m3_planner.py tests/test_m3_cli_adapters.py` -> `10 passed`
-- `cd backend && ../.venv/bin/python -m pytest -q tests/test_m3_cli_adapters.py tests/test_m3_agent_manager.py tests/test_m3_websocket_runtime.py` -> `18 passed`
-- `cd backend && ../.venv/bin/python -m pytest -q tests/test_m3_workspace_snapshot.py tests/test_m3_cli_adapters.py tests/test_m3_agent_manager.py tests/test_m3_websocket_runtime.py` -> `21 passed`
-- `cd backend && ../.venv/bin/python -m pytest -q` -> `124 passed`
-- Real local Codex adapter smoke: `CodexAdapter.run_task()` created `adapter_smoke.txt`, emitted `text_delta`, emitted `file_created`, then emitted `done`.
-- Real DeepSeek Planner + Codex WebSocket smoke: generated `deepseek_codex_smoke.txt`, emitted `artifact`, and finished `completed`.
+### 验证
+- `cd backend && ../.venv/bin/python -m pytest -q tests/test_m3_cli_adapters.py` -> `4 项通过`
+- `cd backend && ../.venv/bin/python -m pytest -q tests/test_m3_planner.py` -> `6 项通过`
+- `cd backend && ../.venv/bin/python -m pytest -q tests/test_m3_planner.py tests/test_m3_cli_adapters.py` -> `10 项通过`
+- `cd backend && ../.venv/bin/python -m pytest -q tests/test_m3_cli_adapters.py tests/test_m3_agent_manager.py tests/test_m3_websocket_runtime.py` -> `18 项通过`
+- `cd backend && ../.venv/bin/python -m pytest -q tests/test_m3_workspace_snapshot.py tests/test_m3_cli_adapters.py tests/test_m3_agent_manager.py tests/test_m3_websocket_runtime.py` -> `21 项通过`
+- `cd backend && ../.venv/bin/python -m pytest -q` -> `124 项通过`
+- 真实本地 Codex Adapter 烟测：`CodexAdapter.run_task()` 创建 `adapter_smoke.txt`，依次发出 `text_delta`、`file_created` 和 `done`。
+- 真实 DeepSeek Planner + Codex WebSocket 烟测：生成 `deepseek_codex_smoke.txt`，发出 `artifact`，最终状态为 `completed`。
 
-### Next Steps
-- For full product acceptance, run a browser/WebSocket conversation with a Codex-backed Agent selected in the database and confirm the chat artifact appears in the UI.
-- OpenCode remains a one-shot minimal adapter; session support is still out of scope for this pass.
+### 下一步
+- 完整产品验收时，在数据库中选中 Codex 支持的 Agent，运行一次浏览器/WebSocket 会话，确认聊天产物出现在 UI 中。
+- OpenCode 仍为一次性最小 Adapter；session 支持仍不在本轮范围内。
+
+## [2026-06-01] Codex - 隔离 Codex CLI DeepSeek 桥接
+
+### 完成内容
+- 复现 Windows 启动失败：`CODEX_BINARY_PATH=codex` 解析到 Microsoft Store 包资源二进制文件，其 ACL 要求 Codex Desktop 应用身份，FastAPI 后端子进程会被拒绝启动。
+- 新增 Windows CLI 解析逻辑：优先使用 `%LOCALAPPDATA%\OpenAI\Codex\bin` 下可运行的 Codex Desktop 缓存，再回退到 PATH。
+- 确认当前 Codex CLI 版本拒绝自定义 Provider 使用 `wire_api = "chat"`，要求使用 Responses 传输格式。
+- 新增仅绑定本地回环地址、逐任务启动的 Responses 转 Chat 桥接服务，将 Codex 请求转发到后端配置的 DeepSeek 聊天补全 API。
+- 新增逐次随机 桥接令牌、临时 `CODEX_HOME` 配置和子进程环境隔离，使 AgentHub 不会读取或修改活跃的 Codex Desktop 配置。
+- 扩展 `ProcessPool`，支持显式注入子进程环境变量。
+- 更新 `ProcessPool`：以主进程返回码作为权威状态，在有限时间内排空继承的 Windows 管道句柄，避免 Codex shell tool 执行后的假超时。
+- 验证 `workspace-write` 会在 `windows sandbox: spawn setup refresh` 期间失败，且 `unelevated` 变通方案 无法写入任务 workspace 后，新增 Windows Codex `danger-full-access` 本机直接执行。非 Windows Codex 任务仍使用 `workspace-write`。
+- 更新 `.env.example`、M3 plan/checklist 和 CLI 调研记录。
+
+### 接口变更
+- 无 shared types、REST 或 WebSocket 契约变更。
+- `ProcessPool.run()` 接受可选的子进程 `env`。
+- `CodexAdapter` 健康检查现在要求后端可用的 `DEEPSEEK_API_KEY`，其余情况下仍保留现有 `llm` / `mock` 降级链路。
+
+### 验证
+- RED：实现前调用 `ProcessPool.run(..., env=...)` 会因未预期的关键字参数失败。
+- RED：实现前无法导入桥接服务和 Windows 解析器。
+- `cd backend && python -m pytest tests/test_m3_process_pool.py tests/test_m3_deepseek_responses_bridge.py tests/test_m3_cli_adapters.py tests/test_m3_codex_cli_smoke.py -q` -> `18 项通过`
+- `cd backend && python -m pytest -q` -> `137 项通过`
+- `git diff --check` -> 通过
+- 真实缓存 Codex CLI 伪上游烟测：CLI 从 `%LOCALAPPDATA%\OpenAI\Codex\bin` 解析，调用本地回环桥接服务；桥接服务发出 DeepSeek 聊天补全请求，AgentHub 依次收到 `text_delta: OK` 和 `done`。
+- 真实 DeepSeek 文本烟测：隔离缓存 Codex CLI 健康检查返回 `True`，并返回 `LIVE_CODEX_DEEPSEEK_OK`。
+- 真实 DeepSeek 文件烟测：隔离缓存 Codex CLI 创建 `live_codex_deepseek_smoke.txt`，内容为 `LIVE_FILE_OK\n`；AgentHub 依次发出 `text_delta`、`file_created` 和 `done`。
+
+### 执行说明
+- Windows CLI 任务有意使用 `danger-full-access` 直接在本机运行，因为上游 Windows sandbox 辅助程序 无法在此主机初始化。
+
+## [2026-06-01] Codex - CLI 排障与跨平台指南
+
+### 完成内容
+- 新增 `docs/CODEX_CLI_CROSS_PLATFORM_GUIDE.md`，记录真实 Codex CLI 集成故障、根因、解决方案、验证阶梯和 Windows/macOS 协作矩阵。
+- 记录不同平台在二进制文件发现、sandbox 行为、shell 语义、路径分隔符、绝对 workspace 路径、换行符、文件名大小写、临时文件锁和可执行文件后缀方面的差异。
+- 在 `docs/CLI_AGENT_RESEARCH.md` 中新增团队指南入口。
+
+### 接口变更
+- 仅修改文档。无运行时、shared types、REST 或 WebSocket 变更。
+
+### 验证
+- `git diff --check` -> 通过。

@@ -6,11 +6,15 @@ run_task() spawns a new process each time.
 """
 from typing import AsyncGenerator
 import json
+import os
 import shutil
+import tempfile
 from pathlib import Path
+from collections.abc import Callable
 
 from app.adapters.base import AgentAdapter, AgentEvent
 from app.config import settings
+from app.services.deepseek_responses_bridge import DeepSeekResponsesBridge, DeepSeekResponsesBridgeError
 from app.services.process_pool import ProcessPool, ProcessPoolError
 from app.services.workspace_scanner import WorkspaceScanner
 
@@ -39,14 +43,47 @@ SKIPPED_DIRS = {
 MAX_FILE_BYTES = 512_000
 
 
+def _windows_cli_candidates() -> list[Path]:
+    candidates: list[Path] = []
+    if cli_path := os.environ.get("CODEX_CLI_PATH"):
+        candidates.append(Path(cli_path))
+    if local_app_data := os.environ.get("LOCALAPPDATA"):
+        cache_root = Path(local_app_data) / "OpenAI" / "Codex" / "bin"
+        if cache_root.exists():
+            candidates.extend(sorted(cache_root.glob("*/codex.exe"), key=lambda path: path.stat().st_mtime, reverse=True))
+    if user_profile := os.environ.get("USERPROFILE"):
+        candidates.append(Path(user_profile) / ".codex" / ".sandbox-bin" / "codex.exe")
+    return candidates
+
+
+def resolve_codex_binary(configured_path: str, platform: str = os.name) -> str:
+    if configured_path != "codex":
+        return str(Path(configured_path).expanduser())
+    if platform == "nt":
+        for candidate in _windows_cli_candidates():
+            if candidate.is_file():
+                return str(candidate)
+    return shutil.which(configured_path) or configured_path
+
+
+def codex_sandbox_mode(platform: str = os.name) -> str:
+    return "danger-full-access" if platform == "nt" else "workspace-write"
+
+
 class CodexAdapter(AgentAdapter):
     """Codex CLI adapter - one-shot task execution."""
 
     platform_name = "codex"
 
-    def __init__(self, pool: ProcessPool | None = None, binary_path: str | None = None):
+    def __init__(
+        self,
+        pool: ProcessPool | None = None,
+        binary_path: str | None = None,
+        bridge_factory: Callable | None = None,
+    ):
         self.pool = pool or ProcessPool(settings.CLI_TIMEOUT_SECONDS)
-        self.binary_path = binary_path or settings.CODEX_BINARY_PATH
+        self.binary_path = resolve_codex_binary(binary_path or settings.CODEX_BINARY_PATH)
+        self.bridge_factory = bridge_factory or DeepSeekResponsesBridge
 
     async def run_task(
         self, work_dir: str, instruction: str, context: dict
@@ -59,41 +96,73 @@ class CodexAdapter(AgentAdapter):
         before = self._snapshot_workspace(root)
         prompt = self._build_prompt(instruction, context)
         try:
-            result = await self.pool.run(
-                [
-                    self.binary_path,
-                    "--ask-for-approval",
-                    "never",
-                    "exec",
-                    "--json",
-                    "--cd",
-                    str(root),
-                    "--sandbox",
-                    "workspace-write",
-                    "--skip-git-repo-check",
-                    prompt,
-                ],
-                cwd=str(root),
-                cancel_event=cancel_event,
-            )
+            async with self.bridge_factory() as bridge:
+                with tempfile.TemporaryDirectory(prefix="agenthub-codex-") as codex_home:
+                    self._write_isolated_config(Path(codex_home), bridge.base_url)
+                    result = await self.pool.run(
+                        [
+                            self.binary_path,
+                            "--ask-for-approval",
+                            "never",
+                            "exec",
+                            "--ephemeral",
+                            "--json",
+                            "--cd",
+                            str(root),
+                            "--sandbox",
+                            codex_sandbox_mode(),
+                            "--skip-git-repo-check",
+                            prompt,
+                        ],
+                        cwd=str(root),
+                        cancel_event=cancel_event,
+                        env=self._isolated_env(codex_home, bridge.token),
+                    )
             content = self._extract_text(result.stdout)
             if content:
                 yield AgentEvent(type="text_delta", content=content)
             after = self._snapshot_workspace(root)
             for event in self._file_events(before, after):
                 yield event
-        except ProcessPoolError as exc:
+        except (DeepSeekResponsesBridgeError, ProcessPoolError) as exc:
             yield AgentEvent(type="error", content=str(exc))
         yield AgentEvent(type="done", content="")
 
     async def health_check(self) -> bool:
-        if shutil.which(self.binary_path) is None:
+        if not settings.DEEPSEEK_API_KEY or not self._binary_exists():
             return False
         try:
             await self.pool.run([self.binary_path, "--help"], cwd=".", timeout=5)
         except ProcessPoolError:
             return False
         return True
+
+    def _write_isolated_config(self, codex_home: Path, bridge_base_url: str) -> None:
+        config = (
+            f"model = {json.dumps(settings.DEEPSEEK_MODEL)}\n"
+            'model_provider = "agenthub_deepseek"\n\n'
+            "[model_providers.agenthub_deepseek]\n"
+            'name = "AgentHub DeepSeek Bridge"\n'
+            f"base_url = {json.dumps(bridge_base_url)}\n"
+            'env_key = "AGENTHUB_CODEX_BRIDGE_TOKEN"\n'
+            'wire_api = "responses"\n'
+            "request_max_retries = 0\n"
+            "stream_max_retries = 0\n"
+            "requires_openai_auth = false\n"
+        )
+        (codex_home / "config.toml").write_text(config, encoding="utf-8")
+
+    def _isolated_env(self, codex_home: str, bridge_token: str) -> dict[str, str]:
+        env = os.environ.copy()
+        env["CODEX_HOME"] = codex_home
+        env["AGENTHUB_CODEX_BRIDGE_TOKEN"] = bridge_token
+        for name in ("CODEX_THREAD_ID", "CODEX_INTERNAL_ORIGINATOR_OVERRIDE"):
+            env.pop(name, None)
+        return env
+
+    def _binary_exists(self) -> bool:
+        path = Path(self.binary_path)
+        return path.is_file() if path.is_absolute() else shutil.which(self.binary_path) is not None
 
     def _build_prompt(self, instruction: str, context: dict) -> str:
         public_context = {key: value for key, value in context.items() if not key.startswith("_")}
