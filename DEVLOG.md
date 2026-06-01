@@ -839,3 +839,23 @@
 
 ### 验证
 - `git diff --check` -> 通过。
+
+## [2026-06-01] Codex - OpenCode 聊天摘要修复
+
+### 完成内容
+- 修复 OpenCode JSONL 输出兜底逻辑，避免未知 raw JSON 事件整段进入前端聊天框。
+- 在 OpenCode 无明确 assistant 文本时生成简短执行摘要，包含查看文件、修改文件、命令执行等工作过程提示。
+- 文件新增/修改内容继续通过 `file_created` / `file_modified` 产物事件展示，不混入聊天文本。
+
+### 新增/修改文件
+- `backend/app/adapters/opencode.py` (修改)
+- `backend/tests/test_m3_cli_adapters.py` (修改)
+- `DEVLOG.md` (修改)
+
+### 接口变更
+- 无 shared types、REST 或 WebSocket 契约变更。
+
+### 验证
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m3_cli_adapters.py -q` -> `11 passed`
+- `cd backend && ../.venv/bin/python -m pytest -q` -> `141 passed`
+- Adapter fake raw JSONL 烟测：聊天输出为简短中文摘要，raw `unknown.raw` / `sessionID` 未进入文本，文件变更仍发出 `file_created`。

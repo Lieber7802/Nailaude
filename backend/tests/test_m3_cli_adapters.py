@@ -81,6 +81,26 @@ class OpenCodeJsonPool(CapturingPool):
         )
 
 
+class OpenCodeRawEventPool(CapturingPool):
+    async def run(self, command, cwd, timeout=None, cancel_event=None, env=None):
+        self.cancel_event = cancel_event
+        self.command = command
+        self.cwd = cwd
+        self.env = env
+        return ProcessResult(
+            stdout="\n".join(
+                [
+                    json.dumps({"type": "tool.start", "tool": "read", "path": "src/App.tsx"}),
+                    json.dumps({"type": "tool.start", "tool": "edit", "path": "src/App.tsx"}),
+                    json.dumps({"type": "unknown.raw", "payload": {"large": ["internal", "trace"]}}),
+                    json.dumps({"type": "session.idle", "sessionID": "abc"}),
+                ]
+            ),
+            stderr="",
+            returncode=0,
+        )
+
+
 @asynccontextmanager
 async def fake_bridge_factory():
     yield type("Bridge", (), {"base_url": "http://127.0.0.1:12345", "token": "bridge-token"})()
@@ -136,6 +156,23 @@ async def test_opencode_adapter_uses_deepseek_json_run_cli(tmp_path):
     assert "--dangerously-skip-permissions" in pool.command
     assert events[0].type == "text_delta"
     assert events[0].content == "Built the feature."
+    assert events[-1].type == "done"
+
+
+@pytest.mark.asyncio
+async def test_opencode_adapter_summarizes_unknown_json_events_instead_of_streaming_raw(tmp_path):
+    pool = OpenCodeRawEventPool()
+    adapter = OpenCodeAdapter(pool=pool, binary_path="opencode")
+
+    events = [event async for event in adapter.run_task(str(tmp_path), "build", {"taskId": "task-1"})]
+
+    text_event = events[0]
+    assert text_event.type == "text_delta"
+    assert "OpenCode 已完成本次执行。" in text_event.content
+    assert "正在查看项目文件。" in text_event.content
+    assert "正在修改相关文件。" in text_event.content
+    assert "unknown.raw" not in text_event.content
+    assert "sessionID" not in text_event.content
     assert events[-1].type == "done"
 
 
@@ -229,3 +266,20 @@ async def test_opencode_adapter_emits_file_events_for_workspace_changes(tmp_path
     assert file_events[1].metadata["files"] == [
         {"name": "new.ts", "content": "export const ok = true;\n", "language": "typescript"}
     ]
+
+
+@pytest.mark.asyncio
+async def test_opencode_raw_event_summary_mentions_artifacts_for_file_changes(tmp_path):
+    class FileChangingPool(OpenCodeRawEventPool):
+        async def run(self, command, cwd, timeout=None, cancel_event=None, env=None):
+            (tmp_path / "new.ts").write_text("export const ok = true;\n", encoding="utf-8")
+            return await super().run(command, cwd, timeout, cancel_event, env)
+
+    adapter = OpenCodeAdapter(pool=FileChangingPool(), binary_path="opencode")
+
+    events = [event async for event in adapter.run_task(str(tmp_path), "edit files", {})]
+
+    assert events[0].type == "text_delta"
+    assert "检测到 1 个文件变更，已生成对应产物卡片。" in events[0].content
+    assert "export const ok" not in events[0].content
+    assert [event.type for event in events if event.type == "file_created"] == ["file_created"]

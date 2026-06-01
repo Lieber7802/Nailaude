@@ -16,6 +16,9 @@ from app.adapters.codex import LANGUAGE_BY_SUFFIX, MAX_FILE_BYTES, SKIPPED_DIRS
 from app.services.workspace_scanner import WorkspaceScanner
 
 
+MAX_CHAT_SUMMARY_CHARS = 1200
+
+
 class OpenCodeAdapter(AgentAdapter):
     """OpenCode CLI adapter - session-based agent."""
 
@@ -52,11 +55,12 @@ class OpenCodeAdapter(AgentAdapter):
                 cwd=str(root),
                 cancel_event=cancel_event,
             )
-            content = self._extract_text(result.stdout)
+            after = self._snapshot_workspace(root)
+            file_events = self._file_events(before, after)
+            content = self._extract_text(result.stdout, file_events)
             if content:
                 yield AgentEvent(type="text_delta", content=content)
-            after = self._snapshot_workspace(root)
-            for event in self._file_events(before, after):
+            for event in file_events:
                 yield event
         except ProcessPoolError as exc:
             yield AgentEvent(type="error", content=str(exc))
@@ -80,9 +84,12 @@ class OpenCodeAdapter(AgentAdapter):
             f"{json.dumps(public_context, ensure_ascii=False, default=str)}"
         )
 
-    def _extract_text(self, stdout: str) -> str:
+    def _extract_text(self, stdout: str, file_events: list[AgentEvent] | None = None) -> str:
         messages: list[str] = []
         deltas: list[str] = []
+        plain_lines: list[str] = []
+        work_steps: set[str] = set()
+        saw_json_event = False
         for line in stdout.splitlines():
             line = line.strip()
             if not line:
@@ -90,10 +97,12 @@ class OpenCodeAdapter(AgentAdapter):
             try:
                 event = json.loads(line)
             except json.JSONDecodeError:
-                messages.append(line)
+                if not self._looks_like_json_event(line):
+                    plain_lines.append(line)
                 continue
             if not isinstance(event, dict):
                 continue
+            saw_json_event = True
             event_type = str(event.get("type") or "")
             delta = event.get("delta") or event.get("text") or event.get("content")
             if event_type in {"message.delta", "message_delta", "assistant_delta", "agent_message_delta"} and delta:
@@ -108,15 +117,52 @@ class OpenCodeAdapter(AgentAdapter):
                 if isinstance(part, dict) and part.get("type") == "text" and part.get("text"):
                     messages.append(str(part["text"]))
                 continue
+            self._collect_work_step(event, work_steps)
             if event_type in {"session.idle", "task_complete", "turn_complete", "completed"}:
                 summary = event.get("last_agent_message") or event.get("message") or event.get("output")
                 if summary:
                     messages.append(str(summary))
         if messages:
-            return messages[-1]
+            return self._limit_chat_text(messages[-1])
         if deltas:
-            return "".join(deltas)
-        return stdout.strip()
+            return self._limit_chat_text("".join(deltas))
+        if plain_lines:
+            return self._limit_chat_text("\n".join(plain_lines))
+        if saw_json_event:
+            return self._fallback_chat_summary(file_events or [], work_steps)
+        return ""
+
+    def _looks_like_json_event(self, line: str) -> bool:
+        return line.startswith("{") or line.startswith("[")
+
+    def _collect_work_step(self, event: dict, work_steps: set[str]) -> None:
+        event_type = str(event.get("type") or "").lower()
+        payload = json.dumps(event, ensure_ascii=False, default=str).lower()
+        if "tool" not in event_type and "tool" not in payload:
+            return
+        if any(name in payload for name in ("edit", "write", "patch", "create", "modify")):
+            work_steps.add("正在修改相关文件。")
+        elif any(name in payload for name in ("read", "grep", "glob", "list", "search")):
+            work_steps.add("正在查看项目文件。")
+        elif any(name in payload for name in ("bash", "shell", "command")):
+            work_steps.add("正在运行必要命令。")
+        else:
+            work_steps.add("正在调用 OpenCode 工具处理任务。")
+
+    def _fallback_chat_summary(self, file_events: list[AgentEvent], work_steps: set[str]) -> str:
+        lines = ["OpenCode 已完成本次执行。"]
+        lines.extend(sorted(work_steps))
+        if file_events:
+            lines.append(f"检测到 {len(file_events)} 个文件变更，已生成对应产物卡片。")
+        else:
+            lines.append("未检测到工作区文件变更。")
+        return "\n".join(lines)
+
+    def _limit_chat_text(self, text: str) -> str:
+        normalized = text.strip()
+        if len(normalized) <= MAX_CHAT_SUMMARY_CHARS:
+            return normalized
+        return f"{normalized[:MAX_CHAT_SUMMARY_CHARS].rstrip()}...\n（已截断，完整产物请查看下方卡片。）"
 
     def _snapshot_workspace(self, root: Path) -> dict[str, str]:
         if not root.exists():
