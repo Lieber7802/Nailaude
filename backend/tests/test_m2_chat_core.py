@@ -14,6 +14,11 @@ def _agent_ids(client):
     return agents, [agent["id"] for agent in agents]
 
 
+def _mock_agent_ids(create_agent, count):
+    agents = [create_agent(name=f"Mock Agent {index}") for index in range(count)]
+    return agents, [agent["id"] for agent in agents]
+
+
 def test_conversation_list_returns_last_message_and_searches_it(client):
     agents, agent_ids = _agent_ids(client)
     conversation = client.post(
@@ -74,10 +79,10 @@ async def test_orchestrator_builds_sequential_plan_from_mentions():
     assert all(task["instruction"] == "请 @代码工匠 生成页面，然后 @审查大师 审查" for task in plan["tasks"])
 
 
-def test_group_websocket_pushes_orchestrator_status_and_runs_mentioned_agents(client):
+def test_group_websocket_pushes_orchestrator_status_and_runs_mentioned_agents(client, create_agent):
     work_dir = WORKSPACE_ROOT / f"pytest-m2-group-{uuid.uuid4()}"
     work_dir.mkdir(parents=True)
-    agents, agent_ids = _agent_ids(client)
+    agents, agent_ids = _mock_agent_ids(create_agent, 2)
     conversation = client.post(
         "/api/v1/conversations",
         json={
@@ -217,7 +222,7 @@ def test_ws_rejects_mentioned_agent_not_in_conversation(client):
     assert messages == []
 
 
-def test_ws_marks_task_failed_when_adapter_raises(client, monkeypatch):
+def test_ws_marks_task_failed_when_adapter_raises(client, monkeypatch, create_agent):
     class FailingAdapter:
         def __init__(self, response_delay=0):
             self.response_delay = response_delay
@@ -227,7 +232,7 @@ def test_ws_marks_task_failed_when_adapter_raises(client, monkeypatch):
             raise RuntimeError("adapter exploded")
 
     monkeypatch.setattr(ws_handlers, "MockAdapter", FailingAdapter)
-    agents, agent_ids = _agent_ids(client)
+    agents, agent_ids = _mock_agent_ids(create_agent, 1)
     conversation = client.post(
         "/api/v1/conversations",
         json={

@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     DEEPSEEK_MODEL: str = "deepseek-v4-flash"
     DEEPSEEK_TIMEOUT_SECONDS: float = 60.0
     DEEPSEEK_MAX_TOKENS: int = 2048
+    OPENCODE_MODEL: str = "deepseek/deepseek-v4-flash"
 
     # CLI paths
     OPENCODE_BINARY_PATH: str = "opencode"

@@ -43,7 +43,7 @@ BUILTIN_AGENTS = [
         "description": "全栈开发专家，擅长生成 React、HTML 和 CSS 代码。",
         "capabilities": ["代码生成", "前端", "全栈"],
         "system_instruction": "你是代码工匠，负责生成清晰、可运行、易维护的代码。",
-        "platform_id": "mock",
+        "platform_id": "opencode",
     },
     {
         "name": "审查大师",
@@ -51,7 +51,7 @@ BUILTIN_AGENTS = [
         "description": "代码审查专家，关注质量、性能和安全。",
         "capabilities": ["代码审查", "最佳实践", "安全"],
         "system_instruction": "你是审查大师，负责指出代码质量、性能和安全问题。",
-        "platform_id": "mock",
+        "platform_id": "opencode",
     },
     {
         "name": "文档专家",
@@ -59,7 +59,7 @@ BUILTIN_AGENTS = [
         "description": "技术文档写手，擅长 PRD、API 文档和 README。",
         "capabilities": ["文档", "需求分析", "技术写作"],
         "system_instruction": "你是文档专家，负责产出结构清晰的技术和产品文档。",
-        "platform_id": "mock",
+        "platform_id": "opencode",
     },
 ]
 
@@ -76,5 +76,7 @@ async def seed_builtin_data(db: AsyncSession) -> None:
         existing = await db.scalar(select(Agent).where(Agent.name == agent_data["name"]))
         if existing is None:
             db.add(Agent(**agent_data, is_builtin=True))
+        elif existing.is_builtin:
+            existing.platform_id = agent_data["platform_id"]
 
     await db.commit()

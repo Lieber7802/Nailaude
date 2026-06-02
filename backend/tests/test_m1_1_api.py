@@ -20,6 +20,16 @@ def test_agents_are_seeded_and_return_camel_case_fields(client):
     assert "platform_id" not in first_agent
 
 
+def test_builtin_agents_are_backed_by_opencode(client):
+    response = client.get("/api/v1/agents")
+
+    assert response.status_code == 200
+    payload = response.json()
+    agents_by_name = {agent["name"]: agent for agent in payload["data"]}
+    for name in ("代码工匠", "审查大师", "文档专家"):
+        assert agents_by_name[name]["platformId"] == "opencode"
+
+
 def test_create_and_list_group_conversation(client):
     agent_id = client.get("/api/v1/agents").json()["data"][0]["id"]
 

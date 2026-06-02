@@ -7,8 +7,9 @@ from app.schemas.conversation import WORKSPACE_ROOT
 from app.services.file_watcher import FileWatcherService
 
 
-def test_mock_websocket_generates_webpage_artifact_and_preview_file(client):
-    agent_id = client.get("/api/v1/agents").json()["data"][0]["id"]
+def test_mock_websocket_generates_webpage_artifact_and_preview_file(client, create_agent):
+    agent = create_agent(name="代码工匠 Mock")
+    agent_id = agent["id"]
     work_dir = WORKSPACE_ROOT / f"m4-preview-{uuid4()}"
     work_dir.mkdir(parents=True)
     conversation = client.post(
@@ -28,7 +29,7 @@ def test_mock_websocket_generates_webpage_artifact_and_preview_file(client):
                 "type": "send_message",
                 "data": {
                     "content": "@代码工匠 生成可预览页面",
-                    "mentions": [{"agentId": agent_id, "agentName": "代码工匠"}],
+                    "mentions": [{"agentId": agent_id, "agentName": agent["name"]}],
                     "parentMessageId": None,
                 },
             }

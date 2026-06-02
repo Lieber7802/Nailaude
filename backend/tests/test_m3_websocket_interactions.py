@@ -11,8 +11,8 @@ from app.services.orchestrator import OrchestratorService
 import app.ws.handlers as ws_handlers
 
 
-def _create_conversation(client, work_dir=""):
-    agents = client.get("/api/v1/agents").json()["data"]
+def _create_conversation(client, create_agent, work_dir=""):
+    agents = [create_agent()]
     conversation = client.post(
         "/api/v1/conversations",
         json={"type": "single", "workDir": str(work_dir), "participantIds": [agents[0]["id"]]},
@@ -20,8 +20,8 @@ def _create_conversation(client, work_dir=""):
     return conversation, agents
 
 
-def test_clarification_response_requeues_and_resumes_planning(client, monkeypatch):
-    conversation, agents = _create_conversation(client)
+def test_clarification_response_requeues_and_resumes_planning(client, monkeypatch, create_agent):
+    conversation, agents = _create_conversation(client, create_agent)
     calls = []
 
     async def fake_plan_job(job, db):
@@ -64,8 +64,8 @@ def test_clarification_response_requeues_and_resumes_planning(client, monkeypatc
     assert calls == [[], [{"scope": "minimal"}]]
 
 
-def test_clarification_response_requires_all_answers_atomically(client, monkeypatch):
-    conversation, _agents = _create_conversation(client)
+def test_clarification_response_requires_all_answers_atomically(client, monkeypatch, create_agent):
+    conversation, _agents = _create_conversation(client, create_agent)
     calls = []
 
     async def fake_plan_job(job, db):
@@ -123,8 +123,8 @@ def test_clarification_response_requires_all_answers_atomically(client, monkeypa
     assert calls == [[], [{"scope": "minimal", "storage": "memory"}]]
 
 
-def test_cannot_plan_fails_run_without_publishing_input_request(client, monkeypatch):
-    conversation, _agents = _create_conversation(client)
+def test_cannot_plan_fails_run_without_publishing_input_request(client, monkeypatch, create_agent):
+    conversation, _agents = _create_conversation(client, create_agent)
 
     async def fake_plan_job(job, db):
         return {"status": "cannot_plan", "reason": "Outside workspace", "recoverable": True}
@@ -146,10 +146,10 @@ def test_cannot_plan_fails_run_without_publishing_input_request(client, monkeypa
     assert failed["data"]["status"] == "failed"
 
 
-def test_elevated_write_approval_resumes_without_replanning(client, monkeypatch):
+def test_elevated_write_approval_resumes_without_replanning(client, monkeypatch, create_agent):
     work_dir = WORKSPACE_ROOT / f"pytest-approval-{uuid.uuid4()}"
     work_dir.mkdir(parents=True)
-    conversation, _agents = _create_conversation(client, work_dir)
+    conversation, _agents = _create_conversation(client, create_agent, work_dir)
     calls = 0
 
     async def fake_plan_job(job, db):
@@ -181,9 +181,9 @@ def test_elevated_write_approval_resumes_without_replanning(client, monkeypatch)
     shutil.rmtree(work_dir)
 
 
-def test_cross_conversation_input_response_does_not_consume_paused_job(client, monkeypatch):
-    first, _agents = _create_conversation(client)
-    second, _agents = _create_conversation(client)
+def test_cross_conversation_input_response_does_not_consume_paused_job(client, monkeypatch, create_agent):
+    first, _agents = _create_conversation(client, create_agent)
+    second, _agents = _create_conversation(client, create_agent)
 
     async def fake_plan_job(job, db):
         if not job.get("clarification_answers"):
@@ -227,11 +227,11 @@ def test_cross_conversation_input_response_does_not_consume_paused_job(client, m
                 break
 
 
-def test_cross_conversation_approval_response_does_not_consume_paused_job(client, monkeypatch):
+def test_cross_conversation_approval_response_does_not_consume_paused_job(client, monkeypatch, create_agent):
     work_dir = WORKSPACE_ROOT / f"pytest-cross-approval-{uuid.uuid4()}"
     work_dir.mkdir(parents=True)
-    first, _agents = _create_conversation(client, work_dir)
-    second, _agents = _create_conversation(client)
+    first, _agents = _create_conversation(client, create_agent, work_dir)
+    second, _agents = _create_conversation(client, create_agent)
 
     async def fake_plan_job(job, db):
         result = await OrchestratorService().build_mock_planner_result(

@@ -4,14 +4,14 @@ import uuid
 from app.schemas.conversation import WORKSPACE_ROOT
 
 
-def test_mock_first_run_refreshes_team_board_and_project_state(client):
+def test_mock_first_run_refreshes_team_board_and_project_state(client, create_agent):
     work_dir = WORKSPACE_ROOT / f"pytest-e2e-{uuid.uuid4()}"
     work_dir.mkdir(parents=True)
     (work_dir / "README.md").write_text("demo", encoding="utf-8")
-    agents = client.get("/api/v1/agents").json()["data"]
+    agent = create_agent()
     conversation = client.post(
         "/api/v1/conversations",
-        json={"type": "single", "workDir": str(work_dir), "participantIds": [agents[0]["id"]]},
+        json={"type": "single", "workDir": str(work_dir), "participantIds": [agent["id"]]},
     ).json()["data"]
 
     with client.websocket_connect(f"/ws/{conversation['id']}") as websocket:

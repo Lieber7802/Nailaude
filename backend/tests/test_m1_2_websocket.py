@@ -1,8 +1,9 @@
 from app.ws.manager import manager
 
 
-def test_websocket_send_message_streams_mock_events_and_persists_results(client):
-    agent_id = client.get("/api/v1/agents").json()["data"][0]["id"]
+def test_websocket_send_message_streams_mock_events_and_persists_results(client, create_agent):
+    agent = create_agent(name="代码工匠 Mock")
+    agent_id = agent["id"]
     conversation = client.post(
         "/api/v1/conversations",
         json={
@@ -19,7 +20,7 @@ def test_websocket_send_message_streams_mock_events_and_persists_results(client)
                 "type": "send_message",
                 "data": {
                     "content": "@代码工匠 生成一个登录页",
-                    "mentions": [{"agentId": agent_id, "agentName": "代码工匠"}],
+                    "mentions": [{"agentId": agent_id, "agentName": agent["name"]}],
                     "parentMessageId": None,
                     "clientMessageId": "client-1",
                 },
@@ -55,7 +56,7 @@ def test_websocket_send_message_streams_mock_events_and_persists_results(client)
     assert [message["role"] for message in messages] == ["user", "agent"]
     assert messages[0]["content"] == "@代码工匠 生成一个登录页"
     assert "Mock 已生成" in messages[1]["content"]
-    assert messages[1]["agentName"] == "代码工匠"
+    assert messages[1]["agentName"] == agent["name"]
     assert len(messages[1]["artifacts"]) == 1
     assert messages[1]["artifacts"][0]["title"] == "index.html"
 
@@ -74,8 +75,8 @@ def test_websocket_missing_conversation_returns_error(client):
     assert event["data"]["recoverable"] is False
 
 
-def test_websocket_malformed_json_returns_error_and_cleans_connection(client):
-    agent_id = client.get("/api/v1/agents").json()["data"][0]["id"]
+def test_websocket_malformed_json_returns_error_and_cleans_connection(client, create_agent):
+    agent_id = create_agent()["id"]
     conversation = client.post(
         "/api/v1/conversations",
         json={
