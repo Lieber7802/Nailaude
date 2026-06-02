@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.adapters.base import AgentEvent
 from app.models.artifact import Artifact
 from app.services.preview_service import PreviewService
+from app.services.workspace_paths import resolve_workspace_path
 
 
 LANGUAGE_BY_SUFFIX = {
@@ -25,7 +26,6 @@ LANGUAGE_BY_SUFFIX = {
     ".tsx": "tsx",
     ".txt": "text",
 }
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
 def infer_language(file_path: str) -> str:
@@ -213,5 +213,4 @@ class ArtifactService:
 
 
 def resolve_work_dir(work_dir: str) -> Path:
-    path = Path(work_dir).expanduser()
-    return path.resolve() if path.is_absolute() else (PROJECT_ROOT / path).resolve()
+    return resolve_workspace_path(work_dir)

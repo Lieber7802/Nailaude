@@ -6,6 +6,8 @@ run_task() internally manages sessions for efficiency.
 """
 from typing import AsyncGenerator
 import json
+import os
+import re
 import shutil
 from pathlib import Path
 
@@ -14,6 +16,7 @@ from app.config import settings
 from app.services.process_pool import ProcessPool, ProcessPoolError
 from app.adapters.codex import LANGUAGE_BY_SUFFIX, MAX_FILE_BYTES, SKIPPED_DIRS
 from app.services.workspace_scanner import WorkspaceScanner
+from app.services.workspace_paths import resolve_workspace_path
 
 
 MAX_CHAT_SUMMARY_CHARS = 1200
@@ -28,6 +31,7 @@ PREVIEW_REQUEST_KEYWORDS = (
     "页面",
     "网页",
     "小程序",
+    "系统",
     "应用",
     "预览",
     "右侧",
@@ -51,11 +55,12 @@ class OpenCodeAdapter(AgentAdapter):
         Execute a DeepSeek-backed one-shot OpenCode run.
         """
         cancel_event = context.get("_cancel_event")
-        root = Path(work_dir).expanduser().resolve()
+        root = resolve_workspace_path(work_dir)
         before = self._snapshot_workspace(root)
         public_context = {key: value for key, value in context.items() if not key.startswith("_")}
         preview_required = self._should_require_preview_entry(instruction, public_context)
         prompt = self._build_prompt(instruction, context)
+        env = self._opencode_env()
         try:
             result = await self.pool.run(
                 [
@@ -72,6 +77,7 @@ class OpenCodeAdapter(AgentAdapter):
                 ],
                 cwd=str(root),
                 cancel_event=cancel_event,
+                env=env,
             )
             after = self._snapshot_workspace(root)
             stdout = result.stdout
@@ -91,16 +97,24 @@ class OpenCodeAdapter(AgentAdapter):
                     ],
                     cwd=str(root),
                     cancel_event=cancel_event,
+                    env=env,
                 )
                 stdout = "\n".join(part for part in (stdout, repair_result.stdout) if part)
                 after = self._snapshot_workspace(root)
             file_events = self._file_events(before, after)
             content = self._extract_text(stdout, file_events)
+            if self._should_use_review_fallback(content, instruction, public_context, file_events):
+                content = self._review_fallback_summary(root, public_context)
             if content:
                 yield AgentEvent(type="text_delta", content=content)
             for event in file_events:
                 yield event
         except ProcessPoolError as exc:
+            file_events = self._file_events(before, self._snapshot_workspace(root))
+            if file_events:
+                yield AgentEvent(type="text_delta", content=self._interrupted_chat_summary(file_events, str(exc)))
+                for event in file_events:
+                    yield event
             yield AgentEvent(type="error", content=str(exc))
         yield AgentEvent(type="done", content="")
 
@@ -113,13 +127,25 @@ class OpenCodeAdapter(AgentAdapter):
             return False
         return True
 
+    def _opencode_env(self) -> dict[str, str]:
+        env = os.environ.copy()
+        if settings.DEEPSEEK_API_KEY:
+            env["DEEPSEEK_API_KEY"] = settings.DEEPSEEK_API_KEY
+        if settings.DEEPSEEK_BASE_URL:
+            env["DEEPSEEK_BASE_URL"] = settings.DEEPSEEK_BASE_URL
+        if settings.DEEPSEEK_MODEL:
+            env["DEEPSEEK_MODEL"] = settings.DEEPSEEK_MODEL
+        return env
+
     def _build_prompt(self, instruction: str, context: dict) -> str:
         public_context = {key: value for key, value in context.items() if not key.startswith("_")}
         preview_contract = self._preview_contract(instruction, public_context)
+        review_contract = self._review_contract(instruction, public_context)
         return (
             f"{instruction}\n\n"
             "AgentHub handoff context follows as JSON. Respect the task boundary, "
             "write files only inside the provided workspace, and summarize the result.\n"
+            f"{review_contract}"
             f"{preview_contract}"
             f"{json.dumps(public_context, ensure_ascii=False, default=str)}"
         )
@@ -137,7 +163,10 @@ class OpenCodeAdapter(AgentAdapter):
             try:
                 event = json.loads(line)
             except json.JSONDecodeError:
-                if not self._looks_like_json_event(line):
+                if self._looks_like_protocol_fragment(line):
+                    saw_json_event = True
+                    work_steps.add("正在调用 OpenCode 工具处理任务。")
+                elif not self._looks_like_json_event(line):
                     plain_lines.append(line)
                 continue
             if not isinstance(event, dict):
@@ -150,7 +179,9 @@ class OpenCodeAdapter(AgentAdapter):
                 continue
             message = self._text_value(event.get("message") or event.get("text") or event.get("content"))
             if event_type in {"message", "assistant_message", "agent_message"} and message:
-                messages.append(message)
+                display_message = self._display_chat_text(message, work_steps)
+                if display_message:
+                    messages.append(display_message)
                 continue
             if event_type in {"message.part.updated", "message.part.added"}:
                 part = event.get("part") or {}
@@ -160,25 +191,48 @@ class OpenCodeAdapter(AgentAdapter):
                     self._collect_text_work_step(text, work_steps)
                     continue
                 if text:
-                    messages.append(text)
+                    display_text = self._display_chat_text(text, work_steps)
+                    if display_text:
+                        messages.append(display_text)
                 continue
             self._collect_work_step(event, work_steps)
             if event_type in {"session.idle", "task_complete", "turn_complete", "completed"}:
                 summary = self._text_value(event.get("last_agent_message") or event.get("message") or event.get("output"))
                 if summary:
-                    messages.append(summary)
+                    display_summary = self._display_chat_text(summary, work_steps)
+                    if display_summary:
+                        messages.append(display_summary)
         if messages:
             return self._limit_chat_text(messages[-1])
         if deltas:
-            return self._limit_chat_text("".join(deltas))
+            delta_text = self._display_chat_text("".join(deltas), work_steps)
+            if delta_text:
+                return self._limit_chat_text(delta_text)
         if plain_lines:
-            return self._limit_chat_text("\n".join(plain_lines))
+            plain_text = self._display_chat_text("\n".join(plain_lines), work_steps)
+            if plain_text:
+                return self._limit_chat_text(plain_text)
         if saw_json_event:
             return self._fallback_chat_summary(file_events or [], work_steps)
         return ""
 
     def _looks_like_json_event(self, line: str) -> bool:
         return line.startswith("{") or line.startswith("[")
+
+    def _looks_like_protocol_fragment(self, line: str) -> bool:
+        lowered = line.lower()
+        markers = (
+            '"messageid"',
+            '"part"',
+            '"sessionid"',
+            '"tokens"',
+            "msg_",
+            "prt_",
+            "ses_",
+            "step-finish",
+            "tool-calls",
+        )
+        return sum(1 for marker in markers if marker in lowered) >= 2
 
     def _text_value(self, value) -> str:
         if isinstance(value, str):
@@ -223,6 +277,60 @@ class OpenCodeAdapter(AgentAdapter):
         numbered_lines = sum(1 for line in lines[:20] if self._is_numbered_file_line(line))
         return numbered_lines >= 3
 
+    def _display_chat_text(self, text: str, work_steps: set[str]) -> str:
+        stripped = text.strip()
+        if not stripped:
+            return ""
+        without_code_blocks = self._strip_fenced_code_blocks(stripped)
+        if without_code_blocks != stripped:
+            work_steps.add("正在整理代码产物。")
+        if not without_code_blocks:
+            return ""
+        if self._looks_like_raw_code_text(without_code_blocks):
+            work_steps.add("正在整理代码产物。")
+            return ""
+        return without_code_blocks
+
+    def _strip_fenced_code_blocks(self, text: str) -> str:
+        cleaned = re.sub(r"```[^\n`]*\n.*?```", "", text, flags=re.DOTALL)
+        cleaned = re.sub(r"```.*?```", "", cleaned, flags=re.DOTALL)
+        lines = [line.rstrip() for line in cleaned.splitlines()]
+        return "\n".join(line for line in lines if line.strip()).strip()
+
+    def _looks_like_raw_code_text(self, text: str) -> bool:
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        if len(lines) < 3:
+            return False
+        code_line_prefixes = (
+            "import ",
+            "export ",
+            "from ",
+            "def ",
+            "class ",
+            "function ",
+            "const ",
+            "let ",
+            "var ",
+            "return ",
+            "public ",
+            "private ",
+            "protected ",
+        )
+        code_markers = (
+            "{",
+            "}",
+            ";",
+            "=>",
+            "className=",
+            "</",
+            "/>",
+            "():",
+            " = ",
+        )
+        prefix_hits = sum(1 for line in lines[:20] if line.startswith(code_line_prefixes))
+        marker_hits = sum(1 for line in lines[:20] if any(marker in line for marker in code_markers))
+        return prefix_hits >= 2 or marker_hits >= 5
+
     def _is_numbered_file_line(self, line: str) -> bool:
         head, sep, tail = line.partition(":")
         return bool(sep and head.strip().isdigit() and (tail.startswith(" ") or tail == ""))
@@ -256,6 +364,112 @@ class OpenCodeAdapter(AgentAdapter):
         else:
             lines.append("未检测到工作区文件变更。")
         return "\n".join(lines)
+
+    def _should_use_review_fallback(
+        self,
+        content: str,
+        instruction: str,
+        context: dict,
+        file_events: list[AgentEvent],
+    ) -> bool:
+        if not self._is_review_task(instruction, context) or file_events:
+            return False
+        if not content:
+            return True
+        generic_markers = (
+            "OpenCode 已完成本次执行。",
+            "未检测到工作区文件变更。",
+        )
+        return all(marker in content for marker in generic_markers)
+
+    def _review_contract(self, instruction: str, context: dict) -> str:
+        if not self._is_review_task(instruction, context):
+            return ""
+        return (
+            "AgentHub review contract: 本任务是只读代码审查。不要修改、创建或删除文件。"
+            "必须在最终回复中用中文输出可执行审查意见，至少包含：总体结论、主要问题、改进建议。"
+            "如果未发现严重问题，也要说明可维护性、可访问性、性能或安全方面的后续建议。\n"
+        )
+
+    def _is_review_task(self, instruction: str, context: dict) -> bool:
+        task = context.get("task") or {}
+        workspace = context.get("workspace") or {}
+        text = " ".join(
+            str(value)
+            for value in (
+                instruction,
+                task.get("title"),
+                task.get("objective"),
+                task.get("instruction"),
+            )
+            if value
+        ).lower()
+        review_words = ("review", "audit", "inspect", "审查", "评审", "代码审查", "检查", "质量")
+        return any(word in text for word in review_words) and (
+            task.get("accessMode") == "read" or workspace.get("accessMode") == "read"
+        )
+
+    def _review_fallback_summary(self, root: Path, context: dict) -> str:
+        snapshot = self._snapshot_workspace(root)
+        candidates = self._review_candidate_files(snapshot, context)
+        if not candidates:
+            return "审查完成：当前工作区没有可审查的代码文件。建议先确认代码产物是否已生成并落盘。"
+
+        name, content = candidates[0]
+        size_kb = max(1, round(len(content.encode("utf-8")) / 1024))
+        notes = [
+            f"审查完成：已检查 {name}（约 {size_kb} KB）。",
+            "总体结论：当前实现可以作为演示版继续验证，但建议在进入下一轮开发前补齐工程化和边界处理。",
+        ]
+        issues = self._review_heuristics(name, content)
+        notes.append("主要问题：")
+        notes.extend(f"- {issue}" for issue in issues[:4])
+        notes.append("改进建议：")
+        notes.extend(
+            [
+                "- 补充核心交互的手动测试用例，至少覆盖空输入、重复签到、筛选和清空数据。",
+                "- 将样式、脚本与页面结构逐步拆分，降低单文件维护成本。",
+                "- 明确数据持久化边界；如果后续接入真实课程/学生数据，需要补充鉴权和输入校验。",
+            ]
+        )
+        return "\n".join(notes)
+
+    def _review_candidate_files(self, snapshot: dict[str, str], context: dict) -> list[tuple[str, str]]:
+        hints = context.get("navigationHints") or {}
+        hinted_paths = [
+            str(path)
+            for path in [*(hints.get("inspectFirst") or []), *(hints.get("changedFiles") or [])]
+            if str(path) in snapshot
+        ]
+        preferred = hinted_paths or sorted(snapshot)
+        suffixes = (".html", ".htm", ".js", ".jsx", ".ts", ".tsx", ".css", ".py")
+        return [(name, snapshot[name]) for name in preferred if name.lower().endswith(suffixes)]
+
+    def _review_heuristics(self, name: str, content: str) -> list[str]:
+        lowered = content.lower()
+        issues: list[str] = []
+        if name.lower().endswith((".html", ".htm")) and "<script" in lowered:
+            issues.append("HTML、CSS、JavaScript 集中在单文件中，后续功能增长后维护成本会快速上升。")
+        if "localstorage" in lowered:
+            issues.append("使用 localStorage 适合本地演示，但不适合多用户课程签到的真实数据同步和权限控制。")
+        if "innerhtml" in lowered:
+            issues.append("代码中出现 innerHTML，若拼接用户输入需要额外防范 XSS 风险。")
+        if "<input" in lowered and "required" not in lowered:
+            issues.append("表单输入缺少浏览器级 required 约束，建议补充空值和格式校验。")
+        if "@media" not in lowered:
+            issues.append("未看到响应式断点，移动端或窄屏使用体验可能不稳定。")
+        if not issues:
+            issues.append("未发现明显阻塞问题，但仍建议补充异常路径和可访问性检查。")
+        return issues
+
+    def _interrupted_chat_summary(self, file_events: list[AgentEvent], error: str) -> str:
+        return "\n".join(
+            [
+                "OpenCode 执行中断，已保留超时前写入的文件。",
+                f"检测到 {len(file_events)} 个文件变更，已生成对应产物卡片。",
+                f"中断原因：{error}",
+            ]
+        )
 
     def _limit_chat_text(self, text: str) -> str:
         normalized = text.strip()

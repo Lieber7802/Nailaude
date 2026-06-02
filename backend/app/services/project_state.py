@@ -49,7 +49,7 @@ class ProjectStateService:
             "fingerprint": scan.fingerprint,
         }
         state.file_tree = {"totalFiles": scan.total_files, "paths": scan.paths, "truncated": scan.truncated}
-        state.git = self.git_inspector.inspect(conversation.work_dir)
+        state.git = self.git_inspector.inspect(scan.work_dir)
         state.warnings = scan.warnings
         if recent_changes:
             state.recent_changes = [*(state.recent_changes or []), *recent_changes][-100:]

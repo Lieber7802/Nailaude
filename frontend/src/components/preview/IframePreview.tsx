@@ -1,7 +1,7 @@
 import { DesktopOutlined, MobileOutlined, TabletOutlined } from '@ant-design/icons'
 import type { Artifact } from '../../services/api'
-
-type PreviewViewport = 'desktop' | 'tablet' | 'mobile'
+import { isHtmlFile } from '../../utils/markdownPreview'
+import { VIEWPORT_OPTIONS, type PreviewViewport } from '../../utils/previewControls'
 
 interface IframePreviewProps {
   artifact?: Artifact
@@ -12,9 +12,10 @@ interface IframePreviewProps {
 }
 
 const IframePreview = ({ artifact, onViewportChange, onZoomChange, viewport, zoom }: IframePreviewProps) => {
-  const html = artifact?.files.find((file) => file.language === 'html' || file.name.endsWith('.html'))?.content
+  const html = artifact?.files.find((file) => isHtmlFile(file))?.content
+  const previewUrl = html ? undefined : artifact?.previewUrl || undefined
 
-  if (!html && !artifact?.previewUrl) {
+  if (!html && !previewUrl) {
     return <div className="preview-empty">当前产出物暂不支持网页预览</div>
   }
 
@@ -22,7 +23,7 @@ const IframePreview = ({ artifact, onViewportChange, onZoomChange, viewport, zoo
     <div className="browser-preview">
       <div className="browser-preview__chrome">
         <strong>{artifact?.title || 'Preview'}</strong>
-        <span>{artifact?.previewUrl || 'srcDoc'}</span>
+        <span>{previewUrl || artifact?.files[0]?.name || 'srcDoc'}</span>
       </div>
       <div className="browser-preview__stage">
         <div
@@ -31,40 +32,29 @@ const IframePreview = ({ artifact, onViewportChange, onZoomChange, viewport, zoo
         >
           <iframe
             sandbox="allow-scripts allow-forms allow-same-origin"
-            src={artifact?.previewUrl || undefined}
-            srcDoc={artifact?.previewUrl ? undefined : html}
+            src={previewUrl}
+            srcDoc={html || undefined}
             title="Artifact preview"
           />
         </div>
       </div>
       <div className="preview-device-bar">
-        <span className="viewport-switcher">
-          <button
-            aria-label="桌面预览"
-            className={viewport === 'desktop' ? 'is-active' : ''}
-            type="button"
-            onClick={() => onViewportChange('desktop')}
-          >
-            <DesktopOutlined />
-          </button>
-          <button
-            aria-label="平板预览"
-            className={viewport === 'tablet' ? 'is-active' : ''}
-            type="button"
-            onClick={() => onViewportChange('tablet')}
-          >
-            <TabletOutlined />
-          </button>
-          <button
-            aria-label="手机预览"
-            className={viewport === 'mobile' ? 'is-active' : ''}
-            type="button"
-            onClick={() => onViewportChange('mobile')}
-          >
-            <MobileOutlined />
-          </button>
-        </span>
-        <span className="zoom-switcher">
+        <div aria-label="预览尺寸" className="viewport-switcher" role="group">
+          {VIEWPORT_OPTIONS.map((option) => (
+            <button
+              aria-label={option.ariaLabel}
+              className={viewport === option.viewport ? 'is-active' : ''}
+              key={option.viewport}
+              title={option.ariaLabel}
+              type="button"
+              onClick={() => onViewportChange(option.viewport)}
+            >
+              {iconForViewport(option.viewport)}
+              <span>{option.label}</span>
+            </button>
+          ))}
+        </div>
+        <div aria-label="预览缩放" className="zoom-switcher" role="group">
           <button disabled={zoom <= 75} type="button" onClick={() => onZoomChange(zoom - 25)}>
             -
           </button>
@@ -72,10 +62,16 @@ const IframePreview = ({ artifact, onViewportChange, onZoomChange, viewport, zoo
           <button disabled={zoom >= 125} type="button" onClick={() => onZoomChange(zoom + 25)}>
             +
           </button>
-        </span>
+        </div>
       </div>
     </div>
   )
+}
+
+const iconForViewport = (viewport: PreviewViewport) => {
+  if (viewport === 'tablet') return <TabletOutlined />
+  if (viewport === 'mobile') return <MobileOutlined />
+  return <DesktopOutlined />
 }
 
 export default IframePreview

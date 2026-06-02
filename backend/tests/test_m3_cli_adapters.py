@@ -1,5 +1,7 @@
 import asyncio
 import json
+import shutil
+import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -7,7 +9,8 @@ import pytest
 
 from app.adapters.codex import CodexAdapter, codex_sandbox_mode, resolve_codex_binary
 from app.adapters.opencode import OpenCodeAdapter
-from app.services.process_pool import ProcessResult
+from app.schemas.conversation import WORKSPACE_ROOT
+from app.services.process_pool import ProcessPoolError, ProcessResult
 
 
 class CapturingPool:
@@ -175,6 +178,45 @@ class OpenCodeToolReadTextPool(CapturingPool):
         )
 
 
+class OpenCodeAssistantCodeBlockPool(CapturingPool):
+    async def run(self, command, cwd, timeout=None, cancel_event=None, env=None):
+        self.cancel_event = cancel_event
+        self.command = command
+        self.cwd = cwd
+        self.env = env
+        Path(cwd, "src").mkdir(exist_ok=True)
+        Path(cwd, "src", "App.tsx").write_text(
+            "export default function App() {\n"
+            "  return <main className=\"todo-shell\">Todo</main>\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        return ProcessResult(
+            stdout="\n".join(
+                [
+                    json.dumps(
+                        {
+                            "type": "message.part.updated",
+                            "part": {
+                                "type": "text",
+                                "text": (
+                                    "```tsx\n"
+                                    "export default function App() {\n"
+                                    "  return <main className=\"todo-shell\">Todo</main>\n"
+                                    "}\n"
+                                    "```\n"
+                                ),
+                            },
+                        }
+                    ),
+                    json.dumps({"type": "session.idle", "sessionID": "code-block"}),
+                ]
+            ),
+            stderr="",
+            returncode=0,
+        )
+
+
 class OpenCodePreviewRepairPool(CapturingPool):
     def __init__(self):
         super().__init__()
@@ -258,6 +300,40 @@ async def test_opencode_adapter_uses_deepseek_json_run_cli(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_opencode_adapter_resolves_relative_workspace_from_project_root():
+    workspace_name = f"pytest-relative-opencode-{uuid.uuid4()}"
+    work_dir = WORKSPACE_ROOT / workspace_name
+    work_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        pool = OpenCodeJsonPool()
+        adapter = OpenCodeAdapter(pool=pool, binary_path="opencode")
+
+        events = [event async for event in adapter.run_task(f"workspaces/{workspace_name}", "build", {})]
+
+        assert pool.cwd == str(work_dir)
+        assert str(work_dir) in pool.command
+        assert events[-1].type == "done"
+    finally:
+        shutil.rmtree(work_dir, ignore_errors=True)
+
+
+@pytest.mark.asyncio
+async def test_opencode_adapter_passes_deepseek_env_to_child_process(tmp_path, monkeypatch):
+    pool = OpenCodeJsonPool()
+    adapter = OpenCodeAdapter(pool=pool, binary_path="opencode")
+    monkeypatch.setattr("app.adapters.opencode.settings.DEEPSEEK_API_KEY", "test-deepseek-key")
+    monkeypatch.setattr("app.adapters.opencode.settings.DEEPSEEK_BASE_URL", "https://api.deepseek.test")
+    monkeypatch.setattr("app.adapters.opencode.settings.DEEPSEEK_MODEL", "deepseek-test")
+
+    events = [event async for event in adapter.run_task(str(tmp_path), "build", {"taskId": "task-1"})]
+
+    assert events[-1].type == "done"
+    assert pool.env["DEEPSEEK_API_KEY"] == "test-deepseek-key"
+    assert pool.env["DEEPSEEK_BASE_URL"] == "https://api.deepseek.test"
+    assert pool.env["DEEPSEEK_MODEL"] == "deepseek-test"
+
+
+@pytest.mark.asyncio
 async def test_opencode_adapter_summarizes_unknown_json_events_instead_of_streaming_raw(tmp_path):
     pool = OpenCodeRawEventPool()
     adapter = OpenCodeAdapter(pool=pool, binary_path="opencode")
@@ -272,6 +348,84 @@ async def test_opencode_adapter_summarizes_unknown_json_events_instead_of_stream
     assert "unknown.raw" not in text_event.content
     assert "sessionID" not in text_event.content
     assert events[-1].type == "done"
+
+
+@pytest.mark.asyncio
+async def test_opencode_adapter_filters_malformed_protocol_fragments_from_chat(tmp_path):
+    class ProtocolFragmentPool(CapturingPool):
+        async def run(self, command, cwd, timeout=None, cancel_event=None, env=None):
+            self.cwd = cwd
+            return ProcessResult(
+                stdout=(
+                    'euMsedvHUG0cnSx","part":{"id":"prt_e872aa350001lgMWK9AgxOwo1Z",'
+                    '"reason":"tool-calls","messageID":"msg_e872a9bd8001mQshtNq4C0Dguw",'
+                    '"sessionID":"ses_178d6c708ffeuMsedvHUG0cnSx","type":"step-finish",'
+                    '"tokens":{"total":25332,"input":193,"output":163,"reasoning":16,'
+                    '"cache":{"write":0,"read":24960}},"cost":0.000147028}}\n'
+                ),
+                stderr="",
+                returncode=0,
+            )
+
+    adapter = OpenCodeAdapter(pool=ProtocolFragmentPool(), binary_path="opencode")
+
+    events = [event async for event in adapter.run_task(str(tmp_path), "build", {})]
+
+    text_events = [event for event in events if event.type == "text_delta"]
+    assert text_events
+    assert "OpenCode 已完成本次执行。" in text_events[0].content
+    assert "sessionID" not in text_events[0].content
+    assert "tokens" not in text_events[0].content
+    assert "euMsedvHUG0cnSx" not in text_events[0].content
+
+
+@pytest.mark.asyncio
+async def test_opencode_adapter_generates_review_fallback_when_review_returns_no_text(tmp_path):
+    Path(tmp_path, "index.html").write_text(
+        "<!doctype html><html><body><input id=\"name\"><button>签到</button><script>"
+        "const name = document.getElementById('name');"
+        "localStorage.setItem('students', JSON.stringify([]));"
+        "</script></body></html>",
+        encoding="utf-8",
+    )
+
+    class ReviewProtocolOnlyPool(OpenCodeRawEventPool):
+        async def run(self, command, cwd, timeout=None, cancel_event=None, env=None):
+            self.cwd = cwd
+            self.command = command
+            return ProcessResult(
+                stdout="\n".join(
+                    [
+                        json.dumps({"type": "tool.start", "tool": "read", "path": "index.html"}),
+                        json.dumps({"type": "session.idle", "sessionID": "review-only"}),
+                    ]
+                ),
+                stderr="",
+                returncode=0,
+            )
+
+    adapter = OpenCodeAdapter(pool=ReviewProtocolOnlyPool(), binary_path="opencode")
+
+    events = [
+        event
+        async for event in adapter.run_task(
+            str(tmp_path),
+            "Review index.html for quality, performance, and security issues.",
+            {
+                "task": {"accessMode": "read", "instruction": "Review index.html"},
+                "workspace": {"accessMode": "read"},
+                "navigationHints": {"inspectFirst": ["index.html"]},
+            },
+        )
+    ]
+
+    text_event = events[0]
+    assert text_event.type == "text_delta"
+    assert "审查完成" in text_event.content
+    assert "index.html" in text_event.content
+    assert "localStorage" in text_event.content
+    assert "未检测到工作区文件变更" not in text_event.content
+    assert [event.type for event in events] == ["text_delta", "done"]
 
 
 @pytest.mark.asyncio
@@ -311,6 +465,25 @@ async def test_opencode_adapter_summarizes_tool_read_text_instead_of_streaming_f
 
 
 @pytest.mark.asyncio
+async def test_opencode_adapter_summarizes_assistant_code_blocks_instead_of_streaming_raw_code(tmp_path):
+    pool = OpenCodeAssistantCodeBlockPool()
+    adapter = OpenCodeAdapter(pool=pool, binary_path="opencode")
+
+    events = [event async for event in adapter.run_task(str(tmp_path), "build app", {"taskId": "task-1"})]
+
+    text_event = events[0]
+    assert text_event.type == "text_delta"
+    assert "OpenCode 已完成本次执行。" in text_event.content
+    assert "检测到 1 个文件变更，已生成对应产物卡片。" in text_event.content
+    assert "```tsx" not in text_event.content
+    assert "export default function App" not in text_event.content
+    assert "todo-shell" not in text_event.content
+    file_events = [event for event in events if event.type == "file_created"]
+    assert file_events[0].content == "src/App.tsx"
+    assert file_events[0].metadata["files"][0]["language"] == "tsx"
+
+
+@pytest.mark.asyncio
 async def test_opencode_prompt_requires_preview_entry_for_app_generation(tmp_path):
     pool = OpenCodeJsonPool()
     adapter = OpenCodeAdapter(pool=pool, binary_path="opencode")
@@ -335,6 +508,15 @@ async def test_opencode_prompt_requires_preview_entry_for_app_generation(tmp_pat
     assert "必须创建或更新 index.html" in prompt
     assert "不要只创建 README.md" in prompt
     assert "右侧预览" in prompt
+
+
+def test_opencode_prompt_requires_preview_entry_for_system_implementation_requests():
+    adapter = OpenCodeAdapter(pool=OpenCodeJsonPool(), binary_path="opencode")
+
+    assert adapter._should_require_preview_entry(
+        "根据需求文档实现学生课程签到系统的完整代码。",
+        {"workspace": {"accessMode": "write"}, "task": {"accessMode": "write"}},
+    )
 
 
 @pytest.mark.asyncio
@@ -475,3 +657,26 @@ async def test_opencode_raw_event_summary_mentions_artifacts_for_file_changes(tm
     assert "检测到 1 个文件变更，已生成对应产物卡片。" in events[0].content
     assert "export const ok" not in events[0].content
     assert [event.type for event in events if event.type == "file_created"] == ["file_created"]
+
+
+@pytest.mark.asyncio
+async def test_opencode_adapter_emits_file_events_for_changes_written_before_timeout(tmp_path):
+    class TimeoutAfterWritePool(CapturingPool):
+        async def run(self, command, cwd, timeout=None, cancel_event=None, env=None):
+            Path(cwd, "index.html").write_text("<!doctype html><h1>学生签到</h1>\n", encoding="utf-8")
+            raise ProcessPoolError("process timed out")
+
+    adapter = OpenCodeAdapter(pool=TimeoutAfterWritePool(), binary_path="opencode")
+
+    events = [event async for event in adapter.run_task(str(tmp_path), "build page", {})]
+
+    assert events[0].type == "text_delta"
+    assert "检测到 1 个文件变更，已生成对应产物卡片。" in events[0].content
+    file_events = [event for event in events if event.type == "file_created"]
+    assert len(file_events) == 1
+    assert file_events[0].content == "index.html"
+    assert file_events[0].metadata["files"] == [
+        {"name": "index.html", "content": "<!doctype html><h1>学生签到</h1>\n", "language": "html"}
+    ]
+    error_events = [event for event in events if event.type == "error"]
+    assert error_events[0].content == "process timed out"

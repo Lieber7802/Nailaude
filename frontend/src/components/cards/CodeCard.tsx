@@ -9,6 +9,8 @@ import {
 } from '@ant-design/icons'
 import { useMemo, useState } from 'react'
 import type { Artifact } from '../../services/api'
+import MarkdownPreview from '../preview/MarkdownPreview'
+import { isMarkdownFile } from '../../utils/markdownPreview'
 
 interface CodeCardProps {
   artifact: Artifact
@@ -20,6 +22,7 @@ const CodeCard = ({ artifact, onOpen }: CodeCardProps) => {
   const [expanded, setExpanded] = useState(false)
   const firstFile = artifact.files[0]
   const language = firstFile?.language || 'text'
+  const isMarkdown = isMarkdownFile(firstFile)
   const lines = useMemo(() => (firstFile?.content || '').split('\n'), [firstFile?.content])
   const visibleLines = expanded ? lines : lines.slice(0, 8)
 
@@ -50,9 +53,9 @@ const CodeCard = ({ artifact, onOpen }: CodeCardProps) => {
             <CopyOutlined />
             {copied ? '已复制' : '复制'}
           </button>
-          <button aria-label="在右侧查看代码" type="button" onClick={onOpen}>
+          <button aria-label={isMarkdown ? '在右侧预览 Markdown' : '在右侧查看代码'} type="button" onClick={onOpen}>
             <EyeOutlined />
-            在右侧查看
+            {isMarkdown ? '在右侧预览' : '在右侧查看'}
           </button>
           <button aria-label={expanded ? '折叠代码' : '展开代码'} type="button" onClick={() => setExpanded(!expanded)}>
             {expanded ? <UpOutlined /> : <DownOutlined />}
@@ -60,13 +63,17 @@ const CodeCard = ({ artifact, onOpen }: CodeCardProps) => {
         </div>
       </div>
       <div className="code-card__preview">
-        {visibleLines.map((line, index) => (
-          <div className="code-line" key={`${index}-${line}`}>
-            <span className="code-line__number">{index + 1}</span>
-            <code>{line || ' '}</code>
-          </div>
-        ))}
-        {!expanded && lines.length > visibleLines.length && (
+        {isMarkdown && firstFile ? (
+          <MarkdownPreview compact file={firstFile} />
+        ) : (
+          visibleLines.map((line, index) => (
+            <div className="code-line" key={`${index}-${line}`}>
+              <span className="code-line__number">{index + 1}</span>
+              <code>{line || ' '}</code>
+            </div>
+          ))
+        )}
+        {!isMarkdown && !expanded && lines.length > visibleLines.length && (
           <button className="code-card__more" type="button" onClick={() => setExpanded(true)}>
             展开 {lines.length - visibleLines.length} 行
           </button>

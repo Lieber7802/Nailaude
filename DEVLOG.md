@@ -945,3 +945,309 @@
 - `cd backend && ../.venv/bin/python -m pytest tests/test_m3_cli_adapters.py tests/test_m3_websocket_runtime.py tests/test_m4_artifact_preview.py -q` -> `28 passed`
 - `cd backend && ../.venv/bin/python -m pytest -q` -> `147 passed`
 - 最近群聊消息 raw 残留查询：`0`；artifact 查询仍保留 `webpage index.html` 及相关文档产物。
+
+## [2026-06-02] Codex - OpenCode assistant 代码块直出修复
+
+### 当前进展判断
+- 阅读 `AGENTS.md`、`docs/API_SPEC.md`、`packages/shared/types.ts`、`docs/TASK_BREAKDOWN.md` 和 M3 OpenCode 相关计划后确认：M1/M2/M3/M4 主链路已合入，当前问题属于 M3 OpenCode Adapter 输出清洗回归，不需要改 shared types、REST、WebSocket 或前端卡片契约。
+- 查看 git 历史确认主线最近合入 PR #8，包含 OpenCode 默认内置 Agent、群聊摘要清洗、预览入口补救等改动；本次修复继续沿用该 adapter 层边界。
+
+### 完成内容
+- 新增 OpenCode assistant raw code 回归：模拟 OpenCode 已写入 `src/App.tsx`，但又把同一段 TSX fenced code 当作 assistant 文本返回。
+- 扩展 OpenCode 文本提取：对 `message`、`message.part.*`、delta 聚合和 plain text 输出统一剥离 fenced code block。
+- 若剥离后只剩源码或没有可读说明，则回落为简短中文执行摘要，提示代码产物已整理并通过 artifact 卡片展示。
+- 保留 `file_created` / `file_modified` 事件不变，代码内容继续走产物卡片和预览链路。
+
+### 新增/修改文件
+- `backend/app/adapters/opencode.py` (修改)
+- `backend/tests/test_m3_cli_adapters.py` (修改)
+- `docs/plans/M3_OPENCODE_RAW_CODE_REPLY_FIX_PLAN.md` (新增)
+- `docs/plans/M3_OPENCODE_RAW_CODE_REPLY_FIX_CHECKLIST.md` (新增)
+- `DEVLOG.md` (修改)
+
+### 接口变更
+- 无 shared types、REST 或 WebSocket 结构变更。
+- OpenCode adapter 行为变更：聊天 `text_delta` 更保守，fenced/raw source code 不再进入群聊回复正文。
+
+### 验证
+- RED：新增回归测试前，OpenCode assistant TSX fenced code 会作为 `text_delta` 进入消息 bubble。
+- `cd backend && /private/tmp/agenthub-pytest-venv/bin/python -m pytest tests/test_m3_cli_adapters.py -q` -> `16 passed`
+- `cd backend && /private/tmp/agenthub-pytest-venv/bin/python -m pytest tests/test_m3_cli_adapters.py tests/test_m3_websocket_runtime.py tests/test_m4_artifact_preview.py -q` -> `29 passed`
+- 沙箱内全量测试因 Codex smoke 绑定 `127.0.0.1` 被拒，非沙箱重跑通过：`cd backend && /private/tmp/agenthub-pytest-venv/bin/python -m pytest -q` -> `148 passed`
+- `git diff --check` -> 通过。
+
+## [2026-06-02] Codex - OpenCode DeepSeek 环境注入
+
+### 完成内容
+- 修复 OpenCode 子进程无法直接读取 `backend/.env` 中 DeepSeek 配置的问题。
+- `OpenCodeAdapter` 现在会为正常执行和 preview repair 执行显式传入子进程环境：
+  - `DEEPSEEK_API_KEY`
+  - `DEEPSEEK_BASE_URL`
+  - `DEEPSEEK_MODEL`
+- 保持 secret 后端内使用，不写入仓库、不记录、不返回给前端。
+
+### 新增/修改文件
+- `backend/app/adapters/opencode.py` (修改)
+- `backend/tests/test_m3_cli_adapters.py` (修改)
+- `docs/plans/M3_OPENCODE_DEEPSEEK_ENV_PLAN.md` (新增)
+- `docs/plans/M3_OPENCODE_DEEPSEEK_ENV_CHECKLIST.md` (新增)
+- `DEVLOG.md` (修改)
+
+### 接口变更
+- 无 shared types、REST 或 WebSocket 结构变更。
+- OpenCode 子进程环境现在由后端显式注入 DeepSeek 配置。
+
+### 验证
+- RED：新增回归测试前，OpenCode process pool 收到的 `env` 为 `None`。
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_cli_adapters.py::test_opencode_adapter_passes_deepseek_env_to_child_process -q` -> `1 passed`
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_cli_adapters.py -q` -> `17 passed`
+
+## [2026-06-02] Codex - DeepSeek SOCKS 代理规划卡住修复
+
+### 完成内容
+- 排查前端停在 `Orchestrator: planning` 的原因：本机环境存在 `ALL_PROXY=socks5://127.0.0.1:7897`，但后端 `httpx` 未安装 SOCKS extra，DeepSeek Planner 初始化 HTTP client 时抛出 `socksio` 缺失异常。
+- 将后端依赖从 `httpx>=0.25.0` 改为 `httpx[socks]>=0.25.0`，并在本地 `.venv` 安装 `socksio`。
+- `OrchestratorPlanner` 现在会把 unexpected client 异常包装成 `PlannerFailure`，避免后台队列 task 直接崩溃导致前端永久停在 planning。
+
+### 新增/修改文件
+- `backend/requirements.txt` (修改)
+- `backend/app/services/orchestrator_planner.py` (修改)
+- `backend/tests/test_m3_planner.py` (修改)
+- `docs/plans/M3_DEEPSEEK_PROXY_UNBLOCK_PLAN.md` (新增)
+- `docs/plans/M3_DEEPSEEK_PROXY_UNBLOCK_CHECKLIST.md` (新增)
+- `DEVLOG.md` (修改)
+
+### 接口变更
+- 无 shared types、REST 或 WebSocket 结构变更。
+- 后端依赖现在支持 SOCKS 代理环境。
+
+### 验证
+- RED：新增回归测试前，普通 `ImportError` 会逃出 planner 并让后台 task 崩溃。
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_planner.py::test_planner_wraps_unexpected_client_errors -q` -> `1 passed`
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_planner.py tests/test_m3_cli_adapters.py -q` -> `24 passed`
+- `cd backend && .venv/bin/python -c "import socksio; print('ok')"` -> `ok`
+
+## [2026-06-02] Codex - Workspace 相对路径解析修复
+
+### 完成内容
+- 修复群聊完成后 `Orchestrator: completed` 卡片提示 `Workspace missing` 的路径不一致问题。
+- 新增统一 workspace path resolver：`workspaces/...` 现在在后端各服务中一致解析到仓库根目录 `/workspaces/...`，不再因后端进程 cwd 被解析到 `backend/workspaces/...`。
+- ProjectState 扫描、GitInspector 输入、WorkspaceSnapshot/audit、Artifact 写入、Preview 文件解析、OpenCode/Codex CLI cwd 均接入同一解析规则。
+- 写任务分配到真实 workspace 前会确保目标目录存在，避免新建会话首次调用 CLI 时 cwd 不存在。
+- 保留绝对路径和非 `workspaces/...` 临时测试路径的既有行为。
+
+### 新增/修改文件
+- `backend/app/services/workspace_paths.py` (新增)
+- `backend/app/services/workspace_scanner.py` (修改)
+- `backend/app/services/project_state.py` (修改)
+- `backend/app/services/workspace_snapshot.py` (修改)
+- `backend/app/services/artifact_service.py` (修改)
+- `backend/app/services/preview_service.py` (修改)
+- `backend/app/adapters/opencode.py` (修改)
+- `backend/app/adapters/codex.py` (修改)
+- `backend/tests/test_m3_project_state.py` (修改)
+- `backend/tests/test_m3_workspace_snapshot.py` (修改)
+- `backend/tests/test_m3_cli_adapters.py` (修改)
+- `docs/plans/M3_WORKSPACE_PATH_RESOLUTION_PLAN.md` (新增)
+- `docs/plans/M3_WORKSPACE_PATH_RESOLUTION_CHECKLIST.md` (新增)
+- `DEVLOG.md` (修改)
+
+### 接口变更
+- 无 shared types、REST 或 WebSocket 结构变更。
+- 行为变更：相对 `workspaces/...` 会话目录在后端服务中统一按项目根目录解析。
+
+### 验证
+- RED：新增回归测试前，ProjectState/WorkspaceSnapshot/OpenCode cwd 均解析为 `backend/workspaces/...` 并复现 `Workspace missing`。
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_project_state.py tests/test_m3_workspace_snapshot.py -q` -> `15 passed`
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_cli_adapters.py -q` -> `18 passed`
+- `cd backend && DEEPSEEK_API_KEY= .venv/bin/python -m pytest tests/test_m3_websocket_runtime.py tests/test_m4_artifact_preview.py -q` -> `13 passed`
+- 带本机 DeepSeek key 直接跑 runtime/preview 烟测时，1 个用例会因测试环境触发真实摘要器联网而多出 summary unavailable warning；清空 key 后离线测试通过。
+
+## [2026-06-02] Codex - OpenCode 超时前产物保留修复
+
+### 当前问题判断
+- 手测会话 `opencode-test` 在 03:43 的代码工匠任务已不是仍在执行：数据库记录显示任务状态为 `failed`，错误为 `process timed out`。
+- OpenCode 在超时前已写出 `/Users/yangyu/code/AgentHub/workspaces/opencode-test/index.html`，但旧 adapter 在 `ProcessPoolError` 分支只发 error，不扫描超时前的文件变更，因此前端没有产物卡片。
+
+### 完成内容
+- OpenCode adapter 在 `ProcessPoolError` 后会重新扫描 workspace。
+- 如果检测到文件变更，会先发送一段中断摘要，再发送 `file_created` / `file_modified` 事件，最后保留 error event 让 orchestrator 标记本次执行失败。
+- 这样即使 OpenCode 超时，用户也能看到超时前生成的文件卡片。
+
+### 新增/修改文件
+- `backend/app/adapters/opencode.py` (修改)
+- `backend/tests/test_m3_cli_adapters.py` (修改)
+- `docs/plans/M3_OPENCODE_TIMEOUT_ARTIFACT_FIX_PLAN.md` (新增)
+- `docs/plans/M3_OPENCODE_TIMEOUT_ARTIFACT_FIX_CHECKLIST.md` (新增)
+- `DEVLOG.md` (修改)
+
+### 接口变更
+- 无 shared types、REST 或 WebSocket 结构变更。
+- OpenCode adapter 行为变更：超时/进程错误后若 workspace 已有变更，也会通过既有 artifact 事件链路展示产物。
+
+### 验证
+- RED：新增回归测试前，写出 `index.html` 后抛出 `process timed out` 只会得到 error event。
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_cli_adapters.py::test_opencode_adapter_emits_file_events_for_changes_written_before_timeout -q` -> `1 passed`
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_cli_adapters.py -q` -> `19 passed`
+
+## [2026-06-02] Codex - OpenCode 手测回归修复
+
+### 当前问题判断
+- 本轮手测新会话 `9271c0a3-e4a4-4aab-8823-1e9bc490a373` 中，代码实现任务被 DeepSeek planner 标成 `accessMode=read`，runtime 因此把 OpenCode 放到临时 read copy 中执行；OpenCode 生成了项目文件和 artifact，但真实 `workspaces/student-sign-in-system` 没有文件，导致 ProjectState 报 `Workspace missing`，预览路由返回 404。
+- OpenCode stdout 里出现了非完整 JSON 的协议碎片（`part/sessionID/tokens/step-finish`），旧清洗逻辑把它当普通文本展示，造成回复框被超长串撑开。
+- 前端右侧预览优先加载 `previewUrl`，当文件未落盘或历史 artifact 只有 DB 内容时会显示后端 404 JSON。
+
+### 完成内容
+- Planner normalization 现在会把明显的实现/开发/撰写/生成/保存类任务强制归一为 `write`，即使模型返回 `read`。
+- 创建或更新会话时会确保相对 `workspaces/...` 目录存在；Windows 风格路径仍跳过本机 mkdir，避免在 macOS 下重新创建 `D:` 目录。
+- OpenCode adapter 会过滤 malformed protocol fragments，并回落为简短执行摘要，不再把 `sessionID/tokens` 等内部协议文本推到聊天流。
+- OpenCode 预览约束关键词补充“系统”，`学生课程签到系统` 这类实现任务也会被要求产出可直接预览的 `index.html`。
+- 聊天正文 CSS 增加异常长串换行约束，作为 UI 兜底。
+- 右侧预览面板优先使用 artifact 自带 HTML 内容作为 `srcDoc`，只有没有 HTML 内容时才请求 `previewUrl`，避免历史/临时产物直接显示 404 JSON。
+
+### 新增/修改文件
+- `backend/app/services/orchestrator_planner.py` (修改)
+- `backend/app/api/conversations.py` (修改)
+- `backend/app/adapters/opencode.py` (修改)
+- `backend/tests/test_m3_planner.py` (修改)
+- `backend/tests/test_m1_1_api.py` (修改)
+- `backend/tests/test_m3_cli_adapters.py` (修改)
+- `frontend/src/components/preview/IframePreview.tsx` (修改)
+- `frontend/src/index.css` (修改)
+- `docs/plans/M3_OPENCODE_MANUAL_TEST_REGRESSION_PLAN.md` (新增)
+- `docs/plans/M3_OPENCODE_MANUAL_TEST_REGRESSION_CHECKLIST.md` (新增)
+- `DEVLOG.md` (修改)
+
+### 接口变更
+- 无 shared types、REST 或 WebSocket 结构变更。
+- 后端行为变更：明显会写文件的任务不会再用 read-copy workspace 执行。
+- 前端行为变更：HTML artifact 优先用内嵌内容预览。
+
+### 验证
+- RED：新增测试前，代码实现任务保持 `accessMode=read`、新会话不创建 workspace、OpenCode 协议碎片会进入 `text_delta`。
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_planner.py tests/test_m1_1_api.py tests/test_m3_cli_adapters.py tests/test_m3_project_state.py tests/test_m3_workspace_snapshot.py tests/test_m4_artifact_preview.py -q` -> `53 passed`
+- `cd frontend && npm run build` -> 通过。
+
+## [2026-06-02] Codex - OpenCode Review 输出兜底修复
+
+### 当前问题判断
+- 审查大师 review 任务使用 `accessMode=read` 是正确的：审查不应该写入 workspace，因此“未检测到工作区文件变更”作为 audit 事实本身没问题。
+- 但用户可见回复只显示通用执行摘要是不正确的。根因是 OpenCode 本轮只返回了 read/tool/session 事件，没有返回最终审查文本，adapter 于是走了普通 fallback。
+
+### 完成内容
+- OpenCode review prompt 增加只读审查约束：不修改文件，并要求最终输出中文审查意见，包含总体结论、主要问题、改进建议。
+- 当 read-only review 任务没有得到可展示文本且没有文件变更时，adapter 会基于 workspace 中的目标代码文件生成保守审查摘要，不再显示“未检测到工作区文件变更”作为用户回复。
+- 兜底审查会优先看 `navigationHints.inspectFirst/changedFiles`，并对单文件 HTML、`localStorage`、`innerHTML`、表单约束、响应式断点等做轻量提示。
+
+### 新增/修改文件
+- `backend/app/adapters/opencode.py` (修改)
+- `backend/tests/test_m3_cli_adapters.py` (修改)
+- `docs/plans/M3_OPENCODE_REVIEW_OUTPUT_FIX_PLAN.md` (新增)
+- `docs/plans/M3_OPENCODE_REVIEW_OUTPUT_FIX_CHECKLIST.md` (新增)
+- `DEVLOG.md` (修改)
+
+### 接口变更
+- 无 shared types、REST 或 WebSocket 结构变更。
+- OpenCode adapter 行为变更：review 任务的无文本 fallback 变为审查摘要。
+
+### 验证
+- RED：新增测试前，review 任务只返回 `OpenCode 已完成本次执行 / 未检测到工作区文件变更`。
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_cli_adapters.py::test_opencode_adapter_generates_review_fallback_when_review_returns_no_text -q` -> `1 passed`
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_cli_adapters.py -q` -> `22 passed`
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_planner.py tests/test_m1_1_api.py tests/test_m3_cli_adapters.py tests/test_m4_artifact_preview.py -q` -> `39 passed`
+- `git diff --check` -> 通过。
+
+## [2026-06-02] Codex - Markdown Artifact 预览修复
+
+### 当前问题判断
+- 右侧 PreviewPanel header 的文件名按钮缺少收缩和省略约束，`index.html.code-review.md` 这类长文件名会挤压左侧 tab，导致 tab 文案换行。
+- Markdown artifact 目前被当作普通代码文件展示，右侧“预览”tab 只支持 HTML 或 `previewUrl`，聊天流内 CodeCard 也只展示源码片段。
+
+### 完成内容
+- 新增 Markdown artifact 识别与预览模式工具，支持 `.md`、`.markdown`、`.mdown`、`.mkd` 和 `markdown/md/gfm` language。
+- 新增轻量 `MarkdownPreview` 组件，用 React 节点渲染标题、段落、列表、分隔线、行内代码、加粗和 fenced code，避免 HTML 注入。
+- 右侧 PreviewPanel 对 Markdown artifact 默认打开“预览”，并渲染 Markdown 文档；代码 tab 仍可查看原文。
+- 聊天流 CodeCard 对 Markdown artifact 展示渲染后的文档预览，并把操作文案改为“在右侧预览”。
+- PreviewPanel header 文件名按钮增加 `min-width: 0`、最大宽度和 ellipsis，tabs 固定单行不被长文件名挤换行。
+
+### 新增/修改文件
+- `frontend/src/utils/markdownPreview.ts` (新增)
+- `frontend/src/components/preview/MarkdownPreview.tsx` (新增)
+- `frontend/src/components/preview/PreviewPanel.tsx` (修改)
+- `frontend/src/components/preview/IframePreview.tsx` (修改)
+- `frontend/src/components/cards/CodeCard.tsx` (修改)
+- `frontend/src/index.css` (修改)
+- `frontend/tests/markdownPreview.test.mjs` (新增)
+- `docs/plans/M4_MARKDOWN_PREVIEW_REGRESSION_PLAN.md` (新增)
+- `docs/plans/M4_MARKDOWN_PREVIEW_REGRESSION_CHECKLIST.md` (新增)
+- `DEVLOG.md` (修改)
+
+### 接口变更
+- 无 shared types、REST、WebSocket 或后端接口变更。
+
+### 验证
+- RED：新增测试前，`frontend/src/utils/markdownPreview.ts` 不存在，`npm test` 因模块缺失失败。
+- `cd frontend && npm test` -> `6 passed`
+- `cd frontend && npm run build` -> 通过。
+- `git diff --check` -> 通过。
+- Browser smoke：`http://127.0.0.1:5174/workspace` 页面可加载，前端控制台 error 数为 0；未启动后端时页面有 API 404 alert，属于环境缺失。
+
+## [2026-06-02] Codex - Markdown 表格渲染修复
+
+### 当前问题判断
+- Markdown review artifact 中的 GitHub 风格表格（`| header |` + `|---|`）被旧 parser 合并成普通 paragraph，聊天卡片和右侧预览都会显示原始表格语法。
+
+### 完成内容
+- `parseMarkdownBlocks` 新增 table block 识别，支持表头、分隔行、普通行和 `:---` / `---:` / `:---:` 对齐语法。
+- `MarkdownPreview` 新增 `<table>` 渲染分支，单元格继续支持行内代码和加粗。
+- Markdown 表格样式新增横向滚动、表头底色、边框和 compact 模式间距，避免窄卡片里挤压布局。
+
+### 新增/修改文件
+- `frontend/src/utils/markdownPreview.ts` (修改)
+- `frontend/src/components/preview/MarkdownPreview.tsx` (修改)
+- `frontend/src/index.css` (修改)
+- `frontend/tests/markdownPreview.test.mjs` (修改)
+- `docs/plans/M4_MARKDOWN_PREVIEW_REGRESSION_CHECKLIST.md` (修改)
+- `DEVLOG.md` (修改)
+
+### 接口变更
+- 无 shared types、REST、WebSocket 或后端接口变更。
+
+### 验证
+- RED：新增表格测试前，表格内容被解析为单个 paragraph。
+- `cd frontend && npm test` -> `7 passed`
+- `cd frontend && npm run build` -> 通过。
+- `git diff --check` -> 通过。
+
+## [2026-06-02] Codex - 预览控件与全屏交互优化
+
+### 当前问题判断
+- 网页预览底部的桌面/平板/手机按钮只有图标，含义不够明确；按钮与外层控制条尺寸关系不稳，在窄右栏下容易显得溢出。
+- 右上角全屏按钮只切换 `fixed inset: 18px` 的放大卡片效果，没有进入真正全屏，也没有退出态文案或图标。
+
+### 完成内容
+- 新增 `previewControls` 工具配置，统一 viewport 选项与全屏按钮文案，并补测试防止回退成图标-only。
+- 底部设备切换改为带“桌面 / 平板 / 手机”文字的分段控件，保留图标但增强可理解性。
+- 设备切换与缩放控件的 CSS 改为稳定的 inline-flex control group，增加 gap、padding、最大宽度和 active 样式，避免溢出底部区域。
+- PreviewPanel 全屏按钮改为进入/退出两态：进入时优先调用浏览器 Fullscreen API，失败时使用全视口 CSS fallback；退出时调用 `document.exitFullscreen()` 或关闭 fallback。
+- 全屏样式由 `inset: 18px` 改为铺满 viewport，并补 `:fullscreen` 样式。
+
+### 新增/修改文件
+- `frontend/src/utils/previewControls.ts` (新增)
+- `frontend/src/components/preview/IframePreview.tsx` (修改)
+- `frontend/src/components/preview/PreviewPanel.tsx` (修改)
+- `frontend/src/index.css` (修改)
+- `frontend/tests/previewControls.test.mjs` (新增)
+- `docs/plans/M4_PREVIEW_CONTROLS_POLISH_PLAN.md` (新增)
+- `docs/plans/M4_PREVIEW_CONTROLS_POLISH_CHECKLIST.md` (新增)
+- `DEVLOG.md` (修改)
+
+### 接口变更
+- 无 shared types、REST、WebSocket 或后端接口变更。
+
+### 验证
+- RED：新增测试前，`frontend/src/utils/previewControls.ts` 不存在，`npm test` 因模块缺失失败。
+- `cd frontend && npm test` -> `9 passed`
+- `cd frontend && npm run build` -> 通过。
+- `git diff --check` -> 通过。
+- Browser smoke 未完成：本轮 in-app Browser 返回 `Browser is not available: iab`；Vite server 已启动后停止。

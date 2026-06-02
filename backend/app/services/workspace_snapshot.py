@@ -10,6 +10,7 @@ import tempfile
 import uuid
 
 from app.services.workspace_scanner import EXCLUDED_DIRS, WorkspaceScanner
+from app.services.workspace_paths import resolve_workspace_path
 
 
 @dataclass
@@ -36,7 +37,7 @@ class WorkspaceSnapshotService:
     def create_batch_snapshot(self, work_dir: str) -> BatchSnapshot:
         root_path = tempfile.mkdtemp(prefix="agenthub-snapshot-")
         source_path = str(Path(root_path, "source"))
-        warnings = self._copy_safe(Path(work_dir), Path(source_path))
+        warnings = self._copy_safe(resolve_workspace_path(work_dir), Path(source_path))
         return BatchSnapshot(
             snapshot_id=f"snapshot-{uuid.uuid4()}",
             source_path=source_path,
@@ -50,11 +51,13 @@ class WorkspaceSnapshotService:
         return ReadWorkspace(snapshot_id=snapshot.snapshot_id, path=target)
 
     def write_workspace(self, work_dir: str, snapshot: BatchSnapshot) -> ReadWorkspace:
-        return ReadWorkspace(snapshot_id=snapshot.snapshot_id, path=work_dir)
+        resolved = resolve_workspace_path(work_dir)
+        resolved.mkdir(parents=True, exist_ok=True)
+        return ReadWorkspace(snapshot_id=snapshot.snapshot_id, path=str(resolved))
 
     def capture_workspace_state(self, work_dir: str) -> dict[str, str]:
         """Capture deterministic file hashes for a lightweight task audit."""
-        root = Path(work_dir).resolve()
+        root = resolve_workspace_path(work_dir)
         if not root.exists() or not root.is_dir():
             return {}
         scanner = WorkspaceScanner()
