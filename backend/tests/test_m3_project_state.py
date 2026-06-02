@@ -55,6 +55,22 @@ def test_workspace_scanner_marks_truncation(tmp_path):
     assert result.truncated is True
 
 
+def test_workspace_scanner_resolves_relative_workspaces_from_project_root():
+    workspace_name = f"pytest-relative-scan-{uuid.uuid4()}"
+    work_dir = WORKSPACE_ROOT / workspace_name
+    work_dir.mkdir(parents=True)
+    try:
+        (work_dir / "README.md").write_text("hello", encoding="utf-8")
+
+        result = WorkspaceScanner().scan(f"workspaces/{workspace_name}")
+
+        assert result.work_dir == str(work_dir)
+        assert result.warnings == []
+        assert "README.md" in result.paths
+    finally:
+        shutil.rmtree(work_dir, ignore_errors=True)
+
+
 def test_git_inspector_degrades_for_non_git_workspace(tmp_path):
     result = GitInspector().inspect(str(tmp_path))
 
@@ -169,3 +185,27 @@ async def test_project_state_refresh_records_task_audit_and_does_not_bump_unchan
     assert changed.version == initial_version + 1
     assert changed.recent_changes[-1]["file"] == "README.md"
     assert changed.recent_changes[-1]["changeType"] == "created"
+
+
+@pytest.mark.asyncio
+async def test_project_state_refresh_resolves_relative_workspaces_from_project_root(project_db):
+    workspace_name = f"pytest-relative-state-{uuid.uuid4()}"
+    work_dir = WORKSPACE_ROOT / workspace_name
+    work_dir.mkdir(parents=True)
+    try:
+        (work_dir / "README.md").write_text("hello", encoding="utf-8")
+        conversation = Conversation(title="Relative", type="single", work_dir=f"workspaces/{workspace_name}")
+        project_db.add(conversation)
+        await project_db.commit()
+        await project_db.refresh(conversation)
+
+        async def summarize(state, task_results):
+            return ""
+
+        state = await ProjectStateService(project_db, summarizer=summarize).refresh(conversation)
+
+        assert state.workspace["workDir"] == str(work_dir)
+        assert state.warnings == []
+        assert "README.md" in state.file_tree["paths"]
+    finally:
+        shutil.rmtree(work_dir, ignore_errors=True)

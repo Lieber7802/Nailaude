@@ -6,6 +6,8 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from app.services.workspace_paths import resolve_workspace_path
+
 
 EXCLUDED_DIRS = {".git", "node_modules", "__pycache__", ".pytest_cache", ".mypy_cache", "dist", "build", ".vite", ".next"}
 SENSITIVE_SUFFIXES = {".pem", ".key", ".p12", ".pfx"}
@@ -27,7 +29,7 @@ class WorkspaceScanner:
         self.max_files = max_files
 
     def scan(self, work_dir: str) -> WorkspaceScan:
-        root = Path(work_dir).resolve()
+        root = resolve_workspace_path(work_dir)
         paths: list[str] = []
         fingerprint_parts: list[str] = []
         warnings: list[str] = []

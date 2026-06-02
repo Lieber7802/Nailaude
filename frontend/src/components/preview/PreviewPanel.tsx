@@ -1,18 +1,21 @@
-import { CodeOutlined, ExpandOutlined, FileTextOutlined, GlobalOutlined } from '@ant-design/icons'
-import { useMemo, useState } from 'react'
+import { CodeOutlined, CompressOutlined, ExpandOutlined, FileTextOutlined, GlobalOutlined } from '@ant-design/icons'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Artifact } from '../../services/api'
 import { useArtifactStore } from '../../stores/artifactStore'
 import CodeEditor from './CodeEditor'
 import DiffViewer from './DiffViewer'
 import IframePreview from './IframePreview'
+import MarkdownPreview from './MarkdownPreview'
+import { findMarkdownFile, getArtifactPreviewMode, isMarkdownFile } from '../../utils/markdownPreview'
+import { FULLSCREEN_ACTIONS, type PreviewViewport } from '../../utils/previewControls'
 
 type PreviewTab = 'outputs' | 'preview' | 'code' | 'changes'
-type PreviewViewport = 'desktop' | 'tablet' | 'mobile'
 
 const MIN_ZOOM = 75
 const MAX_ZOOM = 125
 
 const PreviewPanel = () => {
+  const panelRef = useRef<HTMLDivElement>(null)
   const [tabSelection, setTabSelection] = useState<{
     artifactId: string | null
     openRevision: number
@@ -21,6 +24,7 @@ const PreviewPanel = () => {
   const [viewport, setViewport] = useState<PreviewViewport>('desktop')
   const [zoom, setZoom] = useState(100)
   const [fullscreen, setFullscreen] = useState(false)
+  const [fullscreenFallback, setFullscreenFallback] = useState(false)
   const artifactsByMessage = useArtifactStore((state) => state.artifactsByMessage)
   const storedActiveArtifact = useArtifactStore((state) => state.activeArtifact)
   const activeArtifactId = useArtifactStore((state) => state.activeArtifactId)
@@ -36,15 +40,58 @@ const PreviewPanel = () => {
   const activeArtifact =
     storedActiveArtifact || artifacts.find((artifact) => artifact.id === activeArtifactId) || artifacts[0]
   const firstFile = activeArtifact?.files[0]
+  const markdownFile = findMarkdownFile(activeArtifact)
+  const previewMode = getArtifactPreviewMode(activeArtifact)
   const activeTab =
     tabSelection.artifactId === (activeArtifact?.id || null) && tabSelection.openRevision === openRevision
       ? tabSelection.tab
       : tabForArtifact(activeArtifact)
   const setActiveTab = (tab: PreviewTab) =>
     setTabSelection({ artifactId: activeArtifact?.id || null, openRevision, tab })
+  const isFullscreen = fullscreen || fullscreenFallback
+  const fullscreenAction = isFullscreen ? FULLSCREEN_ACTIONS.exit : FULLSCREEN_ACTIONS.enter
+
+  useEffect(() => {
+    const syncFullscreenState = () => {
+      const isPanelFullscreen = document.fullscreenElement === panelRef.current
+      setFullscreen(isPanelFullscreen)
+      if (document.fullscreenElement && !isPanelFullscreen) {
+        setFullscreenFallback(false)
+      }
+    }
+
+    document.addEventListener('fullscreenchange', syncFullscreenState)
+    return () => document.removeEventListener('fullscreenchange', syncFullscreenState)
+  }, [])
+
+  const toggleFullscreen = async () => {
+    if (isFullscreen) {
+      setFullscreenFallback(false)
+      if (document.fullscreenElement) {
+        await document.exitFullscreen()
+      } else {
+        setFullscreen(false)
+      }
+      return
+    }
+
+    const panel = panelRef.current
+    if (!panel?.requestFullscreen) {
+      setFullscreenFallback(true)
+      setFullscreen(true)
+      return
+    }
+
+    try {
+      await panel.requestFullscreen()
+    } catch {
+      setFullscreenFallback(true)
+      setFullscreen(true)
+    }
+  }
 
   return (
-    <div className={fullscreen ? 'preview-panel preview-panel--fullscreen' : 'preview-panel'}>
+    <div className={isFullscreen ? 'preview-panel preview-panel--fullscreen' : 'preview-panel'} ref={panelRef}>
       <div className="preview-panel__header">
         <div className="preview-tabs">
           <button
@@ -73,12 +120,17 @@ const PreviewPanel = () => {
           </button>
         </div>
         <div className="preview-toolbar">
-          <button type="button">
+          <button className="preview-toolbar__file" title={firstFile?.name || '暂无文件'} type="button">
             <FileTextOutlined />
-            {firstFile?.name || '暂无文件'}
+            <span className="preview-toolbar__file-name">{firstFile?.name || '暂无文件'}</span>
           </button>
-          <button aria-label="展开预览" type="button" onClick={() => setFullscreen(!fullscreen)}>
-            <ExpandOutlined />
+          <button
+            aria-label={fullscreenAction.ariaLabel}
+            title={fullscreenAction.label}
+            type="button"
+            onClick={() => void toggleFullscreen()}
+          >
+            {isFullscreen ? <CompressOutlined /> : <ExpandOutlined />}
           </button>
         </div>
       </div>
@@ -87,7 +139,8 @@ const PreviewPanel = () => {
         {activeTab === 'outputs' && (
           <OutputsTab artifacts={artifacts} activeArtifact={activeArtifact} onSelect={setActiveArtifact} />
         )}
-        {activeTab === 'preview' && (
+        {activeTab === 'preview' && previewMode === 'markdown' && <MarkdownPreview file={markdownFile} />}
+        {activeTab === 'preview' && previewMode !== 'markdown' && (
           <IframePreview
             artifact={activeArtifact}
             viewport={viewport}
@@ -143,11 +196,13 @@ const OutputsTab = ({
 
 const iconForArtifact = (artifact: Artifact) => {
   if (artifact.type === 'webpage') return <GlobalOutlined />
+  if (isMarkdownFile(artifact.files[0])) return <FileTextOutlined />
   return <CodeOutlined />
 }
 
 const tabForArtifact = (artifact?: Artifact): PreviewTab => {
   if (artifact?.type === 'diff') return 'changes'
+  if (getArtifactPreviewMode(artifact) === 'markdown') return 'preview'
   if (artifact?.type === 'code') return 'code'
   return 'preview'
 }

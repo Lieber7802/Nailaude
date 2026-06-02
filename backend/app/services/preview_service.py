@@ -9,10 +9,10 @@ from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.conversation import Conversation
+from app.services.workspace_paths import resolve_workspace_path
 
 
 PREVIEW_CSP = "default-src 'self' 'unsafe-inline' data: blob:; script-src 'self' 'unsafe-inline'; frame-ancestors 'self'"
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
 class PreviewService:
@@ -50,8 +50,7 @@ class PreviewService:
         )
 
     def _resolve_preview_path(self, work_dir: str, file_path: str) -> Path:
-        work_dir_path = Path(work_dir).expanduser()
-        root = work_dir_path.resolve() if work_dir_path.is_absolute() else (PROJECT_ROOT / work_dir_path).resolve()
+        root = resolve_workspace_path(work_dir)
         requested = (root / file_path.replace("\\", "/").lstrip("/")).resolve()
         if not requested.is_relative_to(root):
             raise HTTPException(status_code=403, detail="Preview path escapes the workspace")

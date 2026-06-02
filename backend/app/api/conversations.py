@@ -12,7 +12,8 @@ from app.models.agent import Agent
 from app.models.artifact import Artifact
 from app.models.conversation import Conversation
 from app.models.message import Message
-from app.schemas.conversation import ConversationCreate, ConversationUpdate
+from app.schemas.conversation import ConversationCreate, ConversationUpdate, WINDOWS_WORKSPACE_PATTERN
+from app.services.workspace_paths import resolve_workspace_path
 
 router = APIRouter()
 
@@ -86,6 +87,7 @@ async def list_conversations(
 async def create_conversation(payload: ConversationCreate, db: AsyncSession = Depends(get_db)):
     """Create a new conversation"""
     await validate_participants(payload.participant_ids, db)
+    ensure_workspace_directory(payload.work_dir)
     conversation = Conversation(
         title=payload.title,
         type=payload.type,
@@ -144,6 +146,8 @@ async def update_conversation(
     updates = payload.model_dump(exclude_unset=True)
     if "participant_ids" in updates:
         await validate_participants(updates["participant_ids"], db)
+    if "work_dir" in updates:
+        ensure_workspace_directory(updates["work_dir"] or "")
     for key, value in updates.items():
         setattr(conversation, key, value)
 
@@ -185,3 +189,9 @@ async def validate_participants(participant_ids: list[str], db: AsyncSession) ->
     missing_ids = [agent_id for agent_id in participant_ids if agent_id not in existing_ids]
     if missing_ids:
         raise_api_error("Participant agent not found", 400)
+
+
+def ensure_workspace_directory(work_dir: str) -> None:
+    if not work_dir or WINDOWS_WORKSPACE_PATTERN.match(work_dir):
+        return
+    resolve_workspace_path(work_dir).mkdir(parents=True, exist_ok=True)

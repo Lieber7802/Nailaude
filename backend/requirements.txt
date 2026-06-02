@@ -9,8 +9,8 @@ alembic>=1.12
 aiosqlite
 greenlet
 
-# HTTP client (for LLM API calls)
-httpx>=0.25.0
+# HTTP client (for LLM API calls; socks extra supports local proxy setups)
+httpx[socks]>=0.25.0
 
 # File watching
 watchdog>=3.0

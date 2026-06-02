@@ -38,6 +38,11 @@ class FakeClient:
         return FakeResult(output)
 
 
+class BrokenClient:
+    async def request_json(self, messages):
+        raise ImportError("Using SOCKS proxy, but the 'socksio' package is not installed")
+
+
 @pytest.mark.asyncio
 async def test_planner_replans_once_after_invalid_plan():
     client = FakeClient(
@@ -100,6 +105,33 @@ async def test_planner_normalizes_common_loose_task_fields():
     assert result.tasks[0].title == "one"
     assert result.tasks[0].instruction == "Create output.txt"
     assert result.tasks[0].acceptance_criteria == ["output.txt exists"]
+    assert result.tasks[0].access_mode == "write"
+
+
+@pytest.mark.asyncio
+async def test_planner_forces_write_access_for_implementation_tasks_even_if_model_says_read():
+    client = FakeClient(
+        [
+            {
+                "status": "Ready",
+                "reasoningSummary": "normalized",
+                "tasks": [
+                    {
+                        **task("one"),
+                        "objective": "根据需求文档实现学生课程签到系统的完整代码。",
+                        "instruction": "完成代码实现，生成可运行页面和项目文件。",
+                        "accessMode": "read",
+                    }
+                ],
+            },
+        ]
+    )
+
+    result = await OrchestratorPlanner(client).plan(
+        {"userRequest": "@代码工匠 根据刚才产出的需求文档，完成代码实现"},
+        participant_ids={"agent-1"},
+    )
+
     assert result.tasks[0].access_mode == "write"
 
 
@@ -170,3 +202,9 @@ async def test_planner_stops_after_second_invalid_plan():
 
     with pytest.raises(PlannerFailure, match="invalid after replanning"):
         await OrchestratorPlanner(client).plan({"userRequest": "build"}, participant_ids={"agent-1"})
+
+
+@pytest.mark.asyncio
+async def test_planner_wraps_unexpected_client_errors():
+    with pytest.raises(PlannerFailure, match="Using SOCKS proxy"):
+        await OrchestratorPlanner(BrokenClient()).plan({"userRequest": "build"}, participant_ids={"agent-1"})

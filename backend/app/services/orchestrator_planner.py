@@ -43,6 +43,8 @@ class OrchestratorPlanner:
                 )
             except LLMClientError as exc:
                 raise PlannerFailure(str(exc)) from exc
+            except Exception as exc:
+                raise PlannerFailure(str(exc)) from exc
         raise PlannerFailure("Planner failed")
 
     def _normalize_raw_result(self, raw: dict, context: dict) -> dict:
@@ -92,10 +94,13 @@ class OrchestratorPlanner:
                 task["riskHints"] = {}
             access_mode = task.get("accessMode") or task.get("access_mode") or task.get("readWriteAccess")
             if isinstance(access_mode, str):
+                normalized_access_mode = access_mode.strip().lower()
+                if normalized_access_mode == "read" and self._looks_like_write_task(task, context):
+                    normalized_access_mode = "write"
                 if "accessMode" in task or "readWriteAccess" in task:
-                    task["accessMode"] = access_mode.strip().lower()
+                    task["accessMode"] = normalized_access_mode
                 if "access_mode" in task:
-                    task["access_mode"] = access_mode.strip().lower()
+                    task["access_mode"] = normalized_access_mode
             elif "accessMode" not in task and "access_mode" not in task:
                 task["accessMode"] = (
                     "write" if task.get("writeResources") or self._looks_like_write_task(task, context) else "read"
@@ -113,4 +118,26 @@ class OrchestratorPlanner:
             ]
             if value
         ).lower()
-        return any(keyword in text for keyword in ["create", "write", "modify", "edit", "生成", "创建", "写入", "修改"])
+        return any(
+            keyword in text
+            for keyword in [
+                "build",
+                "create",
+                "develop",
+                "edit",
+                "implement",
+                "modify",
+                "save",
+                "write",
+                "代码实现",
+                "保存",
+                "创建",
+                "开发",
+                "实现",
+                "完成代码",
+                "撰写",
+                "生成",
+                "写入",
+                "修改",
+            ]
+        )

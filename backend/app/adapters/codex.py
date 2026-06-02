@@ -17,6 +17,7 @@ from app.config import settings
 from app.services.deepseek_responses_bridge import DeepSeekResponsesBridge, DeepSeekResponsesBridgeError
 from app.services.process_pool import ProcessPool, ProcessPoolError
 from app.services.workspace_scanner import WorkspaceScanner
+from app.services.workspace_paths import resolve_workspace_path
 
 
 LANGUAGE_BY_SUFFIX = {
@@ -92,7 +93,7 @@ class CodexAdapter(AgentAdapter):
         Execute a Codex one-shot task when a usable CLI is installed.
         """
         cancel_event = context.get("_cancel_event")
-        root = Path(work_dir).expanduser().resolve()
+        root = resolve_workspace_path(work_dir)
         before = self._snapshot_workspace(root)
         prompt = self._build_prompt(instruction, context)
         try:
