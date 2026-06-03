@@ -100,3 +100,26 @@ async def test_llm_client_requires_api_key():
 
     with pytest.raises(LLMClientError, match="DEEPSEEK_API_KEY"):
         await client.request_json([{"role": "user", "content": "plan"}])
+
+
+@pytest.mark.asyncio
+async def test_llm_health_check_uses_bounded_json_budget_and_requires_ok_true():
+    async def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        assert body["response_format"] == {"type": "json_object"}
+        assert body["max_tokens"] >= 64
+        return response({"choices": [{"message": {"content": '{"ok": true}'}}]})
+
+    client = LLMClient(api_key="test-key", transport=httpx.MockTransport(handler))
+
+    assert await client.health_check() is True
+
+
+@pytest.mark.asyncio
+async def test_llm_health_check_rejects_json_without_true_ok():
+    async def handler(_: httpx.Request) -> httpx.Response:
+        return response({"choices": [{"message": {"content": '{"ok": false}'}}]})
+
+    client = LLMClient(api_key="test-key", transport=httpx.MockTransport(handler))
+
+    assert await client.health_check() is False

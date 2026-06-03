@@ -1251,3 +1251,78 @@
 - `cd frontend && npm run build` -> 通过。
 - `git diff --check` -> 通过。
 - Browser smoke 未完成：本轮 in-app Browser 返回 `Browser is not available: iab`；Vite server 已启动后停止。
+## [2026-06-03] Codex - M3 Agent chain blockers fixed
+
+### Problem judgment
+- WSL/macOS are now treated as the default real-agent runtime. Windows-specific CLI launch behavior is not the primary integration target.
+- OpenCode CLI `run --format json` can exit successfully while emitting only protocol events, which made frontend chat bubbles show synthetic fallback summaries instead of model text.
+- DeepSeek direct API was healthy, but `LLMClient.health_check()` used a 16-token JSON probe and returned false for `deepseek-v4-flash`.
+- Review tasks could return useful Codex text but be marked failed when planned with `accessMode=write` and no file changes.
+
+### Completed
+- Added `docs/plans/M3_AGENT_CHAIN_BLOCKERS_SPEC.md`, `docs/plans/M3_AGENT_CHAIN_BLOCKERS_PLAN.md`, and `docs/plans/M3_AGENT_CHAIN_BLOCKERS_CHECKLIST.md`.
+- `OpenCodeAdapter` now prefers a per-task `opencode serve` HTTP path for production/default execution and keeps the old CLI `run --format json` parser as a fallback/test helper.
+- Added server response text extraction that skips reasoning/tool payloads and preserves assistant text.
+- `LLMClient.health_check()` now requests a sufficient bounded JSON budget and requires semantic `{"ok": true}`.
+- `OrchestratorRuntime` still rejects build/write tasks with no workspace changes, but allows review/audit/validation tasks with a non-empty summary to complete without file changes.
+
+### Changed files
+- `backend/app/adapters/opencode.py`
+- `backend/app/services/llm_client.py`
+- `backend/app/services/orchestrator_runtime.py`
+- `backend/tests/test_m3_cli_adapters.py`
+- `backend/tests/test_m3_llm_client.py`
+- `backend/tests/test_m3_orchestrator_runtime.py`
+- `docs/plans/M3_AGENT_CHAIN_BLOCKERS_SPEC.md`
+- `docs/plans/M3_AGENT_CHAIN_BLOCKERS_PLAN.md`
+- `docs/plans/M3_AGENT_CHAIN_BLOCKERS_CHECKLIST.md`
+- `DEVLOG.md`
+
+### Interface changes
+- No shared type, REST, or WebSocket contract changes.
+- No new dependencies.
+- MockAdapter remains unchanged.
+
+### Verification
+- RED: new tests initially failed for `max_tokens=16`, `ok:false` health acceptance, no-change review task failure, missing OpenCode server text extractor, and missing `server_runner` adapter path.
+- WSL targeted tests: `PYTHONPATH=. python -B -m pytest -q -p no:cacheprovider tests/test_m3_llm_client.py tests/test_m3_orchestrator_runtime.py tests/test_m3_cli_adapters.py` -> `42 passed`.
+- WSL broader M3 tests: `PYTHONPATH=. python -B -m pytest -q -p no:cacheprovider tests/test_m3_websocket_runtime.py tests/test_m3_e2e.py` -> `12 passed`.
+- WSL real adapter smoke: `llm_health True`; OpenCode returned `OPENCODE_ADAPTER_SERVER_WSL_OK`; Codex returned `CODEX_AFTER_FIX_WSL_OK`.
+- WSL real group smoke: OpenCode created `index.html` and emitted a webpage artifact; Codex review text streamed; final run `completed`; both task states completed; both batch states completed; no warnings.
+
+### Teammate notes
+- If OpenCode server startup fails, the adapter falls back to the existing CLI path and existing fallback summaries.
+- A future optimization can reuse an OpenCode server process, but this fix intentionally uses a per-task lifecycle to keep resource ownership simple and testable.
+
+## [2026-06-03] Codex - M3 Agent chain shared-state warning fix
+
+### Problem judgment
+- After the AGNT_CHAIN_BLOCKERS changes, a real run could finish with `Shared state refresh warning: 'taskId'`.
+- The UI warning came from `TeamProtocolService.merge_batch()` receiving a failed task result without `taskId`.
+- Root cause: `OrchestratorRuntime.run_task()` catches executor exceptions and creates a fallback failed result, but that fallback did not preserve task metadata required by Team Board and Project State refresh.
+
+### Completed
+- Added a RED regression test for executor exceptions preserving `taskId`, `agentId`, and `batchId` in `refresh_shared_state()` batch results.
+- Normalized runtime task result metadata in place before audit/status post-processing, covering normal returns, early failed returns, and exception fallback results while preserving the WebSocket handler's `task_results` reference for downstream handoff audit.
+
+### Changed files
+- `backend/app/services/orchestrator_runtime.py`
+- `backend/tests/test_m3_orchestrator_runtime.py`
+- `docs/plans/M3_AGENT_CHAIN_BLOCKERS_PLAN.md`
+- `docs/plans/M3_AGENT_CHAIN_BLOCKERS_CHECKLIST.md`
+- `DEVLOG.md`
+
+### Interface changes
+- No shared type, REST, WebSocket, or frontend contract changes.
+- No new dependencies.
+
+### Verification
+- RED: `tests/test_m3_orchestrator_runtime.py::test_runtime_passes_task_metadata_to_shared_refresh_when_executor_raises` failed with `KeyError: 'taskId'` before the fix.
+- `cd backend; python -B -m pytest -q -p no:cacheprovider tests/test_m3_orchestrator_runtime.py::test_runtime_passes_task_metadata_to_shared_refresh_when_executor_raises` -> `1 passed`.
+- `cd backend; python -B -m pytest -q -p no:cacheprovider tests/test_m3_orchestrator_runtime.py tests/test_m3_team_protocol.py tests/test_m3_project_state.py` -> `31 passed`.
+- `cd backend; python -B -m pytest -q -p no:cacheprovider tests/test_m3_llm_client.py tests/test_m3_cli_adapters.py` -> `31 passed`.
+- `cd backend; python -B -m pytest -q -p no:cacheprovider tests/test_m3_websocket_runtime.py` -> `11 passed`.
+
+### Teammate notes
+- Local `backend/agenthub.db` in this Windows workspace is still an older schema without M3 run snapshot tables, so the screenshot-specific persisted run could not be queried from that DB.
+- The visible `'taskId'` warning is now covered by an automated regression test at the runtime/shared-state boundary.

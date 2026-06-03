@@ -5,11 +5,15 @@ OpenCode supports session-based interaction (long-running process).
 run_task() internally manages sessions for efficiency.
 """
 from typing import AsyncGenerator
+import asyncio
 import json
 import os
 import re
 import shutil
+import socket
 from pathlib import Path
+
+import httpx
 
 from app.adapters.base import AgentAdapter, AgentEvent, AgentSession
 from app.config import settings
@@ -20,6 +24,7 @@ from app.services.workspace_paths import resolve_workspace_path
 
 
 MAX_CHAT_SUMMARY_CHARS = 1200
+OPENCODE_SERVER_START_TIMEOUT_SECONDS = 20.0
 PREVIEW_REQUEST_KEYWORDS = (
     "app",
     "application",
@@ -39,14 +44,132 @@ PREVIEW_REQUEST_KEYWORDS = (
 )
 
 
+class OpenCodeServerRunner:
+    """Per-task OpenCode HTTP server execution boundary."""
+
+    def __init__(self, binary_path: str):
+        self.binary_path = binary_path
+
+    async def run_message(
+        self,
+        *,
+        work_dir: str,
+        prompt: str,
+        model: str,
+        env: dict[str, str],
+        cancel_event: asyncio.Event | None = None,
+    ):
+        port = self._free_port()
+        try:
+            process = await asyncio.create_subprocess_exec(
+                self.binary_path,
+                "serve",
+                "--hostname",
+                "127.0.0.1",
+                "--port",
+                str(port),
+                cwd=work_dir,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
+                env=env,
+            )
+        except OSError as exc:
+            raise ProcessPoolError(f"failed to start OpenCode server: {exc}") from exc
+
+        base_url = f"http://127.0.0.1:{port}"
+        try:
+            async with httpx.AsyncClient(timeout=settings.CLI_TIMEOUT_SECONDS) as client:
+                await self._wait_until_healthy(client, base_url, process, cancel_event)
+                session_response = await client.post(f"{base_url}/session", json={})
+                session_response.raise_for_status()
+                session_id = self._session_id(session_response.json())
+                if not session_id:
+                    raise ProcessPoolError("OpenCode server did not return a session id")
+                message_response = await client.post(
+                    f"{base_url}/session/{session_id}/message",
+                    json={
+                        "parts": [{"type": "text", "text": prompt}],
+                        "model": self._model_payload(model),
+                    },
+                )
+                message_response.raise_for_status()
+                return message_response.json()
+        except httpx.HTTPError as exc:
+            raise ProcessPoolError(f"OpenCode server request failed: {exc}") from exc
+        finally:
+            await self._terminate(process)
+
+    async def _wait_until_healthy(
+        self,
+        client: httpx.AsyncClient,
+        base_url: str,
+        process: asyncio.subprocess.Process,
+        cancel_event: asyncio.Event | None,
+    ) -> None:
+        deadline = asyncio.get_running_loop().time() + OPENCODE_SERVER_START_TIMEOUT_SECONDS
+        while asyncio.get_running_loop().time() < deadline:
+            if cancel_event and cancel_event.is_set():
+                raise ProcessPoolError("process cancelled")
+            if process.returncode is not None:
+                raise ProcessPoolError("OpenCode server exited before becoming healthy")
+            try:
+                response = await client.get(f"{base_url}/global/health", timeout=2)
+                if response.status_code == 200 and response.json().get("healthy"):
+                    return
+            except (httpx.HTTPError, json.JSONDecodeError):
+                pass
+            await asyncio.sleep(0.25)
+        raise ProcessPoolError("OpenCode server health check timed out")
+
+    async def _terminate(self, process: asyncio.subprocess.Process) -> None:
+        if process.returncode is not None:
+            return
+        process.terminate()
+        try:
+            await asyncio.wait_for(process.wait(), timeout=3)
+        except asyncio.TimeoutError:
+            process.kill()
+            await process.wait()
+
+    def _free_port(self) -> int:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.bind(("127.0.0.1", 0))
+            return int(sock.getsockname()[1])
+
+    def _session_id(self, payload) -> str:
+        if isinstance(payload, dict):
+            for key in ("id", "sessionID", "sessionId"):
+                value = payload.get(key)
+                if isinstance(value, str):
+                    return value
+            session = payload.get("session")
+            if isinstance(session, dict):
+                return self._session_id(session)
+        return ""
+
+    def _model_payload(self, model: str) -> dict[str, str]:
+        provider, sep, model_id = model.partition("/")
+        if sep:
+            return {"providerID": provider, "modelID": model_id}
+        return {"providerID": "deepseek", "modelID": model}
+
+
 class OpenCodeAdapter(AgentAdapter):
     """OpenCode CLI adapter - session-based agent."""
 
     platform_name = "opencode"
 
-    def __init__(self, pool: ProcessPool | None = None, binary_path: str | None = None):
+    def __init__(
+        self,
+        pool: ProcessPool | None = None,
+        binary_path: str | None = None,
+        server_runner: OpenCodeServerRunner | None = None,
+    ):
         self.pool = pool or ProcessPool(settings.CLI_TIMEOUT_SECONDS)
         self.binary_path = binary_path or settings.OPENCODE_BINARY_PATH
+        self.server_runner = server_runner if server_runner is not None else (
+            OpenCodeServerRunner(self.binary_path) if pool is None else None
+        )
 
     async def run_task(
         self, work_dir: str, instruction: str, context: dict
@@ -62,47 +185,50 @@ class OpenCodeAdapter(AgentAdapter):
         prompt = self._build_prompt(instruction, context)
         env = self._opencode_env()
         try:
-            result = await self.pool.run(
-                [
-                    self.binary_path,
-                    "run",
-                    "--format",
-                    "json",
-                    "--model",
-                    settings.OPENCODE_MODEL,
-                    "--dir",
-                    str(root),
-                    "--dangerously-skip-permissions",
-                    prompt,
-                ],
-                cwd=str(root),
-                cancel_event=cancel_event,
-                env=env,
-            )
+            if self.server_runner is not None:
+                try:
+                    response = await self.server_runner.run_message(
+                        work_dir=str(root),
+                        prompt=prompt,
+                        model=settings.OPENCODE_MODEL,
+                        env=env,
+                        cancel_event=cancel_event,
+                    )
+                    stdout = ""
+                    content = self._extract_server_text(response)
+                except ProcessPoolError:
+                    result = await self._run_cli_prompt(str(root), prompt, cancel_event, env)
+                    stdout = result.stdout
+                    content = ""
+            else:
+                result = await self._run_cli_prompt(str(root), prompt, cancel_event, env)
+                stdout = result.stdout
+                content = ""
             after = self._snapshot_workspace(root)
-            stdout = result.stdout
             if preview_required and not self._has_preview_entry(after):
-                repair_result = await self.pool.run(
-                    [
-                        self.binary_path,
-                        "run",
-                        "--format",
-                        "json",
-                        "--model",
-                        settings.OPENCODE_MODEL,
-                        "--dir",
-                        str(root),
-                        "--dangerously-skip-permissions",
-                        self._build_preview_repair_prompt(instruction, public_context),
-                    ],
-                    cwd=str(root),
-                    cancel_event=cancel_event,
-                    env=env,
-                )
-                stdout = "\n".join(part for part in (stdout, repair_result.stdout) if part)
+                repair_prompt = self._build_preview_repair_prompt(instruction, public_context)
+                if self.server_runner is not None:
+                    try:
+                        repair_response = await self.server_runner.run_message(
+                            work_dir=str(root),
+                            prompt=repair_prompt,
+                            model=settings.OPENCODE_MODEL,
+                            env=env,
+                            cancel_event=cancel_event,
+                        )
+                        repair_content = self._extract_server_text(repair_response)
+                        if repair_content:
+                            content = repair_content
+                    except ProcessPoolError:
+                        repair_result = await self._run_cli_prompt(str(root), repair_prompt, cancel_event, env)
+                        stdout = "\n".join(part for part in (stdout, repair_result.stdout) if part)
+                else:
+                    repair_result = await self._run_cli_prompt(str(root), repair_prompt, cancel_event, env)
+                    stdout = "\n".join(part for part in (stdout, repair_result.stdout) if part)
                 after = self._snapshot_workspace(root)
             file_events = self._file_events(before, after)
-            content = self._extract_text(stdout, file_events)
+            if not content:
+                content = self._extract_text(stdout, file_events)
             if self._should_use_review_fallback(content, instruction, public_context, file_events):
                 content = self._review_fallback_summary(root, public_context)
             if content:
@@ -117,6 +243,31 @@ class OpenCodeAdapter(AgentAdapter):
                     yield event
             yield AgentEvent(type="error", content=str(exc))
         yield AgentEvent(type="done", content="")
+
+    async def _run_cli_prompt(
+        self,
+        root: str,
+        prompt: str,
+        cancel_event: asyncio.Event | None,
+        env: dict[str, str],
+    ):
+        return await self.pool.run(
+            [
+                self.binary_path,
+                "run",
+                "--format",
+                "json",
+                "--model",
+                settings.OPENCODE_MODEL,
+                "--dir",
+                root,
+                "--dangerously-skip-permissions",
+                prompt,
+            ],
+            cwd=root,
+            cancel_event=cancel_event,
+            env=env,
+        )
 
     async def health_check(self) -> bool:
         if shutil.which(self.binary_path) is None:
@@ -215,6 +366,36 @@ class OpenCodeAdapter(AgentAdapter):
         if saw_json_event:
             return self._fallback_chat_summary(file_events or [], work_steps)
         return ""
+
+    def _extract_server_text(self, payload) -> str:
+        texts: list[str] = []
+
+        def collect(value) -> None:
+            if isinstance(value, list):
+                for item in value:
+                    collect(item)
+                return
+            if not isinstance(value, dict):
+                return
+            item_type = str(value.get("type") or "").lower()
+            if item_type in {"reasoning", "step-start", "step-finish", "tool", "tool_use", "tool-result"}:
+                return
+            if item_type in {"text", "markdown", "agent_message", "assistant_message"}:
+                text = self._text_value(value.get("text") or value.get("content"))
+                if text:
+                    texts.append(text)
+            for child in value.values():
+                collect(child)
+
+        collect(payload)
+        display_texts = [
+            display
+            for display in (self._display_chat_text(text, set()) for text in texts)
+            if display and not self._looks_like_tool_result_text(display)
+        ]
+        if not display_texts:
+            return ""
+        return self._limit_chat_text(display_texts[-1])
 
     def _looks_like_json_event(self, line: str) -> bool:
         return line.startswith("{") or line.startswith("[")
