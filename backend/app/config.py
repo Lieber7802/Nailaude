@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     # CLI paths
     OPENCODE_BINARY_PATH: str = "opencode"
     CODEX_BINARY_PATH: str = "codex"
-    CLI_TIMEOUT_SECONDS: float = 120.0
+    CLI_TIMEOUT_SECONDS: float = 600.0
     CLI_MAX_CONCURRENCY: int = 4
 
     # Schema creation is convenient for disposable local/test environments only.

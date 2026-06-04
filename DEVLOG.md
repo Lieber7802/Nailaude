@@ -1859,3 +1859,52 @@
 ### Teammate notes
 - Some planner variance remains semantically harmless, such as review being `read` or `write` depending on whether the model plans a written review report. The runtime already accepts review/audit tasks with no file changes when they provide a summary.
 - If a future planner failure appears, the frontend/backend error should now include a bounded preview of the raw DeepSeek content instead of only the generic invalid JSON message.
+
+## [2026-06-04] Codex - Default Agent role prompts and product architect flow
+
+### Problem judgment
+- The three built-in Agent role prompts were too terse to reliably shape execution behavior.
+- The single 文档专家 role mixed requirements/PRD/SPEC/checklist work with final README writing, which made planner assignment ambiguous.
+- OpenCode preview-contract detection could misclassify document tasks containing words like 系统、页面、应用 or `index.html`, causing requirements/documentation tasks to create HTML preview files.
+
+### Completed
+- Added a built-in 产品架构师 Agent for requirements analysis, PRD, project SPEC, checklist, plans, and acceptance criteria.
+- Enriched built-in prompts for 产品架构师、代码工匠、审查大师、文档专家 with role boundaries, output requirements, and Markdown/HTML constraints.
+- Updated seed behavior so existing built-in Agents refresh avatar, description, capabilities, system prompt, and platform binding on seed.
+- Updated planner prompt for the four-role workflow: requirements -> implementation -> review -> readme.
+- Added deterministic planner role correction so requirements/PRD/SPEC/checklist tasks go to 产品架构师 when available, while README/usage/setup tasks go to 文档专家.
+- Updated OpenCode preview gating so planning/document tasks do not trigger the mandatory `index.html` preview contract, while implementation tasks still do.
+- Made one WebSocket runtime warning assertion environment-independent when workspace snapshot warnings include local oversized files.
+
+### Changed files
+- `backend/app/services/seed.py`
+- `backend/app/services/planner_prompt.py`
+- `backend/app/services/orchestrator_planner.py`
+- `backend/app/adapters/opencode.py`
+- `backend/tests/test_m1_1_api.py`
+- `backend/tests/test_m3_planner.py`
+- `backend/tests/test_m3_cli_adapters.py`
+- `backend/tests/test_m3_websocket_runtime.py`
+- `docs/API_SPEC.md`
+- `docs/plans/DEFAULT_AGENT_ROLES_PLAN.md`
+- `docs/plans/DEFAULT_AGENT_ROLES_CHECKLIST.md`
+- `DEVLOG.md`
+
+### Interface changes
+- No shared type, REST, or WebSocket payload shape changes.
+- `GET /api/v1/agents` now seeds four built-in Agents instead of three.
+- Existing built-in Agent rows are refreshed with updated prompt metadata during seed.
+- No new dependencies.
+- MockAdapter remains unchanged.
+
+### Verification
+- RED focused test run failed first with missing 产品架构师, stale prompt refresh behavior, incorrect planner role assignment, and document tasks triggering preview.
+- Focused backend tests after implementation: `cd backend && .venv/bin/python -m pytest tests/test_m1_1_api.py tests/test_m3_planner.py tests/test_m3_cli_adapters.py::test_opencode_prompt_does_not_require_preview_for_document_tasks tests/test_m3_cli_adapters.py::test_opencode_prompt_requires_preview_entry_for_system_implementation_requests tests/test_m3_cli_adapters.py::test_opencode_prompt_requires_preview_entry_for_app_generation` -> `32 passed`.
+- Regression test for environment-independent fallback warning: `cd backend && .venv/bin/python -m pytest tests/test_m3_websocket_runtime.py::test_read_task_retries_safe_execution_fallback_and_surfaces_warning` -> `1 passed`.
+- Backend full suite: `cd backend && .venv/bin/python -m pytest` -> `197 passed`, `1 warning` from Starlette/httpx testclient deprecation.
+- Frontend tests: `cd frontend && npm test` -> `26 passed`.
+- Frontend build: `cd frontend && npm run build` -> passed; Vite kept the existing chunk-size warning.
+
+### Teammate notes
+- Existing local databases will pick up refreshed built-in prompts the next time seed runs, such as through `/api/v1/agents`.
+- 产品架构师 owns PRD/SPEC/checklist planning documents; 文档专家 is intentionally narrowed to final README/usage/setup handoff docs.

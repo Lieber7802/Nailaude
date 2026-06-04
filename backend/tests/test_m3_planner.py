@@ -130,6 +130,79 @@ async def test_planner_replans_when_explicit_mentions_or_requested_stages_are_om
 
 
 @pytest.mark.asyncio
+async def test_planner_routes_requirements_to_product_architect_and_readme_to_docs():
+    context = {
+        "userRequest": "@产品架构师 @代码工匠 @审查大师 @文档专家 先做需求分析和PRD，再实现页面，审查后写README。",
+        "mentions": [
+            {"agentId": "agent-product", "agentName": "产品架构师"},
+            {"agentId": "agent-code", "agentName": "代码工匠"},
+            {"agentId": "agent-review", "agentName": "审查大师"},
+            {"agentId": "agent-docs", "agentName": "文档专家"},
+        ],
+        "participants": [
+            {
+                "id": "agent-product",
+                "name": "产品架构师",
+                "description": "需求分析、PRD、SPEC 和 checklist",
+                "capabilities": ["产品架构", "需求分析", "PRD", "SPEC", "checklist"],
+            },
+            {"id": "agent-code", "name": "代码工匠", "description": "代码实现", "capabilities": ["代码生成"]},
+            {"id": "agent-review", "name": "审查大师", "description": "代码审查", "capabilities": ["代码审查"]},
+            {"id": "agent-docs", "name": "文档专家", "description": "README 和使用说明", "capabilities": ["README", "文档"]},
+        ],
+    }
+    client = FakeClient(
+        [
+            {
+                "status": "ready",
+                "reasoningSummary": "model mixed up docs roles",
+                "tasks": [
+                    {
+                        **task("requirements", "agent-docs"),
+                        "agentName": "文档专家",
+                        "title": "需求分析与PRD",
+                        "instruction": "输出 PRD.md、SPEC.md 和 CHECKLIST.md。",
+                        "accessMode": "write",
+                    },
+                    {
+                        **task("implementation", "agent-code"),
+                        "agentName": "代码工匠",
+                        "title": "页面实现",
+                        "instruction": "根据 SPEC 实现 index.html。",
+                        "accessMode": "write",
+                    },
+                    {
+                        **task("review", "agent-review"),
+                        "agentName": "审查大师",
+                        "title": "代码审查",
+                        "instruction": "审查实现质量。",
+                    },
+                    {
+                        **task("readme", "agent-product"),
+                        "agentName": "产品架构师",
+                        "title": "README 文档",
+                        "instruction": "编写 README.md。",
+                        "accessMode": "write",
+                    },
+                ],
+            }
+        ]
+    )
+
+    result = await OrchestratorPlanner(client).plan(
+        context,
+        participant_ids={"agent-product", "agent-code", "agent-review", "agent-docs"},
+    )
+
+    tasks_by_id = {item.id: item for item in result.tasks}
+    assert tasks_by_id["requirements"].agent_id == "agent-product"
+    assert tasks_by_id["requirements"].agent_name == "产品架构师"
+    assert tasks_by_id["readme"].agent_id == "agent-docs"
+    assert tasks_by_id["readme"].agent_name == "文档专家"
+    assert tasks_by_id["requirements"].access_mode == "write"
+
+
+@pytest.mark.asyncio
 async def test_planner_normalizes_model_status_and_access_mode_casing():
     client = FakeClient(
         [

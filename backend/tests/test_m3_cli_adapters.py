@@ -542,6 +542,40 @@ def test_opencode_prompt_requires_preview_entry_for_system_implementation_reques
     )
 
 
+@pytest.mark.parametrize(
+    "instruction,task",
+    [
+        (
+            "分析学生课程签到系统需求，输出 PRD.md、SPEC.md 和 CHECKLIST.md。",
+            {
+                "id": "requirements",
+                "title": "需求分析与PRD",
+                "objective": "整理需求、项目SPEC和验收checklist",
+                "instruction": "输出 Markdown 文档，不创建 index.html。",
+                "accessMode": "write",
+            },
+        ),
+        (
+            "编写 README.md，说明系统功能、运行方式和已知限制。",
+            {
+                "id": "readme",
+                "title": "README 文档",
+                "objective": "整理最终 README",
+                "instruction": "输出 README.md，不创建 index.html。",
+                "accessMode": "write",
+            },
+        ),
+    ],
+)
+def test_opencode_prompt_does_not_require_preview_for_document_tasks(instruction, task):
+    adapter = OpenCodeAdapter(pool=OpenCodeJsonPool(), binary_path="opencode")
+
+    assert not adapter._should_require_preview_entry(
+        instruction,
+        {"workspace": {"accessMode": "write"}, "task": task},
+    )
+
+
 @pytest.mark.asyncio
 async def test_opencode_repairs_preview_request_when_first_run_only_writes_readme(tmp_path):
     pool = OpenCodePreviewRepairPool()

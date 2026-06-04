@@ -32,7 +32,7 @@ const NewConversationModal = ({ agents, creating, onCancel, onCreate, open }: Ne
     >
       <Form
         form={form}
-        initialValues={{ type: 'single', workDir: 'workspaces/m2-demo', participantIds: [] }}
+        initialValues={{ type: 'single', workDir: '', participantIds: [] }}
         layout="vertical"
         onFinish={(values) => {
           const rawParticipantIds = Array.isArray(values.participantIds)
@@ -78,10 +78,9 @@ const NewConversationModal = ({ agents, creating, onCancel, onCreate, open }: Ne
         </Form.Item>
         <Form.Item
           name="workDir"
-          label="工作目录"
-          rules={[{ required: true, message: '请输入 workspaces 下的目录' }]}
+          label="工作目录（留空自动生成）"
         >
-          <Input prefix={<FolderOpenOutlined />} placeholder="workspaces/my-project" />
+          <Input prefix={<FolderOpenOutlined />} placeholder="留空自动生成，或手动输入 workspaces/xxx" />
         </Form.Item>
       </Form>
     </Modal>

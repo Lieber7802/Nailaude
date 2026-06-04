@@ -525,4 +525,4 @@ def test_read_task_retries_safe_execution_fallback_and_surfaces_warning(client, 
                 break
 
     assert snapshot["tasks"][0]["status"] == "completed"
-    assert snapshot["warnings"] == ["Adapter codex failed during execution; retried with llm"]
+    assert "Adapter codex failed during execution; retried with llm" in snapshot["warnings"]

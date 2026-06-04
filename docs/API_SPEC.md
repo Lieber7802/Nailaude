@@ -244,10 +244,10 @@
   "data": [
     {
       "id": "agent-uuid-1",
-      "name": "代码工匠",
-      "avatar": "🛠️",
-      "description": "全栈开发专家，擅长生成 React/HTML/CSS 代码",
-      "capabilities": ["代码生成", "前端", "全栈"],
+      "name": "产品架构师",
+      "avatar": "P",
+      "description": "需求分析与产品架构专家，负责 PRD、项目 SPEC、功能 checklist 和验收标准。",
+      "capabilities": ["产品架构", "需求分析", "PRD", "SPEC", "checklist", "验收标准"],
       "systemInstruction": "...",
       "platformId": "opencode",
       "isBuiltin": true,
@@ -255,10 +255,33 @@
     },
     {
       "id": "agent-uuid-2",
+      "name": "代码工匠",
+      "avatar": "C",
+      "description": "全栈开发专家，擅长生成 React、HTML 和 CSS 代码。",
+      "capabilities": ["代码生成", "前端", "全栈"],
+      "systemInstruction": "...",
+      "platformId": "opencode",
+      "isBuiltin": true,
+      "createdAt": "2026-05-20T00:00:00Z"
+    },
+    {
+      "id": "agent-uuid-3",
       "name": "审查大师",
-      "avatar": "🔍",
-      "description": "代码审查专家，关注代码质量、性能和安全性",
+      "avatar": "R",
+      "description": "代码审查专家，关注质量、性能和安全。",
       "capabilities": ["代码审查", "最佳实践", "安全"],
+      "systemInstruction": "...",
+      "platformId": "opencode",
+      "isBuiltin": true,
+      "createdAt": "2026-05-20T00:00:00Z"
+    },
+    {
+      "id": "agent-uuid-4",
+      "name": "文档专家",
+      "avatar": "D",
+      "description": "交付文档写手，擅长 README、使用说明和项目交付文档。",
+      "capabilities": ["README", "使用说明", "技术写作", "交付文档"],
+      "systemInstruction": "...",
       "platformId": "opencode",
       "isBuiltin": true,
       "createdAt": "2026-05-20T00:00:00Z"

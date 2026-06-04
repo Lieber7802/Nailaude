@@ -15,9 +15,9 @@ class PlannerFailure(RuntimeError):
 
 STAGE_KEYWORDS = {
     "requirements": {
-        "request": ("需求", "requirement", "prd", "分析需求", "需求分析"),
-        "task": ("需求", "requirement", "prd", "需求分析"),
-        "label": "requirements analysis",
+        "request": ("需求", "requirement", "prd", "spec", "checklist", "分析需求", "需求分析", "验收"),
+        "task": ("需求", "requirement", "prd", "spec", "checklist", "需求分析", "验收"),
+        "label": "product requirements analysis",
     },
     "implementation": {
         "request": ("实现", "代码", "页面", "预览", "index.html", "html", "implement", "preview"),
@@ -25,14 +25,14 @@ STAGE_KEYWORDS = {
         "label": "implementation",
     },
     "review": {
-        "request": ("审查", "检查", "review", "audit"),
+        "request": ("审查", "检查", "audit"),
         "task": ("审查", "检查", "review", "audit"),
         "label": "code review",
     },
-    "documentation": {
-        "request": ("readme", "文档", "documentation", "使用说明"),
-        "task": ("readme", "文档", "documentation", "使用说明"),
-        "label": "documentation",
+    "readme": {
+        "request": ("readme", "使用说明", "setup", "usage", "交付文档"),
+        "task": ("readme", "使用说明", "setup", "usage", "交付文档"),
+        "label": "README documentation",
     },
 }
 
@@ -256,19 +256,27 @@ class OrchestratorPlanner:
             ]
             if value
         ).lower()
-        if "readme" in text:
+        if any(keyword in text for keyword in ("readme", "usage", "setup", "使用说明", "交付文档")):
             return "readme"
-        if any(keyword in text for keyword in ("review", "audit")):
+        if any(keyword in text for keyword in ("review", "audit", "审查", "评审")):
             return "review"
-        if any(keyword in text for keyword in ("implement", "implementation")):
+        if any(keyword in text for keyword in ("implement", "implementation", "实现", "代码", "页面", "预览")):
             return "implementation"
-        if any(keyword in text for keyword in ("requirement", "requirements", "prd")):
+        if any(keyword in text for keyword in ("requirement", "requirements", "prd", "spec", "checklist", "需求", "验收")):
             return "requirements"
         return None
 
     def _resolve_agent_id(self, task: dict, context: dict) -> None:
         participants = context.get("participants") or []
         participant_ids = {p["id"] for p in participants if isinstance(p, dict) and "id" in p}
+        stage = self._task_stage(task)
+        preferred = self._preferred_agent_for_stage(stage, participants) if stage else None
+        if preferred:
+            task["agentId"] = preferred["id"]
+            if "agent_id" in task:
+                task["agent_id"] = preferred["id"]
+            task["agentName"] = preferred["name"]
+            return
         current_id = task.get("agentId") or task.get("agent_id") or ""
         if current_id in participant_ids:
             return
@@ -291,6 +299,47 @@ class OrchestratorPlanner:
             task["agentId"] = inferred_id
             if "agent_id" in task:
                 task["agent_id"] = inferred_id
+
+    def _preferred_agent_for_stage(self, stage: str | None, participants: list[dict]) -> dict | None:
+        if not stage:
+            return None
+        profiles: list[tuple[dict, str]] = []
+        for participant in participants:
+            if not isinstance(participant, dict) or not participant.get("id"):
+                continue
+            profile = " ".join(
+                [
+                    str(participant.get("name") or ""),
+                    str(participant.get("description") or ""),
+                    " ".join(str(item) for item in participant.get("capabilities") or []),
+                ]
+            ).lower()
+            profiles.append((participant, profile))
+
+        stage_markers = {
+            "requirements": (
+                "产品架构",
+                "产品",
+                "需求分析",
+                "prd",
+                "spec",
+                "checklist",
+                "验收",
+                "requirements",
+            ),
+            "implementation": ("代码工匠", "代码生成", "前端", "全栈", "implementation", "code"),
+            "review": ("审查大师", "代码审查", "审查", "review", "security", "quality"),
+            "readme": ("文档专家", "readme", "使用说明", "交付文档", "technical writing", "技术写作"),
+        }.get(stage, ())
+        if not stage_markers:
+            return None
+
+        best: tuple[int, dict] | None = None
+        for participant, profile in profiles:
+            score = sum(1 for marker in stage_markers if marker.lower() in profile)
+            if score and (best is None or score > best[0]):
+                best = (score, participant)
+        return best[1] if best else None
 
     def _infer_agent_id_from_task(self, task: dict, participants: list[dict]) -> str | None:
         stage = " ".join(
@@ -328,14 +377,14 @@ class OrchestratorPlanner:
         return best_id if best_score else None
 
     def _stage_keywords(self, text: str) -> set[str]:
-        if any(keyword in text for keyword in ("requirement", "requirements", "prd", "analysis")):
-            return {"requirement", "requirements", "documentation", "docs", "prd", "technical docs"}
+        if any(keyword in text for keyword in ("requirement", "requirements", "prd", "spec", "checklist", "analysis", "需求")):
+            return {"产品架构", "产品", "需求分析", "requirement", "requirements", "prd", "spec", "checklist"}
         if any(keyword in text for keyword in ("implement", "implementation", "code", "frontend", "html", "css", "javascript")):
             return {"code", "frontend", "fullstack", "implementation", "generation"}
         if any(keyword in text for keyword in ("review", "audit", "quality", "security")):
             return {"review", "audit", "quality", "security", "best practice"}
-        if any(keyword in text for keyword in ("readme", "documentation", "docs", "document")):
-            return {"documentation", "docs", "technical docs", "readme", "writing"}
+        if any(keyword in text for keyword in ("readme", "documentation", "docs", "document", "使用说明")):
+            return {"文档专家", "readme", "documentation", "docs", "technical docs", "writing", "使用说明"}
         return set()
 
     def _validate_contextual_coverage(self, plan: ReadyPlannerResult, context: dict) -> None:
