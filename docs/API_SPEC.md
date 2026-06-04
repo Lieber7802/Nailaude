@@ -271,17 +271,37 @@
 
 ### `POST /agents` — 创建自定义 Agent 角色
 
-**用途：** 用户创建新的 Agent 角色（P1 功能）。
+**用途：** 用户创建新的 Agent 角色。创建成功后前端应刷新或本地追加 Agent 列表，用于左侧栏展示和新建会话选择。
 
 请求体：
 ```json
 {
   "name": "产品经理",
-  "avatar": "📋",
+  "avatar": "P",
   "description": "擅长将需求整理成结构化的 PRD 文档",
   "capabilities": ["产品", "文档", "需求分析"],
   "systemInstruction": "你是一位资深产品经理，专注于需求文档输出...",
   "platformId": "llm"
+}
+```
+
+响应体：
+```json
+{
+  "success": true,
+  "data": {
+    "id": "agent-uuid-custom",
+    "name": "产品经理",
+    "avatar": "P",
+    "description": "擅长将需求整理成结构化的 PRD 文档",
+    "capabilities": ["产品", "文档", "需求分析"],
+    "systemInstruction": "你是一位资深产品经理，专注于需求文档输出...",
+    "platformId": "llm",
+    "isBuiltin": false,
+    "createdAt": "2026-05-21T10:30:00Z"
+  },
+  "error": null,
+  "timestamp": "2026-05-21T10:30:00Z"
 }
 ```
 
@@ -297,7 +317,7 @@
 
 ### `GET /platforms` — 获取已接入平台列表
 
-**用途：** 设置页展示平台状态。
+**用途：** 设置页和自定义 Agent 弹窗展示平台状态。后端会刷新实时状态：CLI 平台根据二进制和 adapter health check 映射到 `available` / `not_installed` / `error`；`mock` 保留为内部测试/兜底平台，普通自定义 Agent 弹窗不展示。
 
 响应体：
 ```json

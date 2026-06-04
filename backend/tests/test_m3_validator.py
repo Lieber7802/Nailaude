@@ -43,11 +43,11 @@ def test_validator_rejects_invalid_graphs_and_agents(tasks):
 
 
 def test_validator_rejects_nonexistent_agent_id():
-    tasks = [task("one", agent_id="agent-1")]
+    tasks = [task("one", agent_id="missing")]
     plan = ReadyPlannerResult.model_validate({"status": "ready", "tasks": tasks})
 
     with pytest.raises(PlanValidationError, match="does not exist"):
-        PlanValidator().validate(plan, participant_ids={"agent-1"}, available_agent_ids={"agent-1", "agent-2"})
+        PlanValidator().validate(plan, participant_ids={"missing"}, available_agent_ids={"agent-1", "agent-2"})
 
 
 def test_validator_accepts_plan_when_available_agent_ids_not_provided():

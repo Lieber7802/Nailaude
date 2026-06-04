@@ -31,6 +31,8 @@
 - [x] CLI parser kept as fallback/helper.
 - [x] No shared type changes introduced.
 - [x] MockAdapter preserved.
+- [x] Planner validation regression tests aligned with available-agent catalog enforcement.
+- [x] WebSocket planner wrapper test aligned with planner `available_agent_ids` signature.
 
 ## Verification
 
@@ -38,3 +40,4 @@
 - [x] Broader M3 WebSocket/e2e tests pass or residual failures are explained.
 - [x] Real WSL smoke shows OpenCode model text, artifact creation, Codex review text, and no false failed review task.
 - [x] Windows workspace and WSL workspace statuses reviewed.
+- [x] Local macOS targeted regression tests pass for validator and WebSocket planner wrapper.

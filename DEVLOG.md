@@ -1326,3 +1326,106 @@
 ### Teammate notes
 - Local `backend/agenthub.db` in this Windows workspace is still an older schema without M3 run snapshot tables, so the screenshot-specific persisted run could not be queried from that DB.
 - The visible `'taskId'` warning is now covered by an automated regression test at the runtime/shared-state boundary.
+
+## [2026-06-04] Codex - M3 planner validation regression tests fixed
+
+### Problem judgment
+- The branch test suite had two stale regression expectations after planner catalog validation was added.
+- `test_validator_rejects_nonexistent_agent_id` expected a rejection while using an agent id that was present in `available_agent_ids`.
+- `test_non_mock_job_uses_deepseek_planner_wrapper` patched `OrchestratorPlanner.plan()` with the old two-argument signature, while production now passes `available_agent_ids`.
+
+### Completed
+- Corrected the validator test fixture so the planned task references an agent missing from the available catalog while still being a conversation participant.
+- Updated the WebSocket planner wrapper fake to accept and assert `available_agent_ids`.
+
+### Changed files
+- `backend/tests/test_m3_validator.py`
+- `backend/tests/test_m3_websocket_interactions.py`
+- `docs/plans/M3_AGENT_CHAIN_BLOCKERS_CHECKLIST.md`
+- `DEVLOG.md`
+
+### Interface changes
+- No shared type, REST, WebSocket, or frontend contract changes.
+- No production code changes.
+
+### Verification
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m3_validator.py::test_validator_rejects_nonexistent_agent_id tests/test_m3_websocket_interactions.py::test_non_mock_job_uses_deepseek_planner_wrapper` -> `2 passed`.
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m3_validator.py tests/test_m3_websocket_interactions.py` -> `15 passed`.
+- `cd backend && ../.venv/bin/python -m pytest` -> `174 passed`, `1 warning` from Starlette/httpx testclient deprecation.
+
+## [2026-06-04] Codex - Custom agent creation UI
+
+### Problem judgment
+- Backend `/agents` CRUD and `/platforms` already existed, but the workspace had no usable custom Agent creation entry.
+- The chat top-bar `+ 添加代理` chip was static, and the left sidebar could only display existing agents.
+
+### Completed
+- Added a custom Agent creation modal with name, avatar marker, role/function description, capability tags, backend platform selection, and optional role instruction.
+- Wired both the left sidebar add-agent action and chat top-bar add-agent action to the same creation flow.
+- Added frontend API helpers for `POST /agents` and `GET /platforms`.
+- Created agents are appended to the Zustand agent store so the left sidebar updates immediately.
+- Added backend regression coverage for creating and listing a custom Agent.
+- Updated API docs and M3 custom-agent plan/checklist.
+
+### Changed files
+- `backend/tests/test_m1_1_api.py`
+- `frontend/src/components/chat/AgentCreateModal.tsx`
+- `frontend/src/components/chat/ChatArea.tsx`
+- `frontend/src/components/chat/ConversationList.tsx`
+- `frontend/src/pages/Workspace.tsx`
+- `frontend/src/services/api.ts`
+- `frontend/src/index.css`
+- `docs/API_SPEC.md`
+- `docs/plans/M3_CUSTOM_AGENT_PLAN.md`
+- `docs/plans/M3_CUSTOM_AGENT_CHECKLIST.md`
+- `DEVLOG.md`
+
+### Interface changes
+- No shared type changes.
+- Existing `POST /api/v1/agents` and `GET /api/v1/platforms` contracts are now used by the workspace UI.
+- No new dependencies.
+
+### Verification
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m1_1_api.py::test_create_custom_agent_persists_and_lists` -> `1 passed`.
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m1_1_api.py` -> `8 passed`.
+- `cd frontend && npm test` -> `9 passed`.
+- `cd frontend && npm run build` -> passed.
+- `cd frontend && npm run lint` -> passed.
+- In-app browser smoke at `http://localhost:5173/workspace`: opened the add-agent modal, confirmed platform loading, submitted a custom Agent, and verified it appeared in the left sidebar immediately.
+
+### Teammate notes
+- Creating a custom Agent does not automatically add it to the active conversation; users can select it when creating a new conversation. Adding agents into an existing conversation remains a separate flow.
+
+## [2026-06-04] Codex - User-facing platform status cleanup
+
+### Problem judgment
+- Codex and OpenCode showed `not_installed` in the custom Agent modal because platform status came from seed data instead of runtime checks.
+- Mock is still required as an internal fallback/test adapter, but it should not be offered as a user-facing backend platform when creating custom Agents.
+
+### Completed
+- Added a backend platform status service that refreshes platform rows before returning `/platforms`, `/platforms/{id}`, and `/platforms/{id}/healthcheck`.
+- CLI platforms now check binary presence before adapter health and map results to `available`, `not_installed`, or `error`.
+- The custom Agent modal filters out `mock` and defaults to the first available real platform.
+- Added backend regression coverage for Codex/OpenCode platform status refresh.
+
+### Changed files
+- `backend/app/api/platforms.py`
+- `backend/app/services/platform_status.py`
+- `backend/tests/test_m1_1_api.py`
+- `frontend/src/components/chat/AgentCreateModal.tsx`
+- `docs/API_SPEC.md`
+- `docs/plans/M3_CUSTOM_AGENT_CHECKLIST.md`
+- `DEVLOG.md`
+
+### Interface changes
+- No shared type changes.
+- `/api/v1/platforms` now returns refreshed runtime status instead of static seed status.
+- MockAdapter remains available internally and in backend contracts, but is hidden from the custom Agent creation modal.
+
+### Verification
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m1_1_api.py` -> `9 passed`.
+- `cd frontend && npm test` -> `9 passed`.
+- `cd frontend && npm run lint` -> passed.
+- `cd frontend && npm run build` -> passed.
+- `curl http://localhost:8000/api/v1/platforms` -> Codex, OpenCode, LLM, and Mock returned `available` on this machine.
+- In-app browser smoke at `http://localhost:5173/workspace`: custom Agent platform dropdown showed `Codex CLI · available`, `LLM Provider (DeepSeek) · available`, and `OpenCode CLI · available`; `Mock Agent` was not present.

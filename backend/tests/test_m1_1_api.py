@@ -30,6 +30,60 @@ def test_builtin_agents_are_backed_by_opencode(client):
         assert agents_by_name[name]["platformId"] == "opencode"
 
 
+def test_platforms_refresh_cli_statuses_from_installed_binaries(client, monkeypatch):
+    from app.services import platform_status
+
+    def fake_which(binary_path):
+        return f"/usr/local/bin/{binary_path}" if binary_path in {"codex", "opencode"} else None
+
+    async def fake_check_health(self, platform_id):
+        return platform_id in {"codex", "opencode", "mock"}
+
+    monkeypatch.setattr(platform_status.shutil, "which", fake_which)
+    monkeypatch.setattr(platform_status.AgentManagerService, "check_health", fake_check_health)
+
+    response = client.get("/api/v1/platforms")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert_api_response(payload)
+    platforms_by_id = {platform["id"]: platform for platform in payload["data"]}
+    assert platforms_by_id["codex"]["status"] == "available"
+    assert platforms_by_id["opencode"]["status"] == "available"
+    assert platforms_by_id["mock"]["status"] == "available"
+
+
+def test_create_custom_agent_persists_and_lists(client):
+    create_response = client.post(
+        "/api/v1/agents",
+        json={
+            "name": "产品经理",
+            "avatar": "P",
+            "description": "将用户需求整理成结构化 PRD 和验收标准。",
+            "capabilities": ["产品", "需求分析", "文档"],
+            "systemInstruction": "你是资深产品经理，负责澄清需求并输出可执行规格。",
+            "platformId": "mock",
+        },
+    )
+
+    assert create_response.status_code == 200
+    created = create_response.json()
+    assert_api_response(created)
+    assert created["data"]["name"] == "产品经理"
+    assert created["data"]["description"] == "将用户需求整理成结构化 PRD 和验收标准。"
+    assert created["data"]["capabilities"] == ["产品", "需求分析", "文档"]
+    assert created["data"]["systemInstruction"] == "你是资深产品经理，负责澄清需求并输出可执行规格。"
+    assert created["data"]["platformId"] == "mock"
+    assert created["data"]["isBuiltin"] is False
+
+    list_response = client.get("/api/v1/agents")
+    assert list_response.status_code == 200
+    listed = list_response.json()
+    custom_agents = [agent for agent in listed["data"] if agent["id"] == created["data"]["id"]]
+    assert len(custom_agents) == 1
+    assert custom_agents[0]["isBuiltin"] is False
+
+
 def test_create_and_list_group_conversation(client):
     agent_id = client.get("/api/v1/agents").json()["data"][0]["id"]
 

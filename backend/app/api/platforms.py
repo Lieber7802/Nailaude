@@ -10,6 +10,7 @@ from app.api.serializers import serialize_platform
 from app.database import get_db
 from app.models.agent import AgentPlatform
 from app.services.seed import seed_builtin_data
+from app.services.platform_status import PlatformStatusService
 
 router = APIRouter()
 
@@ -19,7 +20,8 @@ async def list_platforms(db: AsyncSession = Depends(get_db)):
     """List available agent platforms"""
     await seed_builtin_data(db)
     result = await db.scalars(select(AgentPlatform).order_by(AgentPlatform.id.asc()))
-    return api_success([serialize_platform(platform) for platform in result.all()])
+    platforms = await PlatformStatusService().refresh_platforms(db, result.all())
+    return api_success([serialize_platform(platform) for platform in platforms])
 
 
 @router.get("/{platform_id}")
@@ -29,6 +31,7 @@ async def get_platform(platform_id: str, db: AsyncSession = Depends(get_db)):
     platform = await db.get(AgentPlatform, platform_id)
     if platform is None:
         raise_api_error("Platform not found", 404)
+    platform = await PlatformStatusService().refresh_platform(db, platform)
     return api_success(serialize_platform(platform))
 
 
@@ -39,4 +42,5 @@ async def check_platform_health(platform_id: str, db: AsyncSession = Depends(get
     platform = await db.get(AgentPlatform, platform_id)
     if platform is None:
         raise_api_error("Platform not found", 404)
+    platform = await PlatformStatusService().refresh_platform(db, platform)
     return api_success({"status": platform.status, "version": "mock"})

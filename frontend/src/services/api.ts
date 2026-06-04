@@ -1,7 +1,9 @@
 import type {
   Agent,
+  AgentPlatform,
   ApiResponse,
   Conversation,
+  CreateAgentDTO,
   CreateConversationDTO,
   Mention,
   Message as SharedMessage,
@@ -12,16 +14,19 @@ const API_BASE = '/api/v1'
 
 export type {
   Agent,
+  AgentPlatform,
   ApiResponse,
   Artifact,
   ArtifactFile,
   Conversation,
+  CreateAgentDTO,
   CreateConversationDTO,
   Mention,
   PaginatedResponse,
   Task,
 } from '../../../packages/shared/types'
 
+export type CreateAgentInput = CreateAgentDTO
 export type CreateConversationInput = CreateConversationDTO
 export type Message = Omit<SharedMessage, 'metadata'> & {
   mentions?: Mention[]
@@ -54,7 +59,12 @@ export const conversationApi = {
 
 export const agentApi = {
   list: () => fetchJSON<Agent[]>('/agents'),
+  create: (data: CreateAgentInput) => fetchJSON<Agent>('/agents', { method: 'POST', body: JSON.stringify(data) }),
   get: (id: string) => fetchJSON<Agent>(`/agents/${id}`),
+}
+
+export const platformApi = {
+  list: () => fetchJSON<AgentPlatform[]>('/platforms'),
 }
 
 export const messageApi = {

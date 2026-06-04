@@ -163,6 +163,13 @@ button {
   font-weight: 650;
 }
 
+.sidebar__section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .agent-list,
 .conversation-list {
   display: grid;
@@ -191,6 +198,10 @@ button {
   padding: 10px 12px;
 }
 
+.agent-row > div {
+  min-width: 0;
+}
+
 .agent-row__avatar,
 .message-bubble__avatar,
 .agent-avatar {
@@ -211,6 +222,13 @@ button {
   margin-top: 3px;
   color: var(--muted);
   font-size: 12px;
+}
+
+.agent-row strong,
+.agent-row small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .conversation-row {
@@ -370,6 +388,24 @@ button {
 .agent-chip--muted {
   color: #a08f80;
   background: rgba(255, 255, 255, 0.42);
+}
+
+.agent-chip--button {
+  cursor: pointer;
+  font: inherit;
+  transition: border-color 0.16s ease, color 0.16s ease, background 0.16s ease;
+}
+
+.agent-chip--button:hover {
+  border-color: #f4bd7c;
+  background: #fff7ed;
+  color: #9c5312;
+}
+
+.agent-form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px;
+  gap: 12px;
 }
 
 .collab-pill--active {
@@ -1425,5 +1461,11 @@ button {
 @media (max-width: 1280px) {
   .app-shell {
     grid-template-columns: 280px minmax(480px, 1fr) 420px;
+  }
+}
+
+@media (max-width: 720px) {
+  .agent-form-grid {
+    grid-template-columns: 1fr;
   }
 }

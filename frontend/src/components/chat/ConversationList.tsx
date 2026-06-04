@@ -17,6 +17,7 @@ interface ConversationListProps {
   onSearch: (value: string) => void
   onSelect: (id: string) => void
   onCreate: () => void
+  onCreateAgent: () => void
   onDelete: (id: string) => void
 }
 
@@ -25,6 +26,7 @@ const ConversationList = ({
   conversations,
   activeId,
   onCreate,
+  onCreateAgent,
   onDelete,
   onSearch,
   onSelect,
@@ -58,14 +60,17 @@ const ConversationList = ({
       />
 
       <section className="sidebar__section">
-        <span className="sidebar__label">常用代理</span>
+        <div className="sidebar__section-title">
+          <span className="sidebar__label">常用代理</span>
+          <Button aria-label="添加代理" icon={<PlusOutlined />} size="small" type="text" onClick={onCreateAgent} />
+        </div>
         <div className="agent-list">
           {agents.map((agent) => (
             <div className="agent-row" key={agent.id}>
               <span className="agent-row__avatar">{agent.avatar}</span>
               <div>
                 <strong>{agent.name}</strong>
-                <small>{agent.capabilities.slice(0, 2).join(' / ')}</small>
+                <small>{agent.capabilities.slice(0, 2).join(' / ') || agent.description}</small>
               </div>
             </div>
           ))}

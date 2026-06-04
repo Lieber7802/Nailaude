@@ -2,6 +2,7 @@ import { message as antdMessage } from 'antd'
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import ChatArea from '../components/chat/ChatArea'
 import ConversationList from '../components/chat/ConversationList'
+import AgentCreateModal from '../components/chat/AgentCreateModal'
 import NewConversationModal from '../components/chat/NewConversationModal'
 import Layout from '../components/common/Layout'
 import {
@@ -10,6 +11,9 @@ import {
   extractMentions,
   formatConversationLastMessage,
   messageApi,
+  platformApi,
+  type AgentPlatform,
+  type CreateAgentInput,
   type CreateConversationInput,
   type Message,
 } from '../services/api'
@@ -29,8 +33,13 @@ const Workspace = () => {
   const [search, setSearch] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
   const [creating, setCreating] = useState(false)
+  const [agentCreateOpen, setAgentCreateOpen] = useState(false)
+  const [creatingAgent, setCreatingAgent] = useState(false)
+  const [platforms, setPlatforms] = useState<AgentPlatform[]>([])
+  const [loadingPlatforms, setLoadingPlatforms] = useState(false)
   const agents = useAgentStore((state) => state.agents)
   const setAgents = useAgentStore((state) => state.setAgents)
+  const addAgent = useAgentStore((state) => state.addAgent)
   const setAgentError = useAgentStore((state) => state.setError)
   const conversations = useConversationStore((state) => state.conversations)
   const activeId = useConversationStore((state) => state.activeId)
@@ -120,6 +129,36 @@ const Workspace = () => {
     }
   }
 
+  const openAgentCreateModal = () => {
+    setAgentCreateOpen(true)
+    if (platforms.length > 0 || loadingPlatforms) return
+    setLoadingPlatforms(true)
+    void platformApi
+      .list()
+      .then(setPlatforms)
+      .catch((error: Error) => {
+        setAgentError(error.message)
+        void antdMessage.error(error.message)
+      })
+      .finally(() => setLoadingPlatforms(false))
+  }
+
+  const handleCreateAgent = async (payload: CreateAgentInput) => {
+    setCreatingAgent(true)
+    try {
+      const agent = await agentApi.create(payload)
+      addAgent(agent)
+      setAgentCreateOpen(false)
+      void antdMessage.success('代理已添加')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '添加代理失败'
+      setAgentError(message)
+      void antdMessage.error(message)
+    } finally {
+      setCreatingAgent(false)
+    }
+  }
+
   const handleDeleteConversation = async (id: string) => {
     try {
       await conversationApi.delete(id)
@@ -186,6 +225,7 @@ const Workspace = () => {
             conversations={conversations}
             search={search}
             onCreate={() => setCreateOpen(true)}
+            onCreateAgent={openAgentCreateModal}
             onDelete={(id) => void handleDeleteConversation(id)}
             onSearch={setSearch}
             onSelect={setActive}
@@ -198,6 +238,7 @@ const Workspace = () => {
             messages={messages}
             runtime={runtime}
             wsStatus={status}
+            onCreateAgent={openAgentCreateModal}
             onSend={handleSend}
           />
         }
@@ -213,6 +254,14 @@ const Workspace = () => {
         open={createOpen}
         onCancel={() => setCreateOpen(false)}
         onCreate={handleCreateConversation}
+      />
+      <AgentCreateModal
+        creating={creatingAgent}
+        loadingPlatforms={loadingPlatforms}
+        open={agentCreateOpen}
+        platforms={platforms}
+        onCancel={() => setAgentCreateOpen(false)}
+        onCreate={handleCreateAgent}
       />
     </>
   )
