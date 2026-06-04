@@ -1757,3 +1757,154 @@
 
 ### Teammate notes
 - The zoom implementation keeps viewport dimensions inversely proportional to scale before applying CSS transform, so visual width/height remain stable while the internal preview content gets larger or smaller.
+
+## [2026-06-04] Codex - WSL real Agent chain Codex bridge and planner coverage fixes
+
+### Problem judgment
+- The Windows-side manual fix removed the visible `Shared state refresh warning: 'taskId'`, but WSL real runs still failed later in the Codex review handoff.
+- Root causes were layered:
+  - The running WSL service had to load `/mnt/d/AgentHub/backend`, not the stale Linux clone.
+  - Codex isolated `CODEX_HOME` under `/tmp` is rejected by the Codex CLI helper-bin setup.
+  - Passing large prompts as argv and closing stdin implicitly made Codex process behavior brittle.
+  - DeepSeek Responses bridge lost critical protocol details: large tool output was forwarded unbounded, DeepSeek 400 bodies were hidden, `reasoning_content` from thinking mode was not replayed, and consecutive Responses `function_call` items were translated into invalid Chat Completions message order.
+  - The planner prompt/validation allowed an explicitly three-Agent classroom check-in request to collapse into a two-task generic index/README plan.
+
+### Completed
+- `CodexAdapter` now creates isolated homes under `~/.cache/agenthub/codex` or `AGENTHUB_CODEX_HOME_ROOT`, and sends the prompt through stdin with `codex exec -`.
+- `ProcessPool` now supports explicit stdin text, closes stdin for non-interactive children, and reports stdout when stderr is empty.
+- `DeepSeekResponsesBridge` now truncates oversized tool outputs, includes DeepSeek error response bodies, stores/replays `reasoning_content` per tool call, and groups consecutive function calls before tool outputs.
+- `OrchestratorPlanner` now performs contextual coverage validation and replans when explicit mentions or requested requirements/implementation/review/documentation stages are missing.
+- `planner_prompt` now explicitly preserves multi-Agent staged workflows.
+- `ws/handlers.py` now materializes participant/catalog scalar results once before reuse, preserving available-agent validation.
+- `start_services.sh` starts the backend from `/mnt/d/AgentHub/backend` and the frontend from the Linux dependency tree with `VITE_BACKEND_TARGET=http://localhost:8026`.
+
+### Changed files
+- `backend/app/adapters/codex.py`
+- `backend/app/services/deepseek_responses_bridge.py`
+- `backend/app/services/orchestrator_planner.py`
+- `backend/app/services/planner_prompt.py`
+- `backend/app/services/process_pool.py`
+- `backend/app/ws/handlers.py`
+- `backend/tests/test_m3_cli_adapters.py`
+- `backend/tests/test_m3_deepseek_responses_bridge.py`
+- `backend/tests/test_m3_planner.py`
+- `backend/tests/test_m3_process_pool.py`
+- `backend/tests/test_m3_validator.py`
+- `backend/tests/test_m3_websocket_interactions.py`
+- `docs/plans/M3_AGENT_CHAIN_BLOCKERS_PLAN.md`
+- `docs/plans/M3_AGENT_CHAIN_BLOCKERS_CHECKLIST.md`
+- `DEVLOG.md`
+
+### Interface changes
+- No shared type, REST, WebSocket, or frontend contract changes.
+- No new dependencies.
+- MockAdapter remains unchanged.
+
+### Verification
+- RED tests were added first for Codex stdin/home behavior, ProcessPool stdin/stdout errors, bridge truncation/error body/reasoning/tool-call grouping, planner mention/stage coverage, validator nonexistent-agent handling, and WebSocket planner catalog reuse.
+- WSL changed-area tests: `PYTHONPATH=. /home/lieber/src/AgentHub/backend/.venv/bin/python -B -m pytest -q -p no:cacheprovider tests/test_m3_planner.py tests/test_m3_validator.py tests/test_m3_websocket_interactions.py::test_non_mock_job_uses_deepseek_planner_wrapper tests/test_m3_deepseek_responses_bridge.py tests/test_m3_process_pool.py tests/test_m3_cli_adapters.py::test_codex_adapter_uses_isolated_home_and_loopback_bridge tests/test_m3_cli_adapters.py::test_codex_adapter_emits_file_events_for_workspace_changes` -> `41 passed`.
+- WSL direct Codex handoff repro for the previous task-3 review blocker completed with `text_delta` and no `error`.
+- WSL services restarted via `start_services.sh`; backend, frontend, and Vite API proxy health checks all returned `200`.
+- WSL real three-Agent chain using an ASCII prompt completed four tasks: requirements, preview implementation, code review, and README; final status `completed`; warnings `[]`; artifacts included `index.html` webpage and README.
+- WSL Chinese planner smoke using escaped Unicode returned a ready four-stage plan for requirements, implementation, review, and README.
+- Backend full test attempt `pytest tests` timed out after 304 seconds before a complete result; changed-area tests above were rerun successfully.
+
+### Teammate notes
+- The failed Chinese full-chain script was caused by PowerShell-to-WSL pipe encoding turning Chinese into `????`. Browser-originated UTF-8 input should not hit that path; the escaped-Unicode planner smoke verifies backend Chinese planning.
+- The in-app Browser tool was not available in this session, so browser UI inspection was substituted with live HTTP/WS/API/artifact evidence.
+
+## [2026-06-04] Codex - Planner strict JSON and Pomodoro stability fix
+
+### Problem judgment
+- The Pomodoro app manual test failed before any agent execution with `DeepSeek returned invalid JSON content` and `Planner failed`.
+- Re-running the same persisted planner input showed nondeterministic DeepSeek planner output: one attempt passed, one copied a participant UUID incorrectly, and one returned content that the strict `json.loads()` path could not parse.
+- The failure was not a Windows/WSL execution difference and not a frontend rendering problem; it was a planner-output contract and normalization stability issue.
+
+### Completed
+- Strengthened the planner prompt with exact allowed JSON shapes, exact field names, hard JSON-only output, exact participant `agentId` copy rules, and staged app workflow guidance.
+- `LLMClient.request_json()` now accepts Markdown-wrapped or embedded JSON objects and includes a bounded raw-content preview when parsing still fails.
+- `OrchestratorPlanner` now normalizes common DeepSeek planner variants before schema validation:
+  - `taskId` / `task_id` / `taskID` -> `id`
+  - `assignedAgentId` / related aliases -> `agentId`
+  - `dependencies` top-level tables -> per-task `dependsOn`
+  - `readAccess` / `writeAccess` / `read` / `write` / `access` -> `accessMode`
+  - copied-invalid agent ids can be repaired from task stage and participant capability context when there is a clear match
+- Common app workflow dependencies are enforced deterministically as requirements -> implementation -> review -> README.
+- Document-producing stages such as requirements, implementation, README, and documentation are normalized to write access even if the model labels them read.
+
+### Changed files
+- `backend/app/services/llm_client.py`
+- `backend/app/services/orchestrator_planner.py`
+- `backend/app/services/planner_prompt.py`
+- `backend/tests/test_m3_llm_client.py`
+- `backend/tests/test_m3_planner.py`
+- `docs/plans/M3_AGENT_CHAIN_BLOCKERS_PLAN.md`
+- `docs/plans/M3_AGENT_CHAIN_BLOCKERS_CHECKLIST.md`
+- `DEVLOG.md`
+
+### Interface changes
+- No shared type, REST, WebSocket, or frontend contract changes.
+- No new dependencies.
+- MockAdapter remains unchanged.
+
+### Verification
+- RED tests were added first for Markdown-wrapped JSON parsing, invalid JSON diagnostics, loose planner aliases, copied-invalid agent id repair, document-stage write access, and staged app DAG enforcement.
+- WSL targeted tests: `PYTHONPATH=. /home/lieber/src/AgentHub/backend/.venv/bin/python -B -m pytest -q -p no:cacheprovider tests/test_m3_llm_client.py tests/test_m3_planner.py` -> `26 passed`.
+- WSL broader checks:
+  - `tests/test_m3_websocket_interactions.py` -> `7 passed`.
+  - `tests/test_m3_orchestrator_runtime.py` -> `12 passed`.
+  - `tests/test_m3_websocket_runtime.py` -> `11 passed` in 129.72s.
+- WSL real Pomodoro planner-only stability check using the persisted failed run input passed 10/10 attempts: `failures: []`, `badDag: []`.
+
+### Teammate notes
+- Some planner variance remains semantically harmless, such as review being `read` or `write` depending on whether the model plans a written review report. The runtime already accepts review/audit tasks with no file changes when they provide a summary.
+- If a future planner failure appears, the frontend/backend error should now include a bounded preview of the raw DeepSeek content instead of only the generic invalid JSON message.
+
+## [2026-06-04] Codex - Default Agent role prompts and product architect flow
+
+### Problem judgment
+- The three built-in Agent role prompts were too terse to reliably shape execution behavior.
+- The single 文档专家 role mixed requirements/PRD/SPEC/checklist work with final README writing, which made planner assignment ambiguous.
+- OpenCode preview-contract detection could misclassify document tasks containing words like 系统、页面、应用 or `index.html`, causing requirements/documentation tasks to create HTML preview files.
+
+### Completed
+- Added a built-in 产品架构师 Agent for requirements analysis, PRD, project SPEC, checklist, plans, and acceptance criteria.
+- Enriched built-in prompts for 产品架构师、代码工匠、审查大师、文档专家 with role boundaries, output requirements, and Markdown/HTML constraints.
+- Updated seed behavior so existing built-in Agents refresh avatar, description, capabilities, system prompt, and platform binding on seed.
+- Updated planner prompt for the four-role workflow: requirements -> implementation -> review -> readme.
+- Added deterministic planner role correction so requirements/PRD/SPEC/checklist tasks go to 产品架构师 when available, while README/usage/setup tasks go to 文档专家.
+- Updated OpenCode preview gating so planning/document tasks do not trigger the mandatory `index.html` preview contract, while implementation tasks still do.
+- Made one WebSocket runtime warning assertion environment-independent when workspace snapshot warnings include local oversized files.
+
+### Changed files
+- `backend/app/services/seed.py`
+- `backend/app/services/planner_prompt.py`
+- `backend/app/services/orchestrator_planner.py`
+- `backend/app/adapters/opencode.py`
+- `backend/tests/test_m1_1_api.py`
+- `backend/tests/test_m3_planner.py`
+- `backend/tests/test_m3_cli_adapters.py`
+- `backend/tests/test_m3_websocket_runtime.py`
+- `docs/API_SPEC.md`
+- `docs/plans/DEFAULT_AGENT_ROLES_PLAN.md`
+- `docs/plans/DEFAULT_AGENT_ROLES_CHECKLIST.md`
+- `DEVLOG.md`
+
+### Interface changes
+- No shared type, REST, or WebSocket payload shape changes.
+- `GET /api/v1/agents` now seeds four built-in Agents instead of three.
+- Existing built-in Agent rows are refreshed with updated prompt metadata during seed.
+- No new dependencies.
+- MockAdapter remains unchanged.
+
+### Verification
+- RED focused test run failed first with missing 产品架构师, stale prompt refresh behavior, incorrect planner role assignment, and document tasks triggering preview.
+- Focused backend tests after implementation: `cd backend && .venv/bin/python -m pytest tests/test_m1_1_api.py tests/test_m3_planner.py tests/test_m3_cli_adapters.py::test_opencode_prompt_does_not_require_preview_for_document_tasks tests/test_m3_cli_adapters.py::test_opencode_prompt_requires_preview_entry_for_system_implementation_requests tests/test_m3_cli_adapters.py::test_opencode_prompt_requires_preview_entry_for_app_generation` -> `32 passed`.
+- Regression test for environment-independent fallback warning: `cd backend && .venv/bin/python -m pytest tests/test_m3_websocket_runtime.py::test_read_task_retries_safe_execution_fallback_and_surfaces_warning` -> `1 passed`.
+- Backend full suite: `cd backend && .venv/bin/python -m pytest` -> `197 passed`, `1 warning` from Starlette/httpx testclient deprecation.
+- Frontend tests: `cd frontend && npm test` -> `26 passed`.
+- Frontend build: `cd frontend && npm run build` -> passed; Vite kept the existing chunk-size warning.
+
+### Teammate notes
+- Existing local databases will pick up refreshed built-in prompts the next time seed runs, such as through `/api/v1/agents`.
+- 产品架构师 owns PRD/SPEC/checklist planning documents; 文档专家 is intentionally narrowed to final README/usage/setup handoff docs.

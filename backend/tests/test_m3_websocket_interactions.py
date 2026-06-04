@@ -367,6 +367,7 @@ async def test_non_mock_job_uses_deepseek_planner_wrapper(monkeypatch):
     assert captured["participant_ids"] == {"agent-1"}
     assert captured["available_agent_ids"] == {"agent-1"}
     assert captured["context"]["participants"][0]["capabilities"] == ["coding"]
+    assert captured["context"]["availableAgentCatalog"][0]["id"] == "agent-1"
     assert captured["context"]["projectPlanningSummary"]["progressSummary"] == "Current project summary"
     assert captured["context"]["teamBoardSummary"]["version"] == 3
     assert captured["context"]["fileTreeSummary"] == ["src/app.py"]

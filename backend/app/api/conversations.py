@@ -1,6 +1,8 @@
 """
 Conversation CRUD routes
 """
+import uuid
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -87,11 +89,15 @@ async def list_conversations(
 async def create_conversation(payload: ConversationCreate, db: AsyncSession = Depends(get_db)):
     """Create a new conversation"""
     await validate_participants(payload.participant_ids, db)
-    ensure_workspace_directory(payload.work_dir)
+    work_dir = payload.work_dir or f"workspaces/{uuid.uuid4().hex[:12]}"
+    if payload.work_dir:
+        ensure_workspace_directory(payload.work_dir)
+    else:
+        ensure_workspace_directory(work_dir)
     conversation = Conversation(
         title=payload.title,
         type=payload.type,
-        work_dir=payload.work_dir,
+        work_dir=work_dir,
         participant_ids=payload.participant_ids,
     )
     db.add(conversation)

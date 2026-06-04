@@ -21,11 +21,12 @@ class CapturingPool:
         self.env = None
         self.config = ""
 
-    async def run(self, command, cwd, timeout=None, cancel_event=None, env=None):
+    async def run(self, command, cwd, timeout=None, cancel_event=None, env=None, stdin_text=None):
         self.cancel_event = cancel_event
         self.command = command
         self.cwd = cwd
         self.env = env
+        self.stdin_text = stdin_text
         if env and env.get("CODEX_HOME"):
             config_path = Path(env["CODEX_HOME"]) / "config.toml"
             if config_path.exists():
@@ -34,11 +35,12 @@ class CapturingPool:
 
 
 class CodexJsonPool(CapturingPool):
-    async def run(self, command, cwd, timeout=None, cancel_event=None, env=None):
+    async def run(self, command, cwd, timeout=None, cancel_event=None, env=None, stdin_text=None):
         self.cancel_event = cancel_event
         self.command = command
         self.cwd = cwd
         self.env = env
+        self.stdin_text = stdin_text
         if env and env.get("CODEX_HOME"):
             config_path = Path(env["CODEX_HOME"]) / "config.toml"
             if config_path.exists():
@@ -540,6 +542,40 @@ def test_opencode_prompt_requires_preview_entry_for_system_implementation_reques
     )
 
 
+@pytest.mark.parametrize(
+    "instruction,task",
+    [
+        (
+            "分析学生课程签到系统需求，输出 PRD.md、SPEC.md 和 CHECKLIST.md。",
+            {
+                "id": "requirements",
+                "title": "需求分析与PRD",
+                "objective": "整理需求、项目SPEC和验收checklist",
+                "instruction": "输出 Markdown 文档，不创建 index.html。",
+                "accessMode": "write",
+            },
+        ),
+        (
+            "编写 README.md，说明系统功能、运行方式和已知限制。",
+            {
+                "id": "readme",
+                "title": "README 文档",
+                "objective": "整理最终 README",
+                "instruction": "输出 README.md，不创建 index.html。",
+                "accessMode": "write",
+            },
+        ),
+    ],
+)
+def test_opencode_prompt_does_not_require_preview_for_document_tasks(instruction, task):
+    adapter = OpenCodeAdapter(pool=OpenCodeJsonPool(), binary_path="opencode")
+
+    assert not adapter._should_require_preview_entry(
+        instruction,
+        {"workspace": {"accessMode": "write"}, "task": task},
+    )
+
+
 @pytest.mark.asyncio
 async def test_opencode_repairs_preview_request_when_first_run_only_writes_readme(tmp_path):
     pool = OpenCodePreviewRepairPool()
@@ -614,7 +650,9 @@ async def test_opencode_adapter_prefers_server_runner_for_model_text_and_file_ev
 @pytest.mark.asyncio
 async def test_codex_adapter_uses_isolated_home_and_loopback_bridge(tmp_path, monkeypatch):
     pool = CodexJsonPool()
+    codex_home_root = tmp_path / "codex-homes"
     monkeypatch.setenv("CODEX_THREAD_ID", "desktop-thread")
+    monkeypatch.setenv("AGENTHUB_CODEX_HOME_ROOT", str(codex_home_root))
     adapter = CodexAdapter(pool=pool, binary_path="codex", bridge_factory=fake_bridge_factory)
 
     events = [event async for event in adapter.run_task(str(tmp_path), "build", {})]
@@ -622,6 +660,9 @@ async def test_codex_adapter_uses_isolated_home_and_loopback_bridge(tmp_path, mo
     assert events[-1].type == "done"
     assert pool.env["AGENTHUB_CODEX_BRIDGE_TOKEN"] == "bridge-token"
     assert pool.env["CODEX_HOME"] != str(tmp_path)
+    assert Path(pool.env["CODEX_HOME"]).parent == codex_home_root
+    assert pool.command[-1] == "-"
+    assert pool.stdin_text and "AgentHub handoff context follows as JSON" in pool.stdin_text
     assert "CODEX_THREAD_ID" not in pool.env
     assert 'base_url = "http://127.0.0.1:12345"' in pool.config
     assert 'env_key = "AGENTHUB_CODEX_BRIDGE_TOKEN"' in pool.config
@@ -657,10 +698,10 @@ async def test_codex_adapter_emits_file_events_for_workspace_changes(tmp_path):
     existing.write_text("old", encoding="utf-8")
 
     class FileChangingPool(CodexJsonPool):
-        async def run(self, command, cwd, timeout=None, cancel_event=None, env=None):
+        async def run(self, command, cwd, timeout=None, cancel_event=None, env=None, stdin_text=None):
             (tmp_path / "new.py").write_text("print('hello')\n", encoding="utf-8")
             existing.write_text("new", encoding="utf-8")
-            return await super().run(command, cwd, timeout, cancel_event, env)
+            return await super().run(command, cwd, timeout, cancel_event, env, stdin_text)
 
     adapter = CodexAdapter(pool=FileChangingPool(), binary_path="codex", bridge_factory=fake_bridge_factory)
 

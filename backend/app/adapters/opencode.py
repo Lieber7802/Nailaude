@@ -672,6 +672,8 @@ class OpenCodeAdapter(AgentAdapter):
         task = context.get("task") or {}
         if workspace.get("accessMode") != "write" and task.get("accessMode") != "write":
             return False
+        if self._is_document_output_task(instruction, task):
+            return False
         text = " ".join(
             str(value)
             for value in (
@@ -684,6 +686,60 @@ class OpenCodeAdapter(AgentAdapter):
             if value
         ).lower()
         return any(keyword in text for keyword in PREVIEW_REQUEST_KEYWORDS)
+
+    def _is_document_output_task(self, instruction: str, task: dict) -> bool:
+        text = " ".join(
+            str(value)
+            for value in (
+                task.get("id"),
+                task.get("title"),
+                task.get("objective"),
+                task.get("instruction"),
+                " ".join(str(item) for item in task.get("acceptanceCriteria") or []),
+                instruction,
+            )
+            if value
+        ).lower()
+        document_markers = (
+            "requirements",
+            "requirement",
+            "prd",
+            "spec",
+            "checklist",
+            "readme",
+            "usage.md",
+            "setup.md",
+            "requirements.md",
+            "prd.md",
+            "spec.md",
+            "checklist.md",
+            "需求",
+            "需求分析",
+            "验收",
+            "文档",
+            "使用说明",
+        )
+        implementation_markers = (
+            "实现",
+            "代码实现",
+            "完整代码",
+            "build",
+            "implement",
+            "implementation",
+            "create app",
+            "生成可预览",
+            "右侧需要预览",
+        )
+        if not any(marker in text for marker in document_markers):
+            return False
+        if any(marker in text for marker in implementation_markers):
+            task_id = str(task.get("id") or "").lower()
+            title = str(task.get("title") or "").lower()
+            if task_id not in {"requirements", "readme", "documentation", "docs"} and not any(
+                marker in title for marker in ("需求", "prd", "spec", "checklist", "readme", "文档")
+            ):
+                return False
+        return True
 
     def _has_preview_entry(self, snapshot: dict[str, str]) -> bool:
         return any(name.lower().endswith((".html", ".htm")) for name in snapshot)

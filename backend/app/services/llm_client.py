@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from dataclasses import dataclass
 from time import perf_counter
 from typing import AsyncGenerator
@@ -58,9 +59,11 @@ class LLMClient:
         response = await self._request(payload)
         data = response.json()
         try:
-            content = json.loads(data["choices"][0]["message"]["content"])
+            raw_content = data["choices"][0]["message"]["content"]
+            content = self._parse_json_content(raw_content)
         except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
-            raise LLMClientError("DeepSeek returned invalid JSON content") from exc
+            preview = self._content_preview(locals().get("raw_content"))
+            raise LLMClientError(f"DeepSeek returned invalid JSON content: {preview}") from exc
         usage = self._record_usage(data.get("usage") or {}, started)
         return LLMJSONResult(content=content, usage=usage)
 
@@ -131,6 +134,46 @@ class LLMClient:
         if stream:
             payload["stream_options"] = {"include_usage": True}
         return payload
+
+    def _parse_json_content(self, raw_content: object) -> dict:
+        if not isinstance(raw_content, str):
+            raise TypeError("JSON content must be a string")
+        stripped = raw_content.strip()
+        candidates = [stripped]
+        fence_match = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", stripped, flags=re.DOTALL | re.IGNORECASE)
+        if fence_match:
+            candidates.insert(0, fence_match.group(1).strip())
+        for candidate in candidates:
+            try:
+                parsed = json.loads(candidate)
+            except json.JSONDecodeError:
+                parsed = self._decode_embedded_json(candidate)
+            if isinstance(parsed, dict):
+                return parsed
+            raise TypeError("JSON content must decode to an object")
+        raise json.JSONDecodeError("Expecting JSON object", stripped, 0)
+
+    def _decode_embedded_json(self, text: str) -> object:
+        decoder = json.JSONDecoder()
+        starts = [index for index, char in enumerate(text) if char in "{["]
+        last_error: json.JSONDecodeError | None = None
+        for start in starts:
+            try:
+                parsed, _ = decoder.raw_decode(text[start:])
+                return parsed
+            except json.JSONDecodeError as exc:
+                last_error = exc
+        if last_error:
+            raise last_error
+        raise json.JSONDecodeError("Expecting JSON object", text, 0)
+
+    def _content_preview(self, raw_content: object, limit: int = 500) -> str:
+        if raw_content is None:
+            return "<missing content>"
+        preview = str(raw_content).replace("\n", "\\n")
+        if len(preview) > limit:
+            return f"{preview[:limit]}..."
+        return preview
 
     async def _request(self, payload: dict) -> httpx.Response:
         if not self.api_key:

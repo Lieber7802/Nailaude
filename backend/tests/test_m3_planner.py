@@ -59,6 +59,150 @@ async def test_planner_replans_once_after_invalid_plan():
 
 
 @pytest.mark.asyncio
+async def test_planner_replans_when_explicit_mentions_or_requested_stages_are_omitted():
+    context = {
+        "userRequest": "@代码工匠 @审查大师 @文档专家 先分析需求，再实现可预览页面，然后审查，最后写 README。",
+        "mentions": [
+            {"agentId": "agent-code", "agentName": "代码工匠"},
+            {"agentId": "agent-review", "agentName": "审查大师"},
+            {"agentId": "agent-docs", "agentName": "文档专家"},
+        ],
+        "participants": [
+            {"id": "agent-code", "name": "代码工匠", "description": "", "capabilities": ["代码生成"]},
+            {"id": "agent-review", "name": "审查大师", "description": "", "capabilities": ["代码审查"]},
+            {"id": "agent-docs", "name": "文档专家", "description": "", "capabilities": ["文档"]},
+        ],
+    }
+    client = FakeClient(
+        [
+            {
+                "status": "ready",
+                "reasoningSummary": "too small",
+                "tasks": [
+                    {**task("generic-index", "agent-code"), "title": "Create index.html", "accessMode": "write"},
+                    {**task("generic-readme", "agent-docs"), "title": "Create README.md", "accessMode": "write"},
+                ],
+            },
+            {
+                "status": "ready",
+                "reasoningSummary": "covered",
+                "tasks": [
+                    {
+                        **task("requirements", "agent-docs"),
+                        "title": "需求分析",
+                        "instruction": "分析课堂签到系统需求并写需求文档。",
+                        "accessMode": "write",
+                    },
+                    {
+                        **task("implementation", "agent-code"),
+                        "title": "实现可预览页面",
+                        "instruction": "根据需求实现 index.html 课堂签到页面。",
+                        "accessMode": "write",
+                        "dependsOn": ["requirements"],
+                    },
+                    {
+                        **task("review", "agent-review"),
+                        "title": "代码审查",
+                        "instruction": "审查 index.html 的质量、安全和性能问题。",
+                        "accessMode": "read",
+                        "dependsOn": ["implementation"],
+                    },
+                    {
+                        **task("readme", "agent-docs"),
+                        "title": "README 文档",
+                        "instruction": "编写 README.md，说明功能和使用方式。",
+                        "accessMode": "write",
+                        "dependsOn": ["review"],
+                    },
+                ],
+            },
+        ]
+    )
+
+    result = await OrchestratorPlanner(client).plan(
+        context,
+        participant_ids={"agent-code", "agent-review", "agent-docs"},
+    )
+
+    assert client.calls == 2
+    assert {item.agent_id for item in result.tasks} == {"agent-code", "agent-review", "agent-docs"}
+    assert [item.id for item in result.tasks] == ["requirements", "implementation", "review", "readme"]
+
+
+@pytest.mark.asyncio
+async def test_planner_routes_requirements_to_product_architect_and_readme_to_docs():
+    context = {
+        "userRequest": "@产品架构师 @代码工匠 @审查大师 @文档专家 先做需求分析和PRD，再实现页面，审查后写README。",
+        "mentions": [
+            {"agentId": "agent-product", "agentName": "产品架构师"},
+            {"agentId": "agent-code", "agentName": "代码工匠"},
+            {"agentId": "agent-review", "agentName": "审查大师"},
+            {"agentId": "agent-docs", "agentName": "文档专家"},
+        ],
+        "participants": [
+            {
+                "id": "agent-product",
+                "name": "产品架构师",
+                "description": "需求分析、PRD、SPEC 和 checklist",
+                "capabilities": ["产品架构", "需求分析", "PRD", "SPEC", "checklist"],
+            },
+            {"id": "agent-code", "name": "代码工匠", "description": "代码实现", "capabilities": ["代码生成"]},
+            {"id": "agent-review", "name": "审查大师", "description": "代码审查", "capabilities": ["代码审查"]},
+            {"id": "agent-docs", "name": "文档专家", "description": "README 和使用说明", "capabilities": ["README", "文档"]},
+        ],
+    }
+    client = FakeClient(
+        [
+            {
+                "status": "ready",
+                "reasoningSummary": "model mixed up docs roles",
+                "tasks": [
+                    {
+                        **task("requirements", "agent-docs"),
+                        "agentName": "文档专家",
+                        "title": "需求分析与PRD",
+                        "instruction": "输出 PRD.md、SPEC.md 和 CHECKLIST.md。",
+                        "accessMode": "write",
+                    },
+                    {
+                        **task("implementation", "agent-code"),
+                        "agentName": "代码工匠",
+                        "title": "页面实现",
+                        "instruction": "根据 SPEC 实现 index.html。",
+                        "accessMode": "write",
+                    },
+                    {
+                        **task("review", "agent-review"),
+                        "agentName": "审查大师",
+                        "title": "代码审查",
+                        "instruction": "审查实现质量。",
+                    },
+                    {
+                        **task("readme", "agent-product"),
+                        "agentName": "产品架构师",
+                        "title": "README 文档",
+                        "instruction": "编写 README.md。",
+                        "accessMode": "write",
+                    },
+                ],
+            }
+        ]
+    )
+
+    result = await OrchestratorPlanner(client).plan(
+        context,
+        participant_ids={"agent-product", "agent-code", "agent-review", "agent-docs"},
+    )
+
+    tasks_by_id = {item.id: item for item in result.tasks}
+    assert tasks_by_id["requirements"].agent_id == "agent-product"
+    assert tasks_by_id["requirements"].agent_name == "产品架构师"
+    assert tasks_by_id["readme"].agent_id == "agent-docs"
+    assert tasks_by_id["readme"].agent_name == "文档专家"
+    assert tasks_by_id["requirements"].access_mode == "write"
+
+
+@pytest.mark.asyncio
 async def test_planner_normalizes_model_status_and_access_mode_casing():
     client = FakeClient(
         [
@@ -130,6 +274,32 @@ async def test_planner_forces_write_access_for_implementation_tasks_even_if_mode
     result = await OrchestratorPlanner(client).plan(
         {"userRequest": "@代码工匠 根据刚才产出的需求文档，完成代码实现"},
         participant_ids={"agent-1"},
+    )
+
+    assert result.tasks[0].access_mode == "write"
+
+
+@pytest.mark.asyncio
+async def test_planner_forces_write_access_for_document_producing_stages():
+    client = FakeClient(
+        [
+            {
+                "status": "ready",
+                "tasks": [
+                    {
+                        **task("requirements"),
+                        "title": "Requirements analysis",
+                        "objective": "Analyze requirements for the app.",
+                        "instruction": "Analyze requirements for the app.",
+                        "accessMode": "read",
+                    }
+                ],
+            },
+        ]
+    )
+
+    result = await OrchestratorPlanner(client).plan(
+        {"userRequest": "Create an app"}, participant_ids={"agent-1"}
     )
 
     assert result.tasks[0].access_mode == "write"
@@ -269,3 +439,171 @@ def test_resolve_agent_id_no_match_keeps_original():
     task_data["agentName"] = "未知代理"
     planner._resolve_agent_id(task_data, context)
     assert task_data["agentId"] == "completely-unknown"
+
+
+@pytest.mark.asyncio
+async def test_planner_normalizes_deepseek_loose_task_aliases_and_dependency_table():
+    client = FakeClient(
+        [
+            {
+                "tasks": [
+                    {
+                        "taskId": "requirements",
+                        "description": "Write requirements for a Pomodoro app.",
+                        "assignedAgentId": "agent-docs",
+                        "readAccess": [],
+                        "writeAccess": ["requirements.md"],
+                        "acceptanceCriteria": "requirements.md exists",
+                    },
+                    {
+                        "taskId": "implementation",
+                        "description": "Implement the Pomodoro app.",
+                        "agentId": "agent-code",
+                        "read": ["requirements.md"],
+                        "write": ["index.html"],
+                        "acceptanceCriteria": "index.html works",
+                    },
+                    {
+                        "taskId": "review",
+                        "description": "Review the Pomodoro app code.",
+                        "agent": "agent-review",
+                        "access": ["read"],
+                        "acceptanceCriteria": "review is complete",
+                    },
+                ],
+                "dependencies": [["implementation", "requirements"], ["review", "implementation"]],
+            },
+        ]
+    )
+    context = {
+        "userRequest": "@Code @Review @Docs create a Pomodoro app",
+        "mentions": [
+            {"agentId": "agent-code", "agentName": "Code"},
+            {"agentId": "agent-review", "agentName": "Review"},
+            {"agentId": "agent-docs", "agentName": "Docs"},
+        ],
+        "participants": [
+            {"id": "agent-code", "name": "Code", "description": "frontend", "capabilities": ["code"]},
+            {"id": "agent-review", "name": "Review", "description": "review", "capabilities": ["review"]},
+            {"id": "agent-docs", "name": "Docs", "description": "docs", "capabilities": ["documentation"]},
+        ],
+    }
+
+    result = await OrchestratorPlanner(client).plan(
+        context,
+        participant_ids={"agent-code", "agent-review", "agent-docs"},
+    )
+
+    assert [item.id for item in result.tasks] == ["requirements", "implementation", "review"]
+    assert [item.agent_id for item in result.tasks] == ["agent-docs", "agent-code", "agent-review"]
+    assert [item.access_mode for item in result.tasks] == ["write", "write", "read"]
+    assert result.tasks[1].depends_on == ["requirements"]
+    assert result.tasks[2].depends_on == ["implementation"]
+
+
+@pytest.mark.asyncio
+async def test_planner_repairs_invalid_agent_id_from_task_stage_when_possible():
+    client = FakeClient(
+        [
+            {
+                "status": "ready",
+                "tasks": [
+                    {
+                        "id": "requirements",
+                        "type": "requirements_analysis",
+                        "description": "Analyze requirements and write a PRD.",
+                        "agentId": "agent-docz",
+                        "accessMode": "write",
+                        "acceptanceCriteria": ["PRD exists"],
+                    },
+                    {
+                        "id": "implementation",
+                        "type": "implementation",
+                        "description": "Implement the app.",
+                        "agentId": "agent-code",
+                        "accessMode": "write",
+                        "acceptanceCriteria": ["app exists"],
+                        "dependencies": ["requirements"],
+                    },
+                    {
+                        "id": "review",
+                        "type": "code_review",
+                        "description": "Review code quality.",
+                        "agentId": "agent-review",
+                        "accessMode": "read",
+                        "acceptanceCriteria": ["review complete"],
+                        "dependencies": ["implementation"],
+                    },
+                ],
+            },
+        ]
+    )
+    context = {
+        "userRequest": "@Code @Review @Docs create a Pomodoro app",
+        "mentions": [
+            {"agentId": "agent-code", "agentName": "Code"},
+            {"agentId": "agent-review", "agentName": "Review"},
+            {"agentId": "agent-docs", "agentName": "Docs"},
+        ],
+        "participants": [
+            {"id": "agent-code", "name": "Code", "description": "frontend", "capabilities": ["code generation"]},
+            {"id": "agent-review", "name": "Review", "description": "quality review", "capabilities": ["code review"]},
+            {"id": "agent-docs", "name": "Docs", "description": "technical docs", "capabilities": ["documentation", "requirements analysis"]},
+        ],
+    }
+
+    result = await OrchestratorPlanner(client).plan(
+        context,
+        participant_ids={"agent-code", "agent-review", "agent-docs"},
+    )
+
+    assert result.tasks[0].agent_id == "agent-docs"
+
+
+@pytest.mark.asyncio
+async def test_planner_enforces_common_app_stage_dependencies():
+    client = FakeClient(
+        [
+            {
+                "status": "ready",
+                "tasks": [
+                    {**task("requirements", "agent-docs"), "title": "Requirements", "accessMode": "write"},
+                    {**task("implementation", "agent-code"), "title": "Implementation", "accessMode": "write"},
+                    {
+                        **task("review", "agent-review"),
+                        "title": "Review code",
+                        "accessMode": "read",
+                        "dependsOn": ["implementation"],
+                    },
+                    {
+                        **task("readme", "agent-docs"),
+                        "title": "README documentation",
+                        "accessMode": "write",
+                        "dependsOn": ["implementation"],
+                    },
+                ],
+            },
+        ]
+    )
+    context = {
+        "userRequest": "@Code @Review @Docs create an app, review it, then write README",
+        "mentions": [
+            {"agentId": "agent-code", "agentName": "Code"},
+            {"agentId": "agent-review", "agentName": "Review"},
+            {"agentId": "agent-docs", "agentName": "Docs"},
+        ],
+        "participants": [
+            {"id": "agent-code", "name": "Code", "description": "frontend", "capabilities": ["code"]},
+            {"id": "agent-review", "name": "Review", "description": "review", "capabilities": ["review"]},
+            {"id": "agent-docs", "name": "Docs", "description": "docs", "capabilities": ["documentation"]},
+        ],
+    }
+
+    result = await OrchestratorPlanner(client).plan(
+        context,
+        participant_ids={"agent-code", "agent-review", "agent-docs"},
+    )
+
+    assert result.tasks[1].depends_on == ["requirements"]
+    assert result.tasks[2].depends_on == ["implementation"]
+    assert result.tasks[3].depends_on == ["implementation", "review"]

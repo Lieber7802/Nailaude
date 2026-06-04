@@ -1,3 +1,6 @@
+from sqlalchemy import select
+
+
 def assert_api_response(payload, success=True):
     assert payload["success"] is success
     assert "data" in payload
@@ -12,7 +15,12 @@ def test_agents_are_seeded_and_return_camel_case_fields(client):
     payload = response.json()
     assert_api_response(payload)
     names = {agent["name"] for agent in payload["data"]}
-    assert {"代码工匠", "审查大师", "文档专家"}.issubset(names)
+    assert {"产品架构师", "代码工匠", "审查大师", "文档专家"}.issubset(names)
+    agents_by_name = {agent["name"]: agent for agent in payload["data"]}
+    assert "PRD" in agents_by_name["产品架构师"]["systemInstruction"]
+    assert "README" in agents_by_name["文档专家"]["systemInstruction"]
+    assert "不创建 `index.html`" in agents_by_name["产品架构师"]["systemInstruction"]
+    assert "不创建 `index.html`" in agents_by_name["文档专家"]["systemInstruction"]
     first_agent = payload["data"][0]
     assert "platformId" in first_agent
     assert "isBuiltin" in first_agent
@@ -26,8 +34,54 @@ def test_builtin_agents_are_backed_by_opencode(client):
     assert response.status_code == 200
     payload = response.json()
     agents_by_name = {agent["name"]: agent for agent in payload["data"]}
-    for name in ("代码工匠", "审查大师", "文档专家"):
+    for name in ("产品架构师", "代码工匠", "审查大师", "文档专家"):
         assert agents_by_name[name]["platformId"] == "opencode"
+
+
+def test_seed_refreshes_existing_builtin_agent_prompts(tmp_path):
+    import asyncio
+
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from app.database import Base
+    from app.models.agent import Agent, AgentPlatform
+    from app.services.seed import seed_builtin_data
+
+    engine = create_async_engine(f"sqlite+aiosqlite:///{(tmp_path / 'seed-refresh.db').as_posix()}")
+    session_factory = async_sessionmaker(engine, expire_on_commit=False)
+
+    async def run_seed_refresh():
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        async with session_factory() as session:
+            session.add(AgentPlatform(id="opencode", name="Old OpenCode", binary_path="opencode", config={}, status="available"))
+            session.add(
+                Agent(
+                    name="文档专家",
+                    avatar="D",
+                    description="old description",
+                    capabilities=["old"],
+                    system_instruction="old prompt",
+                    platform_id="opencode",
+                    is_builtin=True,
+                )
+            )
+            await session.commit()
+            await seed_builtin_data(session)
+            refreshed = await session.scalar(select(Agent).where(Agent.name == "文档专家"))
+            product = await session.scalar(select(Agent).where(Agent.name == "产品架构师"))
+            return refreshed, product
+
+    try:
+        refreshed, product = asyncio.run(run_seed_refresh())
+        assert refreshed.description != "old description"
+        assert refreshed.capabilities != ["old"]
+        assert "README" in refreshed.system_instruction
+        assert product is not None
+        assert product.is_builtin is True
+        assert "PRD" in product.system_instruction
+    finally:
+        asyncio.run(engine.dispose())
 
 
 def test_platforms_refresh_cli_statuses_from_installed_binaries(client, monkeypatch):

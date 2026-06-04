@@ -98,7 +98,7 @@ class CodexAdapter(AgentAdapter):
         prompt = self._build_prompt(instruction, context)
         try:
             async with self.bridge_factory() as bridge:
-                with tempfile.TemporaryDirectory(prefix="agenthub-codex-") as codex_home:
+                with tempfile.TemporaryDirectory(prefix="agenthub-codex-", dir=str(self._codex_home_root())) as codex_home:
                     self._write_isolated_config(Path(codex_home), bridge.base_url)
                     result = await self.pool.run(
                         [
@@ -113,11 +113,12 @@ class CodexAdapter(AgentAdapter):
                             "--sandbox",
                             codex_sandbox_mode(),
                             "--skip-git-repo-check",
-                            prompt,
+                            "-",
                         ],
                         cwd=str(root),
                         cancel_event=cancel_event,
                         env=self._isolated_env(codex_home, bridge.token),
+                        stdin_text=prompt,
                     )
             content = self._extract_text(result.stdout)
             if content:
@@ -137,6 +138,11 @@ class CodexAdapter(AgentAdapter):
         except ProcessPoolError:
             return False
         return True
+
+    def _codex_home_root(self) -> Path:
+        root = Path(os.environ.get("AGENTHUB_CODEX_HOME_ROOT") or Path.home() / ".cache" / "agenthub" / "codex")
+        root.mkdir(parents=True, exist_ok=True)
+        return root
 
     def _write_isolated_config(self, codex_home: Path, bridge_base_url: str) -> None:
         config = (
