@@ -315,9 +315,10 @@ async def test_non_mock_job_uses_deepseek_planner_wrapper(monkeypatch):
             return Scalars([SimpleNamespace(role="user", content="Earlier request")])
 
     class FakePlanner:
-        async def plan(self, context, participant_ids):
+        async def plan(self, context, participant_ids, available_agent_ids=None):
             captured["context"] = context
             captured["participant_ids"] = participant_ids
+            captured["available_agent_ids"] = available_agent_ids
             return ReadyPlannerResult(
                 status="ready",
                 tasks=[
@@ -364,6 +365,7 @@ async def test_non_mock_job_uses_deepseek_planner_wrapper(monkeypatch):
 
     assert result["status"] == "ready"
     assert captured["participant_ids"] == {"agent-1"}
+    assert captured["available_agent_ids"] == {"agent-1"}
     assert captured["context"]["participants"][0]["capabilities"] == ["coding"]
     assert captured["context"]["projectPlanningSummary"]["progressSummary"] == "Current project summary"
     assert captured["context"]["teamBoardSummary"]["version"] == 3

@@ -10,6 +10,22 @@ from app.services.orchestrator_scheduler import OrchestratorScheduler
 from app.services.workspace_snapshot import WorkspaceSnapshotService
 
 
+NO_CHANGE_SUCCESS_KEYWORDS = (
+    "review",
+    "audit",
+    "inspect",
+    "validate",
+    "verify",
+    "check",
+    "quality",
+    "审查",
+    "检查",
+    "评估",
+    "验证",
+    "质量",
+)
+
+
 def utc_timestamp() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -110,10 +126,16 @@ class OrchestratorRuntime:
                             result = await executor(task, workspace)
                         except Exception as exc:
                             result = {"status": "failed", "summary": "", "error": str(exc), "teamNotes": []}
+                        result = self._with_task_metadata(task, workspace.batch_id, result)
                         after = self.snapshot_service.capture_workspace_state(workspace.path)
                         audit = self.snapshot_service.diff_workspace_states(before, after)
                         result.update({**audit, "audit": audit})
-                        if task["accessMode"] == "write" and result.get("status") == "success" and not audit["filesChanged"]:
+                        if (
+                            task["accessMode"] == "write"
+                            and result.get("status") == "success"
+                            and not audit["filesChanged"]
+                            and not self._allows_no_change_success(task, result)
+                        ):
                             result.update(
                                 status="failed",
                                 error="Write task reported success but produced no workspace changes",
@@ -179,3 +201,24 @@ class OrchestratorRuntime:
             return latest
         finally:
             self._cancel_events.pop(run_id, None)
+
+    def _with_task_metadata(self, task: dict, batch_id: str, result: dict) -> dict:
+        result.setdefault("taskId", task["id"])
+        result.setdefault("agentId", task["agentId"])
+        result.setdefault("batchId", batch_id)
+        return result
+
+    def _allows_no_change_success(self, task: dict, result: dict) -> bool:
+        if not str(result.get("summary") or "").strip():
+            return False
+        text = " ".join(
+            str(value)
+            for value in (
+                task.get("title"),
+                task.get("objective"),
+                task.get("instruction"),
+                " ".join(str(item) for item in task.get("acceptanceCriteria") or []),
+            )
+            if value
+        ).lower()
+        return any(keyword in text for keyword in NO_CHANGE_SUCCESS_KEYWORDS)

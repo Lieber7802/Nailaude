@@ -113,10 +113,13 @@ class LLMClient:
         if not self.api_key:
             return False
         try:
-            await self.request_json([{"role": "user", "content": 'Return exactly {"ok": true} as JSON.'}], max_tokens=16)
+            result = await self.request_json(
+                [{"role": "user", "content": 'Return exactly {"ok": true} as JSON.'}],
+                max_tokens=64,
+            )
         except LLMClientError:
             return False
-        return True
+        return result.content.get("ok") is True
 
     def _payload(self, messages: list[dict], stream: bool, max_tokens: int | None) -> dict:
         payload = {

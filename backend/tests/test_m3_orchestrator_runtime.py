@@ -114,6 +114,34 @@ async def test_runtime_keeps_refresh_warnings_from_shared_state(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_runtime_passes_task_metadata_to_shared_refresh_when_executor_raises(tmp_path):
+    captured_results = []
+
+    async def executor(planned_task, workspace):
+        raise RuntimeError("adapter exploded")
+
+    async def refresh(batch_results, batch):
+        captured_results.extend(batch_results)
+        return {"teamBoardVersion": 1, "projectStateVersion": 1, "warnings": []}
+
+    snapshot = await OrchestratorRuntime().execute(
+        run_id="run-1",
+        conversation_id="conversation",
+        work_dir=str(tmp_path),
+        tasks=[task("write", access_mode="write")],
+        executor=executor,
+        refresh_shared_state=refresh,
+    )
+
+    assert snapshot["warnings"] == []
+    assert captured_results[0]["taskId"] == "write"
+    assert captured_results[0]["agentId"] == "agent-1"
+    assert captured_results[0]["batchId"] == "batch-1"
+    assert captured_results[0]["status"] == "failed"
+    assert captured_results[0]["error"] == "adapter exploded"
+
+
+@pytest.mark.asyncio
 async def test_runtime_cancel_marks_unstarted_tasks_cancelled(tmp_path):
     started = asyncio.Event()
     release = asyncio.Event()
@@ -186,6 +214,35 @@ async def test_runtime_rejects_successful_write_without_workspace_change(tmp_pat
     assert write_task["status"] == "failed"
     assert "no workspace changes" in write_task["result"]
     assert write_task["audit"]["filesChanged"] == []
+
+
+@pytest.mark.asyncio
+async def test_runtime_allows_write_workspace_review_without_file_changes_when_summary_exists(tmp_path):
+    async def executor(planned_task, workspace):
+        return {"status": "success", "summary": "Review complete: no blocking issues.", "teamNotes": []}
+
+    review_task = task("review", access_mode="write")
+    review_task.update(
+        {
+            "title": "Review index.html",
+            "objective": "Review the generated page",
+            "instruction": "Review index.html and summarize quality issues without modifying files.",
+            "acceptanceCriteria": ["Return review findings"],
+        }
+    )
+
+    snapshot = await OrchestratorRuntime().execute(
+        run_id="run-1",
+        conversation_id="conversation",
+        work_dir=str(tmp_path),
+        tasks=[review_task],
+        executor=executor,
+    )
+
+    review = snapshot["tasks"][0]
+    assert review["status"] == "completed"
+    assert review["result"] == "Review complete: no blocking issues."
+    assert review["audit"]["filesChanged"] == []
 
 
 @pytest.mark.asyncio

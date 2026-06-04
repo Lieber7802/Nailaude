@@ -9,7 +9,7 @@ class PlanValidationError(ValueError):
 
 
 class PlanValidator:
-    def validate(self, plan: ReadyPlannerResult, participant_ids: set[str]) -> None:
+    def validate(self, plan: ReadyPlannerResult, participant_ids: set[str], available_agent_ids: set[str] | None = None) -> None:
         errors: list[str] = []
         if len(plan.tasks) > 16:
             errors.append("plan exceeds 16 tasks")
@@ -20,6 +20,8 @@ class PlanValidator:
         for task in plan.tasks:
             if task.agent_id not in participant_ids:
                 errors.append(f"task {task.id} uses non-participant agent {task.agent_id}")
+            if available_agent_ids and task.agent_id not in available_agent_ids:
+                errors.append(f"task {task.id} references agent {task.agent_id} that does not exist")
             if task.id in task.depends_on:
                 errors.append(f"task {task.id} depends on itself")
             for dependency in task.depends_on:

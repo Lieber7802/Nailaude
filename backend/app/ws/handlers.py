@@ -337,7 +337,17 @@ async def execute_job(conversation_id: str, job: dict) -> None:
     async def execute_task(task: dict, workspace) -> dict:
         agent = next((item for item in agents if item.id == task["agentId"]), None)
         if agent is None:
-            return {"status": "failed", "summary": "", "error": "Agent not found", "teamNotes": []}
+            task_agent_name = task.get("agentName", "")
+            if task_agent_name:
+                agent = next((item for item in agents if item.name == task_agent_name), None)
+        if agent is None:
+            available = ", ".join(f"{a.id}({a.name})" for a in agents)
+            return {
+                "status": "failed",
+                "summary": "",
+                "error": f"Agent {task['agentId']} not found. Available: {available}",
+                "teamNotes": [],
+            }
         if agent.platform_id == "mock":
             adapter, selected_platform = MockAdapter(response_delay=0), "mock"
         else:
@@ -490,7 +500,8 @@ async def plan_job(job: dict, db: AsyncSession) -> dict:
         "fileTreeSummary": list((project_state.file_tree or {}).get("paths") or [])[:500],
         "previousValidationErrors": [],
     }
-    result = await OrchestratorPlanner().plan(context, participant_ids)
+    available_agent_ids = {agent.id for agent in catalog.all()}
+    result = await OrchestratorPlanner().plan(context, participant_ids, available_agent_ids)
     return result.model_dump(by_alias=True)
 
 

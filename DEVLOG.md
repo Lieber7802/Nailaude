@@ -1251,3 +1251,181 @@
 - `cd frontend && npm run build` -> 通过。
 - `git diff --check` -> 通过。
 - Browser smoke 未完成：本轮 in-app Browser 返回 `Browser is not available: iab`；Vite server 已启动后停止。
+## [2026-06-03] Codex - M3 Agent chain blockers fixed
+
+### Problem judgment
+- WSL/macOS are now treated as the default real-agent runtime. Windows-specific CLI launch behavior is not the primary integration target.
+- OpenCode CLI `run --format json` can exit successfully while emitting only protocol events, which made frontend chat bubbles show synthetic fallback summaries instead of model text.
+- DeepSeek direct API was healthy, but `LLMClient.health_check()` used a 16-token JSON probe and returned false for `deepseek-v4-flash`.
+- Review tasks could return useful Codex text but be marked failed when planned with `accessMode=write` and no file changes.
+
+### Completed
+- Added `docs/plans/M3_AGENT_CHAIN_BLOCKERS_SPEC.md`, `docs/plans/M3_AGENT_CHAIN_BLOCKERS_PLAN.md`, and `docs/plans/M3_AGENT_CHAIN_BLOCKERS_CHECKLIST.md`.
+- `OpenCodeAdapter` now prefers a per-task `opencode serve` HTTP path for production/default execution and keeps the old CLI `run --format json` parser as a fallback/test helper.
+- Added server response text extraction that skips reasoning/tool payloads and preserves assistant text.
+- `LLMClient.health_check()` now requests a sufficient bounded JSON budget and requires semantic `{"ok": true}`.
+- `OrchestratorRuntime` still rejects build/write tasks with no workspace changes, but allows review/audit/validation tasks with a non-empty summary to complete without file changes.
+
+### Changed files
+- `backend/app/adapters/opencode.py`
+- `backend/app/services/llm_client.py`
+- `backend/app/services/orchestrator_runtime.py`
+- `backend/tests/test_m3_cli_adapters.py`
+- `backend/tests/test_m3_llm_client.py`
+- `backend/tests/test_m3_orchestrator_runtime.py`
+- `docs/plans/M3_AGENT_CHAIN_BLOCKERS_SPEC.md`
+- `docs/plans/M3_AGENT_CHAIN_BLOCKERS_PLAN.md`
+- `docs/plans/M3_AGENT_CHAIN_BLOCKERS_CHECKLIST.md`
+- `DEVLOG.md`
+
+### Interface changes
+- No shared type, REST, or WebSocket contract changes.
+- No new dependencies.
+- MockAdapter remains unchanged.
+
+### Verification
+- RED: new tests initially failed for `max_tokens=16`, `ok:false` health acceptance, no-change review task failure, missing OpenCode server text extractor, and missing `server_runner` adapter path.
+- WSL targeted tests: `PYTHONPATH=. python -B -m pytest -q -p no:cacheprovider tests/test_m3_llm_client.py tests/test_m3_orchestrator_runtime.py tests/test_m3_cli_adapters.py` -> `42 passed`.
+- WSL broader M3 tests: `PYTHONPATH=. python -B -m pytest -q -p no:cacheprovider tests/test_m3_websocket_runtime.py tests/test_m3_e2e.py` -> `12 passed`.
+- WSL real adapter smoke: `llm_health True`; OpenCode returned `OPENCODE_ADAPTER_SERVER_WSL_OK`; Codex returned `CODEX_AFTER_FIX_WSL_OK`.
+- WSL real group smoke: OpenCode created `index.html` and emitted a webpage artifact; Codex review text streamed; final run `completed`; both task states completed; both batch states completed; no warnings.
+
+### Teammate notes
+- If OpenCode server startup fails, the adapter falls back to the existing CLI path and existing fallback summaries.
+- A future optimization can reuse an OpenCode server process, but this fix intentionally uses a per-task lifecycle to keep resource ownership simple and testable.
+
+## [2026-06-03] Codex - M3 Agent chain shared-state warning fix
+
+### Problem judgment
+- After the AGNT_CHAIN_BLOCKERS changes, a real run could finish with `Shared state refresh warning: 'taskId'`.
+- The UI warning came from `TeamProtocolService.merge_batch()` receiving a failed task result without `taskId`.
+- Root cause: `OrchestratorRuntime.run_task()` catches executor exceptions and creates a fallback failed result, but that fallback did not preserve task metadata required by Team Board and Project State refresh.
+
+### Completed
+- Added a RED regression test for executor exceptions preserving `taskId`, `agentId`, and `batchId` in `refresh_shared_state()` batch results.
+- Normalized runtime task result metadata in place before audit/status post-processing, covering normal returns, early failed returns, and exception fallback results while preserving the WebSocket handler's `task_results` reference for downstream handoff audit.
+
+### Changed files
+- `backend/app/services/orchestrator_runtime.py`
+- `backend/tests/test_m3_orchestrator_runtime.py`
+- `docs/plans/M3_AGENT_CHAIN_BLOCKERS_PLAN.md`
+- `docs/plans/M3_AGENT_CHAIN_BLOCKERS_CHECKLIST.md`
+- `DEVLOG.md`
+
+### Interface changes
+- No shared type, REST, WebSocket, or frontend contract changes.
+- No new dependencies.
+
+### Verification
+- RED: `tests/test_m3_orchestrator_runtime.py::test_runtime_passes_task_metadata_to_shared_refresh_when_executor_raises` failed with `KeyError: 'taskId'` before the fix.
+- `cd backend; python -B -m pytest -q -p no:cacheprovider tests/test_m3_orchestrator_runtime.py::test_runtime_passes_task_metadata_to_shared_refresh_when_executor_raises` -> `1 passed`.
+- `cd backend; python -B -m pytest -q -p no:cacheprovider tests/test_m3_orchestrator_runtime.py tests/test_m3_team_protocol.py tests/test_m3_project_state.py` -> `31 passed`.
+- `cd backend; python -B -m pytest -q -p no:cacheprovider tests/test_m3_llm_client.py tests/test_m3_cli_adapters.py` -> `31 passed`.
+- `cd backend; python -B -m pytest -q -p no:cacheprovider tests/test_m3_websocket_runtime.py` -> `11 passed`.
+
+### Teammate notes
+- Local `backend/agenthub.db` in this Windows workspace is still an older schema without M3 run snapshot tables, so the screenshot-specific persisted run could not be queried from that DB.
+- The visible `'taskId'` warning is now covered by an automated regression test at the runtime/shared-state boundary.
+
+## [2026-06-04] Codex - M3 planner validation regression tests fixed
+
+### Problem judgment
+- The branch test suite had two stale regression expectations after planner catalog validation was added.
+- `test_validator_rejects_nonexistent_agent_id` expected a rejection while using an agent id that was present in `available_agent_ids`.
+- `test_non_mock_job_uses_deepseek_planner_wrapper` patched `OrchestratorPlanner.plan()` with the old two-argument signature, while production now passes `available_agent_ids`.
+
+### Completed
+- Corrected the validator test fixture so the planned task references an agent missing from the available catalog while still being a conversation participant.
+- Updated the WebSocket planner wrapper fake to accept and assert `available_agent_ids`.
+
+### Changed files
+- `backend/tests/test_m3_validator.py`
+- `backend/tests/test_m3_websocket_interactions.py`
+- `docs/plans/M3_AGENT_CHAIN_BLOCKERS_CHECKLIST.md`
+- `DEVLOG.md`
+
+### Interface changes
+- No shared type, REST, WebSocket, or frontend contract changes.
+- No production code changes.
+
+### Verification
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m3_validator.py::test_validator_rejects_nonexistent_agent_id tests/test_m3_websocket_interactions.py::test_non_mock_job_uses_deepseek_planner_wrapper` -> `2 passed`.
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m3_validator.py tests/test_m3_websocket_interactions.py` -> `15 passed`.
+- `cd backend && ../.venv/bin/python -m pytest` -> `174 passed`, `1 warning` from Starlette/httpx testclient deprecation.
+
+## [2026-06-04] Codex - Custom agent creation UI
+
+### Problem judgment
+- Backend `/agents` CRUD and `/platforms` already existed, but the workspace had no usable custom Agent creation entry.
+- The chat top-bar `+ 添加代理` chip was static, and the left sidebar could only display existing agents.
+
+### Completed
+- Added a custom Agent creation modal with name, avatar marker, role/function description, capability tags, backend platform selection, and optional role instruction.
+- Wired both the left sidebar add-agent action and chat top-bar add-agent action to the same creation flow.
+- Added frontend API helpers for `POST /agents` and `GET /platforms`.
+- Created agents are appended to the Zustand agent store so the left sidebar updates immediately.
+- Added backend regression coverage for creating and listing a custom Agent.
+- Updated API docs and M3 custom-agent plan/checklist.
+
+### Changed files
+- `backend/tests/test_m1_1_api.py`
+- `frontend/src/components/chat/AgentCreateModal.tsx`
+- `frontend/src/components/chat/ChatArea.tsx`
+- `frontend/src/components/chat/ConversationList.tsx`
+- `frontend/src/pages/Workspace.tsx`
+- `frontend/src/services/api.ts`
+- `frontend/src/index.css`
+- `docs/API_SPEC.md`
+- `docs/plans/M3_CUSTOM_AGENT_PLAN.md`
+- `docs/plans/M3_CUSTOM_AGENT_CHECKLIST.md`
+- `DEVLOG.md`
+
+### Interface changes
+- No shared type changes.
+- Existing `POST /api/v1/agents` and `GET /api/v1/platforms` contracts are now used by the workspace UI.
+- No new dependencies.
+
+### Verification
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m1_1_api.py::test_create_custom_agent_persists_and_lists` -> `1 passed`.
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m1_1_api.py` -> `8 passed`.
+- `cd frontend && npm test` -> `9 passed`.
+- `cd frontend && npm run build` -> passed.
+- `cd frontend && npm run lint` -> passed.
+- In-app browser smoke at `http://localhost:5173/workspace`: opened the add-agent modal, confirmed platform loading, submitted a custom Agent, and verified it appeared in the left sidebar immediately.
+
+### Teammate notes
+- Creating a custom Agent does not automatically add it to the active conversation; users can select it when creating a new conversation. Adding agents into an existing conversation remains a separate flow.
+
+## [2026-06-04] Codex - User-facing platform status cleanup
+
+### Problem judgment
+- Codex and OpenCode showed `not_installed` in the custom Agent modal because platform status came from seed data instead of runtime checks.
+- Mock is still required as an internal fallback/test adapter, but it should not be offered as a user-facing backend platform when creating custom Agents.
+
+### Completed
+- Added a backend platform status service that refreshes platform rows before returning `/platforms`, `/platforms/{id}`, and `/platforms/{id}/healthcheck`.
+- CLI platforms now check binary presence before adapter health and map results to `available`, `not_installed`, or `error`.
+- The custom Agent modal filters out `mock` and defaults to the first available real platform.
+- Added backend regression coverage for Codex/OpenCode platform status refresh.
+
+### Changed files
+- `backend/app/api/platforms.py`
+- `backend/app/services/platform_status.py`
+- `backend/tests/test_m1_1_api.py`
+- `frontend/src/components/chat/AgentCreateModal.tsx`
+- `docs/API_SPEC.md`
+- `docs/plans/M3_CUSTOM_AGENT_CHECKLIST.md`
+- `DEVLOG.md`
+
+### Interface changes
+- No shared type changes.
+- `/api/v1/platforms` now returns refreshed runtime status instead of static seed status.
+- MockAdapter remains available internally and in backend contracts, but is hidden from the custom Agent creation modal.
+
+### Verification
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m1_1_api.py` -> `9 passed`.
+- `cd frontend && npm test` -> `9 passed`.
+- `cd frontend && npm run lint` -> passed.
+- `cd frontend && npm run build` -> passed.
+- `curl http://localhost:8000/api/v1/platforms` -> Codex, OpenCode, LLM, and Mock returned `available` on this machine.
+- In-app browser smoke at `http://localhost:5173/workspace`: custom Agent platform dropdown showed `Codex CLI · available`, `LLM Provider (DeepSeek) · available`, and `OpenCode CLI · available`; `Mock Agent` was not present.

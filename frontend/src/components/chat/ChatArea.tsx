@@ -17,10 +17,11 @@ interface ChatAreaProps {
   messages: Message[]
   runtime: ConversationRuntimeState | null
   wsStatus: string
+  onCreateAgent: () => void
   onSend: (content: string) => void
 }
 
-const ChatArea = ({ agents, conversation, messages, onSend, runtime, wsStatus }: ChatAreaProps) => {
+const ChatArea = ({ agents, conversation, messages, onCreateAgent, onSend, runtime, wsStatus }: ChatAreaProps) => {
   const participantAgents = agents.filter((agent) => conversation?.participantIds.includes(agent.id))
   const disabled = !conversation || wsStatus !== 'open' || participantAgents.length === 0
   const collaborationLabel = getCollaborationLabel(runtime, wsStatus)
@@ -49,9 +50,14 @@ const ChatArea = ({ agents, conversation, messages, onSend, runtime, wsStatus }:
               </span>
             ))}
             {conversation && (
-              <span className="agent-chip agent-chip--muted" title="后续扩展为添加自定义 Agent">
+              <button
+                className="agent-chip agent-chip--muted agent-chip--button"
+                title="添加自定义代理"
+                type="button"
+                onClick={onCreateAgent}
+              >
                 + 添加代理
-              </span>
+              </button>
             )}
           </div>
         </div>

@@ -241,6 +241,27 @@ class OpenCodePreviewRepairPool(CapturingPool):
         )
 
 
+class FakeOpenCodeServerRunner:
+    def __init__(self):
+        self.work_dir = None
+        self.prompt = None
+        self.model = None
+        self.env = None
+        self.cancel_event = None
+
+    async def run_message(self, *, work_dir, prompt, model, env, cancel_event=None):
+        self.work_dir = work_dir
+        self.prompt = prompt
+        self.model = model
+        self.env = env
+        self.cancel_event = cancel_event
+        Path(work_dir, "index.html").write_text("<!doctype html><h1>OK</h1>", encoding="utf-8")
+        return [
+            {"type": "reasoning", "text": "The user wants a tiny page."},
+            {"type": "text", "text": "OpenCode server final summary."},
+        ]
+
+
 @asynccontextmanager
 async def fake_bridge_factory():
     yield type("Bridge", (), {"base_url": "http://127.0.0.1:12345", "token": "bridge-token"})()
@@ -547,6 +568,46 @@ async def test_opencode_repairs_preview_request_when_first_run_only_writes_readm
     assert created_files == ["README.md", "index.html"]
     index_event = next(event for event in events if event.content == "index.html")
     assert index_event.metadata["files"][0]["language"] == "html"
+    assert events[-1].type == "done"
+
+
+def test_opencode_extracts_nested_server_text_without_reasoning_noise():
+    payload = {
+        "parts": [
+            {"type": "reasoning", "text": "The user wants me to reply exactly OPENCODE_SERVER_WSL_OK."},
+            {"type": "text", "text": "OPENCODE_SERVER_WSL_OK"},
+        ]
+    }
+
+    adapter = OpenCodeAdapter(pool=OpenCodeJsonPool(), binary_path="opencode")
+
+    assert adapter._extract_server_text(payload) == "OPENCODE_SERVER_WSL_OK"
+
+
+@pytest.mark.asyncio
+async def test_opencode_adapter_prefers_server_runner_for_model_text_and_file_events(tmp_path, monkeypatch):
+    runner = FakeOpenCodeServerRunner()
+    cancel_event = asyncio.Event()
+    adapter = OpenCodeAdapter(binary_path="opencode", server_runner=runner)
+    monkeypatch.setattr("app.adapters.opencode.settings.DEEPSEEK_API_KEY", "test-deepseek-key")
+    monkeypatch.setattr("app.adapters.opencode.settings.DEEPSEEK_BASE_URL", "https://api.deepseek.test")
+
+    events = [
+        event
+        async for event in adapter.run_task(
+            str(tmp_path),
+            "Create index.html",
+            {"task": {"accessMode": "write"}, "workspace": {"accessMode": "write"}, "_cancel_event": cancel_event},
+        )
+    ]
+
+    assert runner.work_dir == str(tmp_path)
+    assert runner.model == "deepseek/deepseek-v4-flash"
+    assert runner.env["DEEPSEEK_API_KEY"] == "test-deepseek-key"
+    assert runner.cancel_event is cancel_event
+    assert events[0].type == "text_delta"
+    assert events[0].content == "OpenCode server final summary."
+    assert [event.content for event in events if event.type == "file_created"] == ["index.html"]
     assert events[-1].type == "done"
 
 

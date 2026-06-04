@@ -208,3 +208,64 @@ async def test_planner_stops_after_second_invalid_plan():
 async def test_planner_wraps_unexpected_client_errors():
     with pytest.raises(PlannerFailure, match="Using SOCKS proxy"):
         await OrchestratorPlanner(BrokenClient()).plan({"userRequest": "build"}, participant_ids={"agent-1"})
+
+
+def test_resolve_agent_id_by_name_when_llm_hallucinates_id():
+    planner = OrchestratorPlanner.__new__(OrchestratorPlanner)
+    context = {
+        "participants": [
+            {"id": "real-id-1", "name": "代码工匠", "description": "code agent", "capabilities": ["code"]},
+            {"id": "real-id-2", "name": "审查大师", "description": "review agent", "capabilities": ["review"]},
+        ]
+    }
+    task_data = task("one", "fake-hallucinated-id")
+    task_data["agentName"] = "代码工匠"
+    planner._resolve_agent_id(task_data, context)
+    assert task_data["agentId"] == "real-id-1"
+    assert task_data["agentName"] == "代码工匠"
+
+
+def test_resolve_agent_id_does_not_override_valid_id():
+    planner = OrchestratorPlanner.__new__(OrchestratorPlanner)
+    context = {
+        "participants": [
+            {"id": "real-id-1", "name": "代码工匠", "description": "", "capabilities": []},
+        ]
+    }
+    task_data = task("one", "real-id-1")
+    planner._resolve_agent_id(task_data, context)
+    assert task_data["agentId"] == "real-id-1"
+
+
+def test_resolve_agent_id_from_nested_agent_object():
+    planner = OrchestratorPlanner.__new__(OrchestratorPlanner)
+    context = {
+        "participants": [
+            {"id": "real-id-2", "name": "审查大师", "description": "", "capabilities": []},
+        ]
+    }
+    task_data = {
+        "id": "one",
+        "agent": {"name": "审查大师", "id": "fake-id"},
+        "title": "Review",
+        "objective": "Review code",
+        "instruction": "Review code",
+        "acceptanceCriteria": ["Done"],
+        "accessMode": "read",
+        "dependsOn": [],
+    }
+    planner._resolve_agent_id(task_data, context)
+    assert task_data["agentId"] == "real-id-2"
+
+
+def test_resolve_agent_id_no_match_keeps_original():
+    planner = OrchestratorPlanner.__new__(OrchestratorPlanner)
+    context = {
+        "participants": [
+            {"id": "real-id-1", "name": "代码工匠", "description": "", "capabilities": []},
+        ]
+    }
+    task_data = task("one", "completely-unknown")
+    task_data["agentName"] = "未知代理"
+    planner._resolve_agent_id(task_data, context)
+    assert task_data["agentId"] == "completely-unknown"

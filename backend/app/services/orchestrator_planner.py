@@ -19,7 +19,7 @@ class OrchestratorPlanner:
         self.validator = validator or PlanValidator()
         self.result_adapter = TypeAdapter(PlannerResult)
 
-    async def plan(self, context: dict, participant_ids: set[str]):
+    async def plan(self, context: dict, participant_ids: set[str], available_agent_ids: set[str] | None = None):
         current_context = deepcopy(context)
         last_raw: dict | None = None
         for attempt in range(2):
@@ -31,7 +31,7 @@ class OrchestratorPlanner:
                 last_raw = raw
                 result = self.result_adapter.validate_python(raw)
                 if isinstance(result, ReadyPlannerResult):
-                    self.validator.validate(result, participant_ids)
+                    self.validator.validate(result, participant_ids, available_agent_ids)
                 return result
             except (ValidationError, PlanValidationError) as exc:
                 if attempt == 1:
@@ -92,6 +92,7 @@ class OrchestratorPlanner:
                 task["dependsOn"] = task.get("dependencies") or []
             if "riskHints" not in task and "risk_hints" not in task:
                 task["riskHints"] = {}
+            self._resolve_agent_id(task, context)
             access_mode = task.get("accessMode") or task.get("access_mode") or task.get("readWriteAccess")
             if isinstance(access_mode, str):
                 normalized_access_mode = access_mode.strip().lower()
@@ -106,6 +107,26 @@ class OrchestratorPlanner:
                     "write" if task.get("writeResources") or self._looks_like_write_task(task, context) else "read"
                 )
         return result
+
+    def _resolve_agent_id(self, task: dict, context: dict) -> None:
+        participants = context.get("participants") or []
+        participant_ids = {p["id"] for p in participants if isinstance(p, dict) and "id" in p}
+        current_id = task.get("agentId") or task.get("agent_id") or ""
+        if current_id in participant_ids:
+            return
+        participant_by_name = {p["name"]: p["id"] for p in participants if isinstance(p, dict) and "name" in p and "id" in p}
+        agent_name = task.get("agentName") or ""
+        agent_obj = task.get("agent")
+        if isinstance(agent_obj, dict):
+            agent_name = agent_obj.get("name") or agent_name
+        elif isinstance(agent_obj, str):
+            agent_name = agent_obj
+        if agent_name and agent_name in participant_by_name:
+            resolved_id = participant_by_name[agent_name]
+            task["agentId"] = resolved_id
+            if "agent_id" in task:
+                task["agent_id"] = resolved_id
+            task["agentName"] = agent_name
 
     def _looks_like_write_task(self, task: dict, context: dict) -> bool:
         text = " ".join(
