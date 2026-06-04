@@ -1,3 +1,5 @@
+import { marked } from 'marked'
+
 export type ArtifactPreviewMode = 'html' | 'markdown' | 'remote' | 'unsupported'
 
 export interface FilePreviewInput {
@@ -56,6 +58,46 @@ export function getArtifactPreviewMode(artifact?: ArtifactPreviewInput): Artifac
   if (artifact.files?.some((file) => isMarkdownFile(file))) return 'markdown'
   if (artifact.previewUrl) return 'remote'
   return 'unsupported'
+}
+
+export function renderMarkdownToHtml(content: string): string {
+  const html = marked.parse(content, {
+    async: false,
+    breaks: false,
+    gfm: true,
+  }) as string
+
+  return addCodeLanguageLabels(addHeadingIds(html))
+}
+
+export function slugifyMarkdownHeading(text: string): string {
+  return decodeHtmlEntities(stripHtmlTags(text))
+    .trim()
+    .toLowerCase()
+    .replace(/[`~!@#$%^&*()+=[\]{}\\|;:'",.<>/?，。！？、；：“”‘’（）【】《》]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+}
+
+function addHeadingIds(html: string): string {
+  const seen = new Map<string, number>()
+
+  return html.replace(/<h([1-6])>([\s\S]*?)<\/h\1>/g, (_fullMatch, level: string, body: string) => {
+    const baseSlug = slugifyMarkdownHeading(body) || `heading-${seen.size + 1}`
+    const count = seen.get(baseSlug) || 0
+    seen.set(baseSlug, count + 1)
+    const slug = count === 0 ? baseSlug : `${baseSlug}-${count + 1}`
+
+    return `<h${level} id="${escapeHtmlAttribute(slug)}">${body}</h${level}>`
+  })
+}
+
+function addCodeLanguageLabels(html: string): string {
+  return html.replace(/<pre><code class="language-([^"]+)">/g, (_match, language: string) => {
+    return `<pre data-language="${escapeHtmlAttribute(language.toUpperCase())}"><code class="language-${escapeHtmlAttribute(
+      language
+    )}">`
+  })
 }
 
 export function parseMarkdownBlocks(content: string): MarkdownBlock[] {
@@ -260,6 +302,25 @@ function trimTrailingBlankLines(lines: string[]): string[] {
     nextLines.pop()
   }
   return nextLines
+}
+
+function stripHtmlTags(value: string): string {
+  return value.replace(/<[^>]*>/g, '')
+}
+
+function decodeHtmlEntities(value: string): string {
+  return value
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#x([0-9a-f]+);/gi, (_match, hex: string) => String.fromCodePoint(Number.parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_match, code: string) => String.fromCodePoint(Number.parseInt(code, 10)))
+}
+
+function escapeHtmlAttribute(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
 function pushText(nodes: MarkdownInlineNode[], text: string) {

@@ -600,6 +600,8 @@ ws://localhost:8000/ws/{conversation_id}
 
 #### 停止生成
 
+请求当前会话的单次 Orchestrator run 停止继续执行。服务端会取消当前 active run；如果 run 仍在队列中则直接标记为 `cancelled`；如果取消请求发生在 planning/validating 之后、真正执行智能体任务之前，服务端会保留该取消意图，进入执行阶段后立即终止，不再启动智能体任务。
+
 ```json
 {
   "type": "stop_generation",

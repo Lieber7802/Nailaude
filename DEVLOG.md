@@ -1593,3 +1593,167 @@
 - `cd frontend && npm test` -> `18 passed`.
 - `cd frontend && npm run build` -> passed; Vite kept the existing workspace chunk-size warning.
 - Browser smoke at `http://127.0.0.1:5173/workspace`: collapsed restore buttons had `opacity: 0` and `pointer-events: none` by default, with a bounded `64 x 88` edge hot zone.
+
+## [2026-06-04] Codex - M4 Markdown and changes panel follow-up
+
+### Problem judgment
+- The hand-written Markdown renderer only covered a small subset of Markdown, so right-side previews missed GFM features such as heading anchors for table-of-contents links, blockquotes, task lists, strikethrough, and broader inline syntax.
+- Diff artifacts were mixed into the right-side Outputs list, making file changes look like generated outputs.
+- The Changes tab depended on the active artifact instead of all current diff artifacts, so changed files did not feel real-time.
+- Chat artifact cards needed a stable Codex-like order: newly created files first, edited/changed files last.
+
+### Completed
+- Added direct `marked` and `DOMPurify` frontend dependencies for GFM parsing plus sanitized HTML rendering.
+- Replaced right-side Markdown preview and chat Markdown rendering with the shared sanitized GFM renderer.
+- Added heading IDs to rendered Markdown so generated TOC links can jump to headings.
+- Added a right-side `ChangesList` that aggregates all diff artifacts, lists changed files, and keeps each diff collapsed until opened.
+- Filtered diff artifacts out of the right-side Outputs tab.
+- Sorted chat artifact cards so created files/web outputs appear before diff/change cards.
+- Updated M4 plan/checklist and added regression tests for Markdown rendering and artifact grouping.
+
+### Changed files
+- `docs/plans/M4_UI_OPTIMIZATION_PLAN.md`
+- `docs/plans/M4_UI_OPTIMIZATION_CHECKLIST.md`
+- `frontend/package.json`
+- `frontend/package-lock.json`
+- `frontend/src/components/chat/MessageBubble.tsx`
+- `frontend/src/components/chat/MessageMarkdown.tsx`
+- `frontend/src/components/preview/ChangesList.tsx`
+- `frontend/src/components/preview/MarkdownPreview.tsx`
+- `frontend/src/components/preview/PreviewPanel.tsx`
+- `frontend/src/index.css`
+- `frontend/src/utils/artifactCard.ts`
+- `frontend/src/utils/markdownPreview.ts`
+- `frontend/tests/artifactCard.test.mjs`
+- `frontend/tests/markdownPreview.test.mjs`
+- `DEVLOG.md`
+
+### Verification
+- `cd frontend && npm test` -> `22 passed`.
+- `cd frontend && npm run build` -> passed; Vite kept the existing workspace chunk-size warning.
+- `cd frontend && npm install --package-lock-only --ignore-scripts` -> lockfile is up to date.
+- Browser smoke at `http://127.0.0.1:5173/workspace`: workspace rendered with Outputs/Preview/Code/Changes tabs and no visible app crash.
+
+### Teammate notes
+- Markdown HTML is sanitized before insertion. If future features need custom embedded widgets, add a narrow DOMPurify allowlist rather than bypassing sanitization.
+
+## [2026-06-04] Codex - M4 artifact card and cancellation follow-up
+
+### Problem judgment
+- Chat artifact cards still looked too busy: they showed status labels plus copy/new-tab actions even though the requested Codex-like flow only needs a file row and right-side preview/open action.
+- `stop_generation` only worked after `OrchestratorRuntime.execute()` had created a cancel event. A stop click during queued/planning timing could be lost, allowing the same chat run to later start agent work.
+- User-facing product copy used "代理" in several places, while the requested wording is "智能体".
+
+### Completed
+- Removed chat artifact card status badges such as "新创建的文件"/"文件更改".
+- Removed code copy and webpage new-tab buttons from chat cards; cards now keep only the right-side preview/open action.
+- Replaced visible frontend "代理"/"Agent" copy with "智能体" where it is product UI text.
+- Added queued-run cancellation to `OrchestratorQueue`.
+- Added pre-execution cancellation memory to `OrchestratorRuntime`, so stop requests made before runtime execution starts are honored.
+- Updated WebSocket `stop_generation` handling to cancel queued runs and publish a cancelled snapshot when possible.
+- Updated API spec, M4 plan/checklist, and backend tests for cancellation semantics.
+
+### Changed files
+- `docs/API_SPEC.md`
+- `docs/plans/M4_UI_OPTIMIZATION_PLAN.md`
+- `docs/plans/M4_UI_OPTIMIZATION_CHECKLIST.md`
+- `frontend/src/components/cards/CodeCard.tsx`
+- `frontend/src/components/cards/DiffCard.tsx`
+- `frontend/src/components/cards/WebPreviewCard.tsx`
+- `frontend/src/components/chat/AgentCreateModal.tsx`
+- `frontend/src/components/chat/ChatArea.tsx`
+- `frontend/src/components/chat/ConversationList.tsx`
+- `frontend/src/components/chat/MentionSelector.tsx`
+- `frontend/src/components/chat/MessageBubble.tsx`
+- `frontend/src/components/chat/MessageInput.tsx`
+- `frontend/src/components/chat/NewConversationModal.tsx`
+- `frontend/src/pages/AgentManage.tsx`
+- `frontend/src/pages/Workspace.tsx`
+- `frontend/src/index.css`
+- `frontend/src/utils/artifactCard.ts`
+- `frontend/tests/artifactCard.test.mjs`
+- `backend/app/services/orchestrator_queue.py`
+- `backend/app/services/orchestrator_runtime.py`
+- `backend/app/ws/handlers.py`
+- `backend/tests/test_m3_orchestrator_runtime.py`
+- `backend/tests/test_m3_websocket_runtime.py`
+- `DEVLOG.md`
+
+### Verification
+- `cd frontend && npm test` -> `22 passed`.
+- `cd frontend && npm run build` -> passed.
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_websocket_runtime.py -k "stop_generation"` -> `1 passed`.
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_orchestrator_runtime.py -k "cancel"` -> `4 passed`.
+
+### Teammate notes
+- Planning LLM calls are not force-killed mid-request; the cancellation is now recorded and prevents later agent execution for that same run.
+
+## [2026-06-04] Codex - M4 collaboration status polish
+
+### Problem judgment
+- The collaboration panel rendered every participant as "等待中" while separately showing the active thinking agent, so a one-agent run looked like all agents were static and stale.
+- The Orchestrator status card still used English labels and rendered tasks as `agent: title status`, which read like log output rather than a task checklist.
+- DeepSeek summarizer failures were stored as project/team warnings and then surfaced in the main status card, distracting from the actual task result.
+
+### Completed
+- Added frontend UI helpers for collaboration-agent selection, status localization, message localization, and summary-warning filtering.
+- Updated the collaboration panel to show only intelligent agents participating in the current run once tasks/thinking state exists.
+- Changed "思考中" indicators to a loading spinner.
+- Localized the Orchestrator card to "主智能体" and Chinese status/message labels.
+- Rendered Orchestrator tasks as a checklist with spinner/check/error icons and Chinese status labels.
+- Changed project-state summarizer failures to keep the previous summary or use a deterministic local fallback without adding user-facing warnings.
+- Changed team-board summarizer failures to preserve deterministic board state without adding user-facing warnings.
+- Updated M4 plan/checklist and regression tests.
+
+### Changed files
+- `docs/plans/M4_UI_OPTIMIZATION_PLAN.md`
+- `docs/plans/M4_UI_OPTIMIZATION_CHECKLIST.md`
+- `frontend/src/components/chat/ChatArea.tsx`
+- `frontend/src/components/cards/OrchestratorStatus.tsx`
+- `frontend/src/index.css`
+- `frontend/src/utils/orchestratorUi.ts`
+- `frontend/tests/orchestratorUi.test.mjs`
+- `backend/app/services/project_state.py`
+- `backend/app/services/team_protocol.py`
+- `backend/tests/test_m3_project_state.py`
+- `backend/tests/test_m3_team_protocol.py`
+- `DEVLOG.md`
+
+### Verification
+- `cd frontend && npm test` -> `25 passed`.
+- `cd frontend && npm run build` -> passed; Vite kept the existing workspace chunk-size warning.
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_project_state.py -k "summarizer"` -> `2 passed`.
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_team_protocol.py -k "summary_patch"` -> `1 passed`.
+
+### Teammate notes
+- Existing persisted project warnings with the old DeepSeek failure text are filtered in the frontend status card; new refreshes no longer write those warnings.
+
+## [2026-06-04] Codex - M4 HTML preview fullscreen scaling
+
+### Problem judgment
+- HTML preview used a fixed `500px` iframe minimum height, so fullscreen mode could leave unused blank space below the page preview.
+- The preview zoom controls only supported a narrow 75% / 100% / 125% range, making it impossible to freely enlarge the internal preview viewport.
+
+### Completed
+- Added shared preview zoom constants and clamping for a 25% to 300% range.
+- Replaced coarse zoom-only buttons with fine step buttons plus a range slider.
+- Made the preview tab body a height-filling flex surface.
+- Changed browser preview viewport sizing to account for transform scale so the scaled iframe visually fills the available stage height.
+- Updated fullscreen preview padding so the internal preview has more usable room.
+
+### Changed files
+- `docs/plans/M4_UI_OPTIMIZATION_PLAN.md`
+- `docs/plans/M4_UI_OPTIMIZATION_CHECKLIST.md`
+- `frontend/src/components/preview/IframePreview.tsx`
+- `frontend/src/components/preview/PreviewPanel.tsx`
+- `frontend/src/index.css`
+- `frontend/src/utils/previewControls.ts`
+- `frontend/tests/previewControls.test.mjs`
+- `DEVLOG.md`
+
+### Verification
+- `cd frontend && npm test` -> `26 passed`.
+- `cd frontend && npm run build` -> passed; Vite kept the existing workspace chunk-size warning.
+
+### Teammate notes
+- The zoom implementation keeps viewport dimensions inversely proportional to scale before applying CSS transform, so visual width/height remain stable while the internal preview content gets larger or smaller.

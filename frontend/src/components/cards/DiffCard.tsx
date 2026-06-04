@@ -1,4 +1,4 @@
-import { CheckCircleFilled, DiffOutlined, EyeOutlined } from '@ant-design/icons'
+import { DiffOutlined, EyeOutlined } from '@ant-design/icons'
 import type { Artifact } from '../../services/api'
 import { getArtifactCardPresentation } from '../../utils/artifactCard'
 
@@ -19,10 +19,6 @@ const DiffCard = ({ artifact, onOpen }: DiffCardProps) => {
         <span className="diff-card__title">
           <strong>{presentation.title}</strong>
           <small>{presentation.detail}</small>
-        </span>
-        <span className="code-card__status">
-          <CheckCircleFilled />
-          {presentation.statusLabel}
         </span>
         <button aria-label="在右侧查看变更" type="button" onClick={onOpen}>
           <EyeOutlined />

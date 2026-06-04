@@ -36,6 +36,45 @@ def test_orchestrator_queue_is_fifo_and_enforces_limit():
     assert queue.activate_next("conversation") == "run-2"
 
 
+def test_orchestrator_queue_can_cancel_next_queued_run():
+    queue = OrchestratorQueue(max_queued=2)
+    queue.enqueue("conversation", "run-1")
+    queue.enqueue("conversation", "run-2")
+
+    assert queue.cancel_queued("conversation") == "run-1"
+    assert queue.activate_next("conversation") == "run-2"
+
+
+@pytest.mark.asyncio
+async def test_runtime_honors_cancel_requested_before_execute_starts(tmp_path):
+    executor_called = False
+    snapshots = []
+    runtime = OrchestratorRuntime()
+    runtime.cancel("run-early")
+
+    async def executor(planned_task, workspace):
+        nonlocal executor_called
+        executor_called = True
+        return {"status": "success", "summary": "should not run", "teamNotes": []}
+
+    async def emit(snapshot):
+        snapshots.append(snapshot)
+
+    snapshot = await runtime.execute(
+        run_id="run-early",
+        conversation_id="conversation",
+        work_dir=str(tmp_path),
+        tasks=[task("write", access_mode="write")],
+        executor=executor,
+        emit=emit,
+    )
+
+    assert executor_called is False
+    assert snapshot["status"] == "cancelled"
+    assert snapshots[-1]["status"] == "cancelled"
+    assert snapshots[-1]["tasks"][0]["status"] == "cancelled"
+
+
 @pytest.mark.asyncio
 async def test_runtime_executes_parallel_batch_and_blocks_failed_dependents(tmp_path):
     active = 0

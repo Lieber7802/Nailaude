@@ -5,6 +5,7 @@ import WebPreviewCard from '../cards/WebPreviewCard'
 import type { Agent, Artifact, Message } from '../../services/api'
 import { useArtifactStore } from '../../stores/artifactStore'
 import { useUIStore } from '../../stores/uiStore'
+import { getOrderedMessageArtifacts } from '../../utils/artifactCard'
 import { formatChatTime } from '../../utils/chatUi'
 import MessageMarkdown from './MessageMarkdown'
 
@@ -18,7 +19,7 @@ const EMPTY_ARTIFACTS: Artifact[] = []
 
 const roleLabel: Record<Message['role'], string> = {
   user: '你',
-  agent: 'Agent',
+  agent: '智能体',
   orchestrator: 'Orchestrator',
   system: 'System',
   team_activity: 'Team',
@@ -31,10 +32,10 @@ const MessageBubble = ({ agent, isStreaming = false, message }: MessageBubblePro
   const isUser = message.role === 'user'
   const authorName = isUser ? '你' : message.agentName || agent?.name || roleLabel[message.role]
   const avatar = isUser ? 'U' : agent?.avatar || authorName.slice(0, 1)
-  const artifacts = [
+  const artifacts = getOrderedMessageArtifacts([
     ...message.artifacts,
     ...storedArtifacts.filter((artifact) => !message.artifacts.some((item) => item.id === artifact.id)),
-  ]
+  ])
 
   return (
     <article className={isUser ? 'message-bubble message-bubble--user' : 'message-bubble'}>
@@ -42,7 +43,7 @@ const MessageBubble = ({ agent, isStreaming = false, message }: MessageBubblePro
         <span className="message-bubble__author">
           <span className="message-bubble__avatar">{avatar}</span>
           <strong>{authorName}</strong>
-          {!isUser && <span className="role-badge">Agent</span>}
+          {!isUser && <span className="role-badge">智能体</span>}
           {isStreaming && <LoadingOutlined />}
         </span>
         <span>{formatChatTime(message.createdAt)}</span>

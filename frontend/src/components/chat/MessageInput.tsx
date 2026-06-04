@@ -109,7 +109,7 @@ const MessageInput = ({ agents, canStop = false, disabled, onSend, onStop }: Mes
             }
           }}
           onKeyUp={(event) => setCursorIndex(event.currentTarget.selectionStart)}
-          placeholder={disabled ? '请选择会话并等待连接' : '输入任务，使用 @ 选择 Agent，/ 选择快捷命令'}
+          placeholder={disabled ? '请选择会话并等待连接' : '输入任务，使用 @ 选择智能体，/ 选择快捷命令'}
           value={content}
         />
         <input
@@ -140,7 +140,7 @@ const MessageInput = ({ agents, canStop = false, disabled, onSend, onStop }: Mes
         )}
         <div className="message-input__tools">
           <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={openMentionPicker}>
-            @ 代理
+            @ 智能体
           </button>
           <button type="button">/ 命令</button>
           <button type="button" onClick={openAttachmentPicker}>

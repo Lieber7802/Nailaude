@@ -63,8 +63,8 @@ const NewConversationModal = ({ agents, creating, onCancel, onCreate, open }: Ne
         </Form.Item>
         <Form.Item
           name="participantIds"
-          label="参与 Agent"
-          rules={[{ required: true, message: '请选择至少一个 Agent' }]}
+          label="参与智能体"
+          rules={[{ required: true, message: '请选择至少一个智能体' }]}
         >
           <Select
             mode={selectedType === 'group' ? 'multiple' : undefined}
@@ -73,7 +73,7 @@ const NewConversationModal = ({ agents, creating, onCancel, onCreate, open }: Ne
               label: `${agent.name} · ${agent.capabilities.slice(0, 2).join(' / ')}`,
               value: agent.id,
             }))}
-            placeholder="选择 Agent"
+            placeholder="选择智能体"
           />
         </Form.Item>
         <Form.Item

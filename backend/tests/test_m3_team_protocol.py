@@ -215,7 +215,7 @@ async def test_team_protocol_applies_summary_patch_and_ignores_summary_failure(t
     service = TeamProtocolService(db, summarizer=fail_summary)
     board = await service.merge_batch(conversation.id, [])
     assert board.progress["currentFocus"] == "Review authentication"
-    assert service.warnings == ["Team Board summary unavailable: offline"]
+    assert service.warnings == []
 
 
 def test_team_board_api_returns_snapshot(client):

@@ -58,8 +58,8 @@ class ProjectStateService:
         if changed and self.summarizer:
             try:
                 state.progress_summary = await self.summarizer(state, task_results or [])
-            except Exception as exc:
-                state.warnings = [*state.warnings, f"Project summary unavailable: {exc}"]
+            except Exception:
+                state.progress_summary = state.progress_summary or self._fallback_progress_summary(task_results or [])
         self.db.add(state)
         await self.db.commit()
         await self.db.refresh(state)
@@ -85,6 +85,25 @@ class ProjectStateService:
                         }
                     )
         return changes
+
+    def _fallback_progress_summary(self, task_results: list[dict]) -> str:
+        completed = sum(1 for result in task_results if result.get("status") == "success")
+        failed = sum(1 for result in task_results if result.get("status") == "failed")
+        changed_files = sorted(
+            {
+                path
+                for result in task_results
+                for path in (result.get("filesChanged") or (result.get("audit") or {}).get("filesChanged") or [])
+            }
+        )
+        if completed or failed or changed_files:
+            parts = [f"已完成 {completed} 个任务"]
+            if failed:
+                parts.append(f"{failed} 个任务失败")
+            if changed_files:
+                parts.append(f"涉及 {len(changed_files)} 个文件变更")
+            return "，".join(parts) + "。"
+        return "项目状态已更新。"
 
     async def build_context_summary(self, conversation_id: str) -> str:
         """Build a text summary for agent context injection."""

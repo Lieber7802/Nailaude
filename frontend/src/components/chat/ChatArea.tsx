@@ -1,12 +1,13 @@
-import { CheckCircleFilled, EditOutlined, EllipsisOutlined } from '@ant-design/icons'
+import { CheckCircleFilled, EditOutlined, EllipsisOutlined, LoadingOutlined } from '@ant-design/icons'
 import { Button } from 'antd'
 import { useEffect, useState } from 'react'
 import MessageBubble from './MessageBubble'
 import MessageInput from './MessageInput'
-import type { Agent, Conversation, Message, Task } from '../../services/api'
+import type { Agent, Conversation, Message } from '../../services/api'
 import type { ConversationRuntimeState } from '../../stores/uiStore'
 import { useOrchestratorStore } from '../../stores/orchestratorStore'
 import { formatChatTime } from '../../utils/chatUi'
+import { visibleCollaborationAgents } from '../../utils/orchestratorUi'
 import OrchestratorStatus from '../cards/OrchestratorStatus'
 import OrchestratorInputCard from '../cards/OrchestratorInputCard'
 import OrchestratorApprovalCard from '../cards/OrchestratorApprovalCard'
@@ -52,11 +53,11 @@ const ChatArea = ({ agents, conversation, messages, onCreateAgent, onSend, onSto
             {conversation && (
               <button
                 className="agent-chip agent-chip--muted agent-chip--button"
-                title="添加自定义代理"
+                title="添加自定义智能体"
                 type="button"
                 onClick={onCreateAgent}
               >
-                + 添加代理
+                + 添加智能体
               </button>
             )}
           </div>
@@ -66,7 +67,7 @@ const ChatArea = ({ agents, conversation, messages, onCreateAgent, onSend, onSto
             <CheckCircleFilled />
             {collaborationLabel.text}
           </span>
-          <span className="chat-actions__text">{participantAgents.length} 个代理参与</span>
+          <span className="chat-actions__text">{participantAgents.length} 个智能体参与</span>
           <span className="chat-actions__text">更新 {currentTime}</span>
           <Button aria-label="更多操作" className="icon-button" icon={<EllipsisOutlined />} type="text" />
         </div>
@@ -74,7 +75,7 @@ const ChatArea = ({ agents, conversation, messages, onCreateAgent, onSend, onSto
 
       <div className="chat-area__body chat-area__body--messages">
         {messages.length === 0 ? (
-          <div className="empty-state">发送第一条消息，Mock Agent 会返回流式产物</div>
+          <div className="empty-state">发送第一条消息，Mock 智能体会返回流式产物</div>
         ) : (
           messages.map((message) => (
             <MessageBubble
@@ -106,7 +107,7 @@ const RuntimeBanner = ({
   if (!runtime) return null
   if (!runtime.error && !runtime.orchestratorStatus && runtime.thinkingAgents.length === 0) return null
 
-  const completedTasks = runtime.tasks.filter((task) => task.status === 'completed')
+  const visibleAgents = visibleCollaborationAgents(participantAgents, runtime.tasks, runtime.thinkingAgents)
 
   return (
     <article className="collaboration-card">
@@ -114,21 +115,15 @@ const RuntimeBanner = ({
         <span className="brand-dot">⌂</span>
         <strong>协作状态</strong>
       </div>
-      <p>{runtime.error || '所有代理已同步当前任务状态，您可以查看预览或继续提问。'}</p>
+      <p>{runtime.error || '所有智能体已同步当前任务状态，您可以查看预览或继续提问。'}</p>
       <div className="collaboration-card__agents">
-        {participantAgents.map((agent) => {
-          const task = runtime.tasks.find((item) => item.agentName === agent.name)
-          return (
-            <span className="task-pill" key={agent.id}>
-              <CheckCircleFilled />
-              {agent.name}
-              <strong>{taskStatusLabel(task)}</strong>
-            </span>
-          )
-        })}
-        {completedTasks.length === 0 && runtime.thinkingAgents.length > 0 && (
-          <span className="task-pill task-pill--pending">{runtime.thinkingAgents.join('、')} 思考中</span>
-        )}
+        {visibleAgents.map((agent) => (
+          <span className={agent.status === '思考中' ? 'task-pill task-pill--pending' : 'task-pill'} key={agent.id}>
+            {agent.status === '思考中' ? <LoadingOutlined /> : <CheckCircleFilled />}
+            {agent.name}
+            <strong>{agent.status}</strong>
+          </span>
+        ))}
       </div>
     </article>
   )
@@ -157,14 +152,6 @@ const getCollaborationLabel = (runtime: ConversationRuntimeState | null, wsStatu
   }
   if (wsStatus === 'open') return { text: '空闲', tone: 'idle' }
   return { text: '连接中', tone: 'idle' }
-}
-
-const taskStatusLabel = (task?: Task) => {
-  if (!task) return '等待中'
-  if (task.status === 'completed') return '已完成'
-  if (task.status === 'running') return '进行中'
-  if (task.status === 'failed') return '失败'
-  return '等待中'
 }
 
 const hasActiveRun = (runtime: ConversationRuntimeState | null) => {

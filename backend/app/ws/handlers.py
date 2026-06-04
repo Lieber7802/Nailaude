@@ -81,7 +81,13 @@ async def websocket_endpoint(
                 if active_run_id:
                     runtime.cancel(active_run_id)
                 else:
-                    await send_error(websocket, "No active run to cancel", recoverable=True)
+                    queued_run_id = orchestrator_queue.cancel_queued(conversation_id)
+                    if queued_run_id:
+                        queued_job = pending_jobs.pop(queued_run_id, None)
+                        if queued_job:
+                            await publish_job_snapshot(db, conversation_id, queued_job, "cancelled", "Run cancelled")
+                    else:
+                        await send_error(websocket, "No active run to cancel", recoverable=True)
             else:
                 await send_error(websocket, "Unsupported WebSocket message type", recoverable=True)
     except WebSocketDisconnect:

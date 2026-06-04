@@ -149,9 +149,9 @@ const Workspace = () => {
       const agent = await agentApi.create(payload)
       addAgent(agent)
       setAgentCreateOpen(false)
-      void antdMessage.success('代理已添加')
+      void antdMessage.success('智能体已添加')
     } catch (error) {
-      const message = error instanceof Error ? error.message : '添加代理失败'
+      const message = error instanceof Error ? error.message : '添加智能体失败'
       setAgentError(message)
       void antdMessage.error(message)
     } finally {
@@ -175,7 +175,7 @@ const Workspace = () => {
     if (!activeId) return
     const fallbackAgents = activeConversation?.type === 'single' ? participantAgents : []
     if (activeConversation && participantAgents.length === 0) {
-      const message = '当前会话没有参与 Agent，无法发送'
+      const message = '当前会话没有参与智能体，无法发送'
       setConversationError(message)
       void antdMessage.warning(message)
       return

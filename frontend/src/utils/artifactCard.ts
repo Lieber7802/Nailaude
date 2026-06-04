@@ -7,8 +7,19 @@ export interface ArtifactCardPresentation {
   actionLabel: string
   detail: string
   kind: ArtifactCardKind
-  statusLabel: string
   title: string
+}
+
+export function getOrderedMessageArtifacts(artifacts: Artifact[]): Artifact[] {
+  return [...artifacts].sort((left, right) => artifactMessageOrder(left) - artifactMessageOrder(right))
+}
+
+export function getOutputArtifacts(artifacts: Artifact[]): Artifact[] {
+  return artifacts.filter((artifact) => artifact.type !== 'diff')
+}
+
+export function getChangeArtifacts(artifacts: Artifact[]): Artifact[] {
+  return artifacts.filter((artifact) => artifact.type === 'diff' && artifact.diffData)
 }
 
 export function getArtifactCardPresentation(artifact: Artifact): ArtifactCardPresentation {
@@ -23,7 +34,6 @@ export function getArtifactCardPresentation(artifact: Artifact): ArtifactCardPre
         artifact.diffData?.file || 'diff'
       }`,
       kind: 'diff',
-      statusLabel: '文件更改',
       title: artifact.title,
     }
   }
@@ -33,7 +43,6 @@ export function getArtifactCardPresentation(artifact: Artifact): ArtifactCardPre
       actionLabel: '在右侧预览',
       detail: `${artifact.previewUrl ? '可预览' : '无预览链接'} · ${artifact.files.length || 1} 个文件`,
       kind: 'webpage',
-      statusLabel: '网页产物',
       title: artifact.title,
     }
   }
@@ -43,7 +52,6 @@ export function getArtifactCardPresentation(artifact: Artifact): ArtifactCardPre
     actionLabel: markdown ? '在右侧预览' : '在右侧查看',
     detail: `${(firstFile?.language || artifact.type).toUpperCase()} · ${lineCount} 行 · ${formatBytes(byteCount)}`,
     kind: markdown ? 'markdown' : artifact.type === 'file' ? 'file' : 'code',
-    statusLabel: '新创建的文件',
     title: artifact.title,
   }
 }
@@ -52,4 +60,10 @@ export function formatBytes(chars: number): string {
   if (chars <= 0) return '0 B'
   const kb = chars / 1024
   return kb >= 1 ? `${kb.toFixed(1)} KB` : `${chars} B`
+}
+
+function artifactMessageOrder(artifact: Artifact): number {
+  if (artifact.type === 'diff') return 30
+  if (artifact.type === 'webpage') return 20
+  return 10
 }

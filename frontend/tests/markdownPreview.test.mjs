@@ -6,6 +6,8 @@ import {
   isMarkdownFile,
   parseInlineMarkdown,
   parseMarkdownBlocks,
+  renderMarkdownToHtml,
+  slugifyMarkdownHeading,
 } from '../src/utils/markdownPreview.ts'
 
 test('recognizes generated code review markdown files', () => {
@@ -81,4 +83,22 @@ test('parses github-style markdown tables', () => {
       ],
     },
   ])
+})
+
+test('renders github-flavored markdown with heading anchors and blockquotes', () => {
+  const html = renderMarkdownToHtml(
+    '# 目录\n\n- [产品概述](#产品概述)\n\n## 产品概述\n\n> 版本：v1.0\n\n- [x] 已完成\n\n~~旧内容~~'
+  )
+
+  assert.match(html, /<h1 id="目录">目录<\/h1>/)
+  assert.match(html, /<a href="#%E4%BA%A7%E5%93%81%E6%A6%82%E8%BF%B0">产品概述<\/a>/)
+  assert.match(html, /<h2 id="产品概述">产品概述<\/h2>/)
+  assert.match(html, /<blockquote>/)
+  assert.match(html, /<input checked="" disabled="" type="checkbox">/)
+  assert.match(html, /<del>旧内容<\/del>/)
+})
+
+test('creates stable markdown heading slugs for table-of-contents jumps', () => {
+  assert.equal(slugifyMarkdownHeading('1. 产品概述'), '1-产品概述')
+  assert.equal(slugifyMarkdownHeading('<code>API_SPEC.md</code> 更新'), 'api_specmd-更新')
 })

@@ -34,5 +34,11 @@ class OrchestratorQueue:
     def active(self, conversation_id: str) -> str | None:
         return self._active.get(conversation_id)
 
+    def cancel_queued(self, conversation_id: str) -> str | None:
+        queue = self._queued[conversation_id]
+        if not queue:
+            return None
+        return queue.popleft()
+
     def queued_count(self, conversation_id: str) -> int:
         return len(self._queued[conversation_id])
