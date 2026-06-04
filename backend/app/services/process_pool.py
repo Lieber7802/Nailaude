@@ -48,9 +48,10 @@ class ProcessPool:
         timeout: float | None = None,
         cancel_event: asyncio.Event | None = None,
         env: dict[str, str] | None = None,
+        stdin_text: str | None = None,
     ) -> ProcessResult:
         async with self._semaphore():
-            return await self._run(command, cwd, timeout=timeout, cancel_event=cancel_event, env=env)
+            return await self._run(command, cwd, timeout=timeout, cancel_event=cancel_event, env=env, stdin_text=stdin_text)
 
     async def _run(
         self,
@@ -59,11 +60,13 @@ class ProcessPool:
         timeout: float | None = None,
         cancel_event: asyncio.Event | None = None,
         env: dict[str, str] | None = None,
+        stdin_text: str | None = None,
     ) -> ProcessResult:
         try:
             process = await asyncio.create_subprocess_exec(
                 *command,
                 cwd=cwd,
+                stdin=asyncio.subprocess.PIPE if stdin_text is not None else asyncio.subprocess.DEVNULL,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 env=env or os.environ.copy(),
@@ -77,6 +80,7 @@ class ProcessPool:
         stdout_read = asyncio.create_task(self._capture_stream(process.stdout, stdout))
         stderr_read = asyncio.create_task(self._capture_stream(process.stderr, stderr))
         process_wait = asyncio.create_task(self._wait_for_exit(process))
+        stdin_write = asyncio.create_task(self._write_stdin(process, stdin_text)) if stdin_text is not None else None
         cancel_wait = asyncio.create_task(cancel_event.wait()) if cancel_event else None
         try:
             wait_for = {process_wait}
@@ -96,7 +100,8 @@ class ProcessPool:
                 returncode=int(process.returncode or 0),
             )
             if result.returncode != 0:
-                raise ProcessPoolError(f"process exited with exit code {result.returncode}: {result.stderr}")
+                detail = result.stderr.strip() or result.stdout.strip()
+                raise ProcessPoolError(f"process exited with exit code {result.returncode}: {detail}")
             return result
         except asyncio.CancelledError:
             await self._terminate(process)
@@ -106,6 +111,8 @@ class ProcessPool:
                 cancel_wait.cancel()
             if not process_wait.done():
                 process_wait.cancel()
+            if stdin_write and not stdin_write.done():
+                stdin_write.cancel()
             self._active.discard(process)
 
     async def _terminate(self, process: asyncio.subprocess.Process) -> None:
@@ -126,6 +133,17 @@ class ProcessPool:
         while process.returncode is None:
             await asyncio.sleep(0.02)
         return int(process.returncode)
+
+    async def _write_stdin(self, process: asyncio.subprocess.Process, stdin_text: str) -> None:
+        if process.stdin is None:
+            return
+        try:
+            process.stdin.write(stdin_text.encode("utf-8"))
+            await process.stdin.drain()
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+        finally:
+            process.stdin.close()
 
     async def _drain_capture(self, process: asyncio.subprocess.Process, *tasks: asyncio.Task) -> None:
         try:

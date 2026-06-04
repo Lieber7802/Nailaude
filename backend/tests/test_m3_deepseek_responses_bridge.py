@@ -3,7 +3,7 @@ import json
 import httpx
 import pytest
 
-from app.services.deepseek_responses_bridge import DeepSeekResponsesBridge
+from app.services.deepseek_responses_bridge import DeepSeekResponsesBridge, DeepSeekResponsesBridgeError
 
 
 def sse_data(event: dict) -> str:
@@ -81,6 +81,49 @@ def test_bridge_converts_codex_responses_input_and_tools_to_deepseek_chat():
     assert payload["stream"] is True
 
 
+def test_bridge_truncates_large_tool_outputs_before_forwarding_to_deepseek_chat():
+    bridge = DeepSeekResponsesBridge(api_key="test-key", model="deepseek-chat")
+    long_output = "HEAD\n" + ("x" * 14_000) + "\nTAIL"
+
+    payload = bridge.to_chat_payload(
+        {
+            "input": [
+                {"type": "function_call", "call_id": "call-read", "name": "shell", "arguments": "{}"},
+                {"type": "function_call_output", "call_id": "call-read", "output": long_output},
+            ]
+        }
+    )
+
+    tool_message = payload["messages"][-1]
+
+    assert tool_message["role"] == "tool"
+    assert tool_message["tool_call_id"] == "call-read"
+    assert len(tool_message["content"]) < 7_000
+    assert "HEAD" in tool_message["content"]
+    assert "TAIL" in tool_message["content"]
+    assert "AgentHub truncated" in tool_message["content"]
+
+
+def test_bridge_groups_consecutive_function_calls_before_tool_outputs():
+    bridge = DeepSeekResponsesBridge(api_key="test-key", model="deepseek-chat")
+
+    payload = bridge.to_chat_payload(
+        {
+            "input": [
+                {"type": "function_call", "call_id": "call-1", "name": "shell", "arguments": '{"command":"pwd"}'},
+                {"type": "function_call", "call_id": "call-2", "name": "shell", "arguments": '{"command":"ls"}'},
+                {"type": "function_call_output", "call_id": "call-1", "output": "/tmp/project"},
+                {"type": "function_call_output", "call_id": "call-2", "output": "index.html"},
+            ]
+        }
+    )
+
+    assert [message["role"] for message in payload["messages"]] == ["assistant", "tool", "tool"]
+    assert [call["id"] for call in payload["messages"][0]["tool_calls"]] == ["call-1", "call-2"]
+    assert payload["messages"][1]["tool_call_id"] == "call-1"
+    assert payload["messages"][2]["tool_call_id"] == "call-2"
+
+
 @pytest.mark.asyncio
 async def test_bridge_translates_deepseek_text_stream_to_responses_events():
     async def handler(request: httpx.Request) -> httpx.Response:
@@ -117,6 +160,17 @@ async def test_bridge_translates_deepseek_text_stream_to_responses_events():
     ]
     assert events[3]["delta"] == "OK"
     assert events[-1]["response"]["status"] == "completed"
+
+
+@pytest.mark.asyncio
+async def test_bridge_includes_deepseek_error_body_in_normalized_failures():
+    async def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(400, json={"error": {"message": "Input tokens are too long"}})
+
+    bridge = DeepSeekResponsesBridge(api_key="test-key", transport=httpx.MockTransport(handler))
+
+    with pytest.raises(DeepSeekResponsesBridgeError, match="Input tokens are too long"):
+        await bridge.handle_responses_request({"input": [], "stream": True})
 
 
 @pytest.mark.asyncio
@@ -175,3 +229,54 @@ async def test_bridge_translates_deepseek_function_call_stream_to_responses_even
         "response.completed",
     ]
     assert events[4]["arguments"] == '{"command":"pwd"}'
+
+
+@pytest.mark.asyncio
+async def test_bridge_round_trips_deepseek_reasoning_content_for_tool_calls():
+    async def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            text="".join(
+                [
+                    sse_data({"choices": [{"delta": {"reasoning_content": "Need to inspect files. "}}]}),
+                    sse_data(
+                        {
+                            "choices": [
+                                {
+                                    "delta": {
+                                        "tool_calls": [
+                                            {
+                                                "index": 0,
+                                                "id": "call-1",
+                                                "function": {"name": "shell_command", "arguments": '{"command":"ls"}'},
+                                            }
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    ),
+                    "data: [DONE]\n\n",
+                ]
+            ),
+        )
+
+    bridge = DeepSeekResponsesBridge(api_key="test-key", transport=httpx.MockTransport(handler))
+
+    await bridge.handle_responses_request({"input": [], "stream": True})
+    payload = bridge.to_chat_payload(
+        {
+            "input": [
+                {
+                    "type": "function_call",
+                    "call_id": "call-1",
+                    "name": "shell_command",
+                    "arguments": '{"command":"ls"}',
+                },
+                {"type": "function_call_output", "call_id": "call-1", "output": "index.html"},
+            ]
+        }
+    )
+
+    assert payload["messages"][0]["role"] == "assistant"
+    assert payload["messages"][0]["reasoning_content"] == "Need to inspect files. "

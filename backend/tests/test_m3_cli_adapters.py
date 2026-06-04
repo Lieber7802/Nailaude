@@ -21,11 +21,12 @@ class CapturingPool:
         self.env = None
         self.config = ""
 
-    async def run(self, command, cwd, timeout=None, cancel_event=None, env=None):
+    async def run(self, command, cwd, timeout=None, cancel_event=None, env=None, stdin_text=None):
         self.cancel_event = cancel_event
         self.command = command
         self.cwd = cwd
         self.env = env
+        self.stdin_text = stdin_text
         if env and env.get("CODEX_HOME"):
             config_path = Path(env["CODEX_HOME"]) / "config.toml"
             if config_path.exists():
@@ -34,11 +35,12 @@ class CapturingPool:
 
 
 class CodexJsonPool(CapturingPool):
-    async def run(self, command, cwd, timeout=None, cancel_event=None, env=None):
+    async def run(self, command, cwd, timeout=None, cancel_event=None, env=None, stdin_text=None):
         self.cancel_event = cancel_event
         self.command = command
         self.cwd = cwd
         self.env = env
+        self.stdin_text = stdin_text
         if env and env.get("CODEX_HOME"):
             config_path = Path(env["CODEX_HOME"]) / "config.toml"
             if config_path.exists():
@@ -614,7 +616,9 @@ async def test_opencode_adapter_prefers_server_runner_for_model_text_and_file_ev
 @pytest.mark.asyncio
 async def test_codex_adapter_uses_isolated_home_and_loopback_bridge(tmp_path, monkeypatch):
     pool = CodexJsonPool()
+    codex_home_root = tmp_path / "codex-homes"
     monkeypatch.setenv("CODEX_THREAD_ID", "desktop-thread")
+    monkeypatch.setenv("AGENTHUB_CODEX_HOME_ROOT", str(codex_home_root))
     adapter = CodexAdapter(pool=pool, binary_path="codex", bridge_factory=fake_bridge_factory)
 
     events = [event async for event in adapter.run_task(str(tmp_path), "build", {})]
@@ -622,6 +626,9 @@ async def test_codex_adapter_uses_isolated_home_and_loopback_bridge(tmp_path, mo
     assert events[-1].type == "done"
     assert pool.env["AGENTHUB_CODEX_BRIDGE_TOKEN"] == "bridge-token"
     assert pool.env["CODEX_HOME"] != str(tmp_path)
+    assert Path(pool.env["CODEX_HOME"]).parent == codex_home_root
+    assert pool.command[-1] == "-"
+    assert pool.stdin_text and "AgentHub handoff context follows as JSON" in pool.stdin_text
     assert "CODEX_THREAD_ID" not in pool.env
     assert 'base_url = "http://127.0.0.1:12345"' in pool.config
     assert 'env_key = "AGENTHUB_CODEX_BRIDGE_TOKEN"' in pool.config
@@ -657,10 +664,10 @@ async def test_codex_adapter_emits_file_events_for_workspace_changes(tmp_path):
     existing.write_text("old", encoding="utf-8")
 
     class FileChangingPool(CodexJsonPool):
-        async def run(self, command, cwd, timeout=None, cancel_event=None, env=None):
+        async def run(self, command, cwd, timeout=None, cancel_event=None, env=None, stdin_text=None):
             (tmp_path / "new.py").write_text("print('hello')\n", encoding="utf-8")
             existing.write_text("new", encoding="utf-8")
-            return await super().run(command, cwd, timeout, cancel_event, env)
+            return await super().run(command, cwd, timeout, cancel_event, env, stdin_text)
 
     adapter = CodexAdapter(pool=FileChangingPool(), binary_path="codex", bridge_factory=fake_bridge_factory)
 
