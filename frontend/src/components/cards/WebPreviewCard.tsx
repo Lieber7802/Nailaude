@@ -1,5 +1,6 @@
-import { ExportOutlined, EyeOutlined, GlobalOutlined } from '@ant-design/icons'
+import { CheckCircleFilled, ExportOutlined, EyeOutlined, GlobalOutlined } from '@ant-design/icons'
 import type { Artifact } from '../../services/api'
+import { getArtifactCardPresentation } from '../../utils/artifactCard'
 
 interface WebPreviewCardProps {
   artifact: Artifact
@@ -7,7 +8,7 @@ interface WebPreviewCardProps {
 }
 
 const WebPreviewCard = ({ artifact, onOpen }: WebPreviewCardProps) => {
-  const html = artifact.files.find((file) => file.language === 'html' || file.name.endsWith('.html'))?.content
+  const presentation = getArtifactCardPresentation(artifact)
   const handleExternalOpen = () => {
     if (!artifact.previewUrl) return
     window.open(artifact.previewUrl, '_blank', 'noopener,noreferrer')
@@ -16,14 +17,21 @@ const WebPreviewCard = ({ artifact, onOpen }: WebPreviewCardProps) => {
   return (
     <article className="web-preview-card">
       <div className="web-preview-card__header">
-        <span>
+        <span className="web-preview-card__icon">
           <GlobalOutlined />
-          <strong>{artifact.title}</strong>
+        </span>
+        <span className="web-preview-card__title">
+          <strong>{presentation.title}</strong>
+          <small>{presentation.detail}</small>
+        </span>
+        <span className="code-card__status">
+          <CheckCircleFilled />
+          {presentation.statusLabel}
         </span>
         <span className="web-preview-card__actions">
           <button aria-label="在右侧查看网页预览" type="button" onClick={onOpen}>
             <EyeOutlined />
-            在右侧查看
+            {presentation.actionLabel}
           </button>
           <button
             aria-label="新标签页打开预览"
@@ -36,9 +44,6 @@ const WebPreviewCard = ({ artifact, onOpen }: WebPreviewCardProps) => {
           </button>
         </span>
       </div>
-      <button className="web-preview-card__frame" type="button" onClick={onOpen}>
-        {html ? <iframe sandbox="" srcDoc={html} title={artifact.title} /> : <span>预览文件待加载</span>}
-      </button>
     </article>
   )
 }

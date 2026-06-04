@@ -215,6 +215,19 @@ const Workspace = () => {
     touchConversation(activeId, formatConversationLastMessage('你', content), message.createdAt)
   }
 
+  const handleStop = () => {
+    if (!activeId) return
+    const sent = send({
+      type: 'stop_generation',
+      data: { messageId: activeId },
+    })
+    if (!sent) {
+      void antdMessage.warning('WebSocket 尚未连接，无法终止')
+      return
+    }
+    void antdMessage.success('已请求终止当前回复')
+  }
+
   return (
     <>
       <Layout
@@ -240,6 +253,7 @@ const Workspace = () => {
             wsStatus={status}
             onCreateAgent={openAgentCreateModal}
             onSend={handleSend}
+            onStop={handleStop}
           />
         }
         right={

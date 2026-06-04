@@ -2,12 +2,14 @@ import {
   ArrowRightOutlined,
   DeleteOutlined,
   HomeFilled,
+  MenuFoldOutlined,
   PlusOutlined,
   SearchOutlined,
   SettingOutlined,
 } from '@ant-design/icons'
 import { Button, Empty, Input, Popconfirm } from 'antd'
 import type { Agent, Conversation } from '../../services/api'
+import { useUIStore } from '../../stores/uiStore'
 
 interface ConversationListProps {
   agents: Agent[]
@@ -33,6 +35,7 @@ const ConversationList = ({
   search,
 }: ConversationListProps) => {
   const agentsById = new Map(agents.map((agent) => [agent.id, agent]))
+  const setSidebarVisible = useUIStore((state) => state.setSidebarVisible)
 
   return (
     <div className="sidebar">
@@ -43,6 +46,15 @@ const ConversationList = ({
           </span>
           <strong>AgentHub</strong>
         </div>
+        <button
+          aria-label="隐藏会话列表"
+          className="pane-toggle pane-toggle--sidebar"
+          title="隐藏会话列表"
+          type="button"
+          onClick={() => setSidebarVisible(false)}
+        >
+          <MenuFoldOutlined />
+        </button>
       </div>
 
       <Button className="sidebar__create" icon={<PlusOutlined />} type="primary" onClick={onCreate}>

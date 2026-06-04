@@ -1,7 +1,15 @@
-import { CodeOutlined, CompressOutlined, ExpandOutlined, FileTextOutlined, GlobalOutlined } from '@ant-design/icons'
+import {
+  CodeOutlined,
+  CompressOutlined,
+  ExpandOutlined,
+  FileTextOutlined,
+  GlobalOutlined,
+  MenuUnfoldOutlined,
+} from '@ant-design/icons'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Artifact } from '../../services/api'
 import { useArtifactStore } from '../../stores/artifactStore'
+import { useUIStore } from '../../stores/uiStore'
 import CodeEditor from './CodeEditor'
 import DiffViewer from './DiffViewer'
 import IframePreview from './IframePreview'
@@ -30,6 +38,7 @@ const PreviewPanel = () => {
   const activeArtifactId = useArtifactStore((state) => state.activeArtifactId)
   const openRevision = useArtifactStore((state) => state.openRevision)
   const setActiveArtifact = useArtifactStore((state) => state.setActiveArtifact)
+  const setPreviewVisible = useUIStore((state) => state.setPreviewVisible)
   const artifacts = useMemo(() => {
     const allArtifacts = Object.values(artifactsByMessage).flat()
     if (storedActiveArtifact && !allArtifacts.some((artifact) => artifact.id === storedActiveArtifact.id)) {
@@ -131,6 +140,15 @@ const PreviewPanel = () => {
             onClick={() => void toggleFullscreen()}
           >
             {isFullscreen ? <CompressOutlined /> : <ExpandOutlined />}
+          </button>
+          <button
+            aria-label="隐藏预览窗格"
+            className="pane-toggle pane-toggle--preview"
+            title="隐藏预览窗格"
+            type="button"
+            onClick={() => setPreviewVisible(false)}
+          >
+            <MenuUnfoldOutlined />
           </button>
         </div>
       </div>

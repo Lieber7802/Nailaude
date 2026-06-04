@@ -6,10 +6,10 @@ import MessageInput from './MessageInput'
 import type { Agent, Conversation, Message, Task } from '../../services/api'
 import type { ConversationRuntimeState } from '../../stores/uiStore'
 import { useOrchestratorStore } from '../../stores/orchestratorStore'
+import { formatChatTime } from '../../utils/chatUi'
 import OrchestratorStatus from '../cards/OrchestratorStatus'
 import OrchestratorInputCard from '../cards/OrchestratorInputCard'
 import OrchestratorApprovalCard from '../cards/OrchestratorApprovalCard'
-import TeamBoardPanel from './TeamBoardPanel'
 
 interface ChatAreaProps {
   agents: Agent[]
@@ -19,9 +19,10 @@ interface ChatAreaProps {
   wsStatus: string
   onCreateAgent: () => void
   onSend: (content: string) => void
+  onStop: () => void
 }
 
-const ChatArea = ({ agents, conversation, messages, onCreateAgent, onSend, runtime, wsStatus }: ChatAreaProps) => {
+const ChatArea = ({ agents, conversation, messages, onCreateAgent, onSend, onStop, runtime, wsStatus }: ChatAreaProps) => {
   const participantAgents = agents.filter((agent) => conversation?.participantIds.includes(agent.id))
   const disabled = !conversation || wsStatus !== 'open' || participantAgents.length === 0
   const collaborationLabel = getCollaborationLabel(runtime, wsStatus)
@@ -29,8 +30,7 @@ const ChatArea = ({ agents, conversation, messages, onCreateAgent, onSend, runti
   const snapshot = useOrchestratorStore((state) => (conversation ? state.snapshots[conversation.id] : undefined))
   const input = useOrchestratorStore((state) => (conversation ? state.inputs[conversation.id] : undefined))
   const approval = useOrchestratorStore((state) => (conversation ? state.approvals[conversation.id] : undefined))
-  const teamBoard = useOrchestratorStore((state) => (conversation ? state.teamBoards[conversation.id] : undefined))
-  const projectState = useOrchestratorStore((state) => (conversation ? state.projectStates[conversation.id] : undefined))
+  const canStop = wsStatus === 'open' && hasActiveRun(runtime)
 
   return (
     <div className="chat-area">
@@ -89,10 +89,9 @@ const ChatArea = ({ agents, conversation, messages, onCreateAgent, onSend, runti
         {snapshot && <OrchestratorStatus snapshot={snapshot} />}
         {input && <OrchestratorInputCard runId={input.runId} result={input.result} />}
         {approval && <OrchestratorApprovalCard reason={approval.reason} runId={approval.runId} />}
-        <TeamBoardPanel board={teamBoard} projectState={projectState} />
       </div>
 
-      <MessageInput agents={participantAgents} disabled={disabled} onSend={onSend} />
+      <MessageInput agents={participantAgents} canStop={canStop} disabled={disabled} onSend={onSend} onStop={onStop} />
     </div>
   )
 }
@@ -143,11 +142,7 @@ const useMinuteClock = () => {
     return () => window.clearInterval(timer)
   }, [])
 
-  return new Intl.DateTimeFormat('zh-CN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(now)
+  return formatChatTime(now)
 }
 
 const getCollaborationLabel = (runtime: ConversationRuntimeState | null, wsStatus: string) => {
@@ -170,6 +165,13 @@ const taskStatusLabel = (task?: Task) => {
   if (task.status === 'running') return '进行中'
   if (task.status === 'failed') return '失败'
   return '等待中'
+}
+
+const hasActiveRun = (runtime: ConversationRuntimeState | null) => {
+  if (!runtime) return false
+  if (runtime.thinkingAgents.length > 0) return true
+  if (!runtime.orchestratorStatus) return false
+  return !['completed', 'failed', 'cancelled'].includes(runtime.orchestratorStatus)
 }
 
 export default ChatArea

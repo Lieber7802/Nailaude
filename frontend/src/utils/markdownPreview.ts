@@ -20,6 +20,10 @@ export type MarkdownBlock =
   | { type: 'rule' }
 
 export type TableAlignment = 'left' | 'center' | 'right'
+export type MarkdownInlineNode =
+  | { type: 'text'; text: string }
+  | { type: 'code'; text: string }
+  | { type: 'strong'; children: MarkdownInlineNode[] }
 
 const MARKDOWN_EXTENSIONS = ['.md', '.markdown', '.mdown', '.mkd']
 const MARKDOWN_LANGUAGES = new Set(['markdown', 'md', 'gfm'])
@@ -76,17 +80,36 @@ export function parseMarkdownBlocks(content: string): MarkdownBlock[] {
       continue
     }
 
-    const fenceMatch = trimmed.match(/^```([a-zA-Z0-9_-]*)\s*$/)
+    const fenceMatch = trimmed.match(/^(```|~~~)([a-zA-Z0-9_-]*)\s*$/)
     if (fenceMatch) {
       flushParagraph()
+      const marker = fenceMatch[1]
       const codeLines: string[] = []
       index += 1
-      while (index < lines.length && !lines[index].trim().startsWith('```')) {
+      while (index < lines.length && !lines[index].trim().startsWith(marker)) {
         codeLines.push(lines[index])
         index += 1
       }
       if (index < lines.length) index += 1
-      blocks.push({ type: 'code', language: fenceMatch[1] || 'text', code: codeLines.join('\n') })
+      blocks.push({ type: 'code', language: fenceMatch[2] || 'text', code: codeLines.join('\n') })
+      continue
+    }
+
+    if (/^( {4}|\t)/.test(line)) {
+      flushParagraph()
+      const codeLines: string[] = []
+      while (index < lines.length) {
+        const codeLine = lines[index]
+        if (!codeLine.trim()) {
+          codeLines.push('')
+          index += 1
+          continue
+        }
+        if (!/^( {4}|\t)/.test(codeLine)) break
+        codeLines.push(codeLine.startsWith('\t') ? codeLine.slice(1) : codeLine.slice(4))
+        index += 1
+      }
+      blocks.push({ type: 'code', language: 'text', code: trimTrailingBlankLines(codeLines).join('\n') })
       continue
     }
 
@@ -136,6 +159,46 @@ export function parseMarkdownBlocks(content: string): MarkdownBlock[] {
 
   flushParagraph()
   return blocks
+}
+
+export function parseInlineMarkdown(text: string): MarkdownInlineNode[] {
+  const nodes: MarkdownInlineNode[] = []
+  let cursor = 0
+
+  while (cursor < text.length) {
+    const nextCode = text.indexOf('`', cursor)
+    const nextStrong = text.indexOf('**', cursor)
+    const candidates = [nextCode, nextStrong].filter((index) => index >= 0)
+
+    if (candidates.length === 0) {
+      pushText(nodes, text.slice(cursor))
+      break
+    }
+
+    const nextToken = Math.min(...candidates)
+    if (nextToken > cursor) pushText(nodes, text.slice(cursor, nextToken))
+
+    if (text.startsWith('`', nextToken)) {
+      const end = text.indexOf('`', nextToken + 1)
+      if (end === -1) {
+        pushText(nodes, text.slice(nextToken))
+        break
+      }
+      nodes.push({ type: 'code', text: text.slice(nextToken + 1, end) })
+      cursor = end + 1
+      continue
+    }
+
+    const end = text.indexOf('**', nextToken + 2)
+    if (end === -1) {
+      pushText(nodes, text.slice(nextToken))
+      break
+    }
+    nodes.push({ type: 'strong', children: parseInlineMarkdown(text.slice(nextToken + 2, end)) })
+    cursor = end + 2
+  }
+
+  return nodes
 }
 
 function isTableHeader(lines: string[], index: number): boolean {
@@ -189,4 +252,22 @@ function normalizeTableRow(cells: string[], expectedLength: number): string[] {
   if (cells.length === expectedLength) return cells
   if (cells.length > expectedLength) return cells.slice(0, expectedLength)
   return [...cells, ...Array.from({ length: expectedLength - cells.length }, () => '')]
+}
+
+function trimTrailingBlankLines(lines: string[]): string[] {
+  const nextLines = [...lines]
+  while (nextLines.length > 0 && nextLines[nextLines.length - 1] === '') {
+    nextLines.pop()
+  }
+  return nextLines
+}
+
+function pushText(nodes: MarkdownInlineNode[], text: string) {
+  if (!text) return
+  const previous = nodes[nodes.length - 1]
+  if (previous?.type === 'text') {
+    previous.text += text
+    return
+  }
+  nodes.push({ type: 'text', text })
 }

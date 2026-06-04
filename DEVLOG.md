@@ -1429,3 +1429,167 @@
 - `cd frontend && npm run build` -> passed.
 - `curl http://localhost:8000/api/v1/platforms` -> Codex, OpenCode, LLM, and Mock returned `available` on this machine.
 - In-app browser smoke at `http://localhost:5173/workspace`: custom Agent platform dropdown showed `Codex CLI · available`, `LLM Provider (DeepSeek) · available`, and `OpenCode CLI · available`; `Mock Agent` was not present.
+
+## [2026-06-04] Codex - M4 chat and preview UI optimization
+
+### Problem judgment
+- M4 artifact cards were too heavy in the chat stream because code, diff, Markdown, and iframe previews appeared inline instead of only in the right preview panel.
+- Active agent runs had an existing backend `stop_generation` contract, but the workspace UI did not expose a stop control.
+- The three-pane workspace layout had fixed side panes and could not collapse to a chat-only view.
+- Agent replies were rendered as plain text, so Markdown syntax showed through in chat messages.
+
+### Completed
+- Converted code/file, diff, and webpage artifact cards into compact summary cards with copy/open actions only; opening a card restores the right preview pane and selects the artifact.
+- Added a stop button to the message input when the current conversation has an active run; it sends the existing WebSocket `stop_generation` message.
+- Added resizable left and right pane widths plus collapse/restore controls backed by Zustand UI state.
+- Hid the `Shared context` / TeamBoard panel from the chat stream.
+- Added Markdown rendering for chat replies, including headings, lists, tables, fenced code blocks, inline code, and bold text.
+- Added focused frontend tests for artifact-card presentation and chat Markdown parsing.
+
+### Changed files
+- `frontend/src/components/cards/CodeCard.tsx`
+- `frontend/src/components/cards/DiffCard.tsx`
+- `frontend/src/components/cards/WebPreviewCard.tsx`
+- `frontend/src/components/chat/ChatArea.tsx`
+- `frontend/src/components/chat/MessageBubble.tsx`
+- `frontend/src/components/chat/MessageInput.tsx`
+- `frontend/src/components/chat/MessageMarkdown.tsx`
+- `frontend/src/components/common/Layout.tsx`
+- `frontend/src/pages/Workspace.tsx`
+- `frontend/src/stores/uiStore.ts`
+- `frontend/src/utils/artifactCard.ts`
+- `frontend/src/index.css`
+- `frontend/tests/artifactCard.test.mjs`
+- `frontend/tests/markdownPreview.test.mjs`
+- `docs/plans/M4_UI_OPTIMIZATION_PLAN.md`
+- `docs/plans/M4_UI_OPTIMIZATION_CHECKLIST.md`
+- `DEVLOG.md`
+
+### Interface changes
+- No shared type changes.
+- No REST API changes.
+- Existing WebSocket `stop_generation` is now used by the frontend.
+- No new dependencies.
+
+### Verification
+- `cd frontend && npm test` -> `12 passed`.
+- `cd frontend && npm run build` -> passed; Vite kept the existing chunk-size warning for the workspace bundle.
+- In-app browser smoke at `http://127.0.0.1:5173/workspace`: shell, chat area, two resize handles, and left/right collapse controls rendered; `Shared context` was absent; no console errors were reported. API toast errors appeared because only the frontend dev server was running, not the backend.
+
+### Teammate notes
+- Pane widths are clamped in `uiStore` to keep the center chat usable.
+- The browser smoke did not exercise a live backend conversation; use the normal full-stack startup for end-to-end stop-generation behavior.
+
+## [2026-06-04] Codex - M4 UI follow-up fixes
+
+### Problem judgment
+- The collapse controls were visible but sat too much in the middle of the content area; they needed to move to a divider-control position.
+- Chat Markdown handled common headings/lists/tables, but code blocks could still fall back to plain paragraphs for `~~~` fences or indented code.
+- Backend timestamps are serialized from naive UTC datetimes, which browsers can interpret as local time unless the frontend normalizes them.
+- `@代理` and `附件` existed as visual buttons but did not trigger real input actions.
+
+### Completed
+- Moved pane collapse controls to the top divider-control area, centered over the left/right separators.
+- Extended Markdown parsing to support `~~~` fenced code blocks and indented code blocks.
+- Added `chatUi` formatting helpers so backend ISO timestamps without timezone are treated as UTC, while explicit offsets remain respected.
+- Wired `@代理` to open the existing mention selector and insert selected Agent mentions at the cursor.
+- Wired `附件` to a hidden multi-file picker, renders selected attachment chips, supports removal, and appends file name/size summaries to the outgoing message text.
+- Added regression tests for timestamp normalization, attachment summaries, tilde code fences, and indented code blocks.
+
+### Changed files
+- `frontend/src/components/chat/ChatArea.tsx`
+- `frontend/src/components/chat/MessageBubble.tsx`
+- `frontend/src/components/chat/MessageInput.tsx`
+- `frontend/src/index.css`
+- `frontend/src/utils/chatUi.ts`
+- `frontend/src/utils/markdownPreview.ts`
+- `frontend/tests/chatUi.test.mjs`
+- `frontend/tests/markdownPreview.test.mjs`
+- `docs/plans/M4_UI_OPTIMIZATION_PLAN.md`
+- `docs/plans/M4_UI_OPTIMIZATION_CHECKLIST.md`
+- `DEVLOG.md`
+
+### Interface changes
+- No shared type changes.
+- No REST or WebSocket contract changes.
+- No new dependencies.
+- Attachment support is frontend-only for MVP: selected file metadata is included in message text; file upload/storage remains out of scope.
+
+### Verification
+- `cd frontend && npm test` -> `17 passed`.
+- `cd frontend && npm run build` -> passed; Vite kept the existing workspace chunk-size warning.
+- Full-stack browser smoke at `http://127.0.0.1:5173/workspace`: shell loaded with no console errors, collapse controls appeared on the divider-control area, `@代理` opened the Agent selector, hidden file input supported `multiple`, and `Shared context` remained absent.
+
+### Teammate notes
+- If later product scope requires real binary/file upload, add a backend attachment contract instead of overloading message text.
+
+## [2026-06-04] Codex - M4 annotated UI corrections
+
+### Problem judgment
+- The annotated screenshot showed the collapse controls should live in the upper bar area of the left conversation pane and right preview pane, not lower in the scroll/content area.
+- The highlighted Markdown issue was nested inline code such as `**\`index.html\`**`: the previous renderer matched the strong token first, kept literal backticks, and colored the whole token as strong text.
+
+### Completed
+- Moved pane collapse controls to the top bar height (`top: 28px`) while keeping them centered on the left/right pane separator.
+- Added a pure inline Markdown parser that supports nested strong/code tokens.
+- Updated chat Markdown rendering so `**\`index.html\`**` becomes strong text containing a real `<code>` node, without visible backticks.
+- Added regression coverage for nested strong inline code.
+
+### Changed files
+- `frontend/src/components/chat/MessageMarkdown.tsx`
+- `frontend/src/index.css`
+- `frontend/src/utils/markdownPreview.ts`
+- `frontend/tests/markdownPreview.test.mjs`
+- `DEVLOG.md`
+
+### Verification
+- `cd frontend && npm test` -> `18 passed`.
+- `cd frontend && npm run build` -> passed; Vite kept the existing workspace chunk-size warning.
+- Browser smoke at `http://127.0.0.1:5173/workspace`: collapse controls rendered at top-bar height (`y=28`) with no frontend console errors. API toast errors appeared because only the frontend dev server was running for this visual check.
+
+## [2026-06-04] Codex - M4 pane header button placement
+
+### Problem judgment
+- The desired collapse button placement is inside each pane's top toolbar, not floating on the divider between panes.
+- The left button should align with the AgentHub logo row at the right edge of the left conversation pane.
+- The right button should sit in the preview toolbar immediately to the right of the fullscreen button.
+
+### Completed
+- Moved the visible left collapse control into `ConversationList`'s `sidebar__header`.
+- Moved the visible right collapse control into `PreviewPanel`'s `preview-toolbar` after the fullscreen action.
+- Kept small restore controls in `Layout` only for the hidden-pane state, so collapsed panes can still be reopened.
+- Removed the visible-state global divider controls.
+
+### Changed files
+- `frontend/src/components/chat/ConversationList.tsx`
+- `frontend/src/components/common/Layout.tsx`
+- `frontend/src/components/preview/PreviewPanel.tsx`
+- `frontend/src/index.css`
+- `DEVLOG.md`
+
+### Verification
+- `cd frontend && npm test` -> `18 passed`.
+- `cd frontend && npm run build` -> passed; Vite kept the existing workspace chunk-size warning.
+- Browser smoke at `http://127.0.0.1:5173/workspace`: left toggle rendered inside the sidebar header (`right=277`, matching the header right edge), right toggle rendered as the last preview toolbar button after `全屏预览`, with no frontend console errors.
+
+## [2026-06-04] Codex - M4 restore button reveal behavior
+
+### Problem judgment
+- When both side panes were collapsed, always-visible restore buttons could overlap the chat header text.
+- Restore affordances still need to be discoverable when the cursor approaches the left or right top edge.
+
+### Completed
+- Wrapped collapsed-pane restore buttons in small edge hot zones (`64px x 88px`) near the top corners.
+- Made restore buttons fully transparent by default and non-clickable while hidden.
+- Revealed restore buttons with partial opacity when the cursor enters the nearby hot zone; direct button hover increases opacity further.
+- Preserved keyboard focus visibility through `:focus-visible`.
+
+### Changed files
+- `frontend/src/components/common/Layout.tsx`
+- `frontend/src/index.css`
+- `DEVLOG.md`
+
+### Verification
+- `cd frontend && npm test` -> `18 passed`.
+- `cd frontend && npm run build` -> passed; Vite kept the existing workspace chunk-size warning.
+- Browser smoke at `http://127.0.0.1:5173/workspace`: collapsed restore buttons had `opacity: 0` and `pointer-events: none` by default, with a bounded `64 x 88` edge hot zone.
