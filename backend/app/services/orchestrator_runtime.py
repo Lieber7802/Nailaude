@@ -35,11 +35,14 @@ class OrchestratorRuntime:
         self.scheduler = scheduler or OrchestratorScheduler()
         self.snapshot_service = snapshot_service or WorkspaceSnapshotService()
         self._cancel_events: dict[str, asyncio.Event] = {}
+        self._cancelled_before_start: set[str] = set()
 
     def cancel(self, run_id: str) -> None:
         event = self._cancel_events.get(run_id)
         if event:
             event.set()
+            return
+        self._cancelled_before_start.add(run_id)
 
     async def execute(
         self,
@@ -56,6 +59,8 @@ class OrchestratorRuntime:
     ) -> dict:
         created_at = utc_timestamp()
         cancel_event = asyncio.Event()
+        if run_id in self._cancelled_before_start:
+            cancel_event.set()
         self._cancel_events[run_id] = cancel_event
         task_models = [PlannedTask.model_validate(task) for task in tasks]
         task_state = {task.id: {**task.model_dump(by_alias=True), "status": "pending"} for task in task_models}
@@ -201,6 +206,7 @@ class OrchestratorRuntime:
             return latest
         finally:
             self._cancel_events.pop(run_id, None)
+            self._cancelled_before_start.discard(run_id)
 
     def _with_task_metadata(self, task: dict, batch_id: str, result: dict) -> dict:
         result.setdefault("taskId", task["id"])

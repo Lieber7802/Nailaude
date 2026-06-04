@@ -134,7 +134,7 @@ def test_project_state_api_repeated_reads_are_idempotent(client):
 
 
 @pytest.mark.asyncio
-async def test_project_state_summarizer_updates_summary_and_degrades_to_warning(project_db, tmp_path):
+async def test_project_state_summarizer_updates_summary_and_degrades_quietly(project_db, tmp_path):
     conversation = Conversation(title="Summary", type="single", work_dir=str(tmp_path))
     project_db.add(conversation)
     await project_db.commit()
@@ -153,7 +153,25 @@ async def test_project_state_summarizer_updates_summary_and_degrades_to_warning(
 
     state = await ProjectStateService(project_db, summarizer=fail_summary).refresh(conversation, [])
     assert state.progress_summary == "Implemented the requested workspace changes."
-    assert "Project summary unavailable: offline" in state.warnings
+    assert state.warnings == []
+
+
+@pytest.mark.asyncio
+async def test_project_state_summarizer_failure_uses_local_fallback_without_warning(project_db, tmp_path):
+    conversation = Conversation(title="Summary fallback", type="single", work_dir=str(tmp_path))
+    project_db.add(conversation)
+    await project_db.commit()
+    await project_db.refresh(conversation)
+
+    async def fail_summary(state, task_results):
+        raise RuntimeError("offline")
+
+    state = await ProjectStateService(project_db, summarizer=fail_summary).refresh(
+        conversation,
+        [{"status": "success", "audit": {"filesChanged": ["index.html"]}}],
+    )
+    assert state.progress_summary == "已完成 1 个任务，涉及 1 个文件变更。"
+    assert state.warnings == []
 
 
 @pytest.mark.asyncio

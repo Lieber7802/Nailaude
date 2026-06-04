@@ -1,18 +1,24 @@
-import { CodeOutlined, CompressOutlined, ExpandOutlined, FileTextOutlined, GlobalOutlined } from '@ant-design/icons'
+import {
+  CodeOutlined,
+  CompressOutlined,
+  ExpandOutlined,
+  FileTextOutlined,
+  GlobalOutlined,
+  MenuUnfoldOutlined,
+} from '@ant-design/icons'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Artifact } from '../../services/api'
 import { useArtifactStore } from '../../stores/artifactStore'
+import { useUIStore } from '../../stores/uiStore'
 import CodeEditor from './CodeEditor'
-import DiffViewer from './DiffViewer'
 import IframePreview from './IframePreview'
 import MarkdownPreview from './MarkdownPreview'
 import { findMarkdownFile, getArtifactPreviewMode, isMarkdownFile } from '../../utils/markdownPreview'
-import { FULLSCREEN_ACTIONS, type PreviewViewport } from '../../utils/previewControls'
+import { getChangeArtifacts, getOutputArtifacts } from '../../utils/artifactCard'
+import { clampPreviewZoom, FULLSCREEN_ACTIONS, type PreviewViewport } from '../../utils/previewControls'
+import ChangesList from './ChangesList'
 
 type PreviewTab = 'outputs' | 'preview' | 'code' | 'changes'
-
-const MIN_ZOOM = 75
-const MAX_ZOOM = 125
 
 const PreviewPanel = () => {
   const panelRef = useRef<HTMLDivElement>(null)
@@ -30,6 +36,7 @@ const PreviewPanel = () => {
   const activeArtifactId = useArtifactStore((state) => state.activeArtifactId)
   const openRevision = useArtifactStore((state) => state.openRevision)
   const setActiveArtifact = useArtifactStore((state) => state.setActiveArtifact)
+  const setPreviewVisible = useUIStore((state) => state.setPreviewVisible)
   const artifacts = useMemo(() => {
     const allArtifacts = Object.values(artifactsByMessage).flat()
     if (storedActiveArtifact && !allArtifacts.some((artifact) => artifact.id === storedActiveArtifact.id)) {
@@ -39,6 +46,8 @@ const PreviewPanel = () => {
   }, [artifactsByMessage, storedActiveArtifact])
   const activeArtifact =
     storedActiveArtifact || artifacts.find((artifact) => artifact.id === activeArtifactId) || artifacts[0]
+  const outputArtifacts = getOutputArtifacts(artifacts)
+  const changeArtifacts = getChangeArtifacts(artifacts)
   const firstFile = activeArtifact?.files[0]
   const markdownFile = findMarkdownFile(activeArtifact)
   const previewMode = getArtifactPreviewMode(activeArtifact)
@@ -132,12 +141,21 @@ const PreviewPanel = () => {
           >
             {isFullscreen ? <CompressOutlined /> : <ExpandOutlined />}
           </button>
+          <button
+            aria-label="隐藏预览窗格"
+            className="pane-toggle pane-toggle--preview"
+            title="隐藏预览窗格"
+            type="button"
+            onClick={() => setPreviewVisible(false)}
+          >
+            <MenuUnfoldOutlined />
+          </button>
         </div>
       </div>
 
-      <div className="preview-panel__body">
+      <div className={activeTab === 'preview' ? 'preview-panel__body preview-panel__body--preview' : 'preview-panel__body'}>
         {activeTab === 'outputs' && (
-          <OutputsTab artifacts={artifacts} activeArtifact={activeArtifact} onSelect={setActiveArtifact} />
+          <OutputsTab artifacts={outputArtifacts} activeArtifact={activeArtifact} onSelect={setActiveArtifact} />
         )}
         {activeTab === 'preview' && previewMode === 'markdown' && <MarkdownPreview file={markdownFile} />}
         {activeTab === 'preview' && previewMode !== 'markdown' && (
@@ -146,11 +164,11 @@ const PreviewPanel = () => {
             viewport={viewport}
             zoom={zoom}
             onViewportChange={setViewport}
-            onZoomChange={(nextZoom) => setZoom(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, nextZoom)))}
+            onZoomChange={(nextZoom) => setZoom(clampPreviewZoom(nextZoom))}
           />
         )}
         {activeTab === 'code' && <CodeEditor file={firstFile} />}
-        {activeTab === 'changes' && <DiffViewer artifact={activeArtifact} />}
+        {activeTab === 'changes' && <ChangesList artifacts={changeArtifacts} />}
       </div>
     </div>
   )
@@ -166,7 +184,7 @@ const OutputsTab = ({
   onSelect: (id: string | null) => void
 }) => {
   if (artifacts.length === 0) {
-    return <div className="preview-empty">点击聊天中的产物卡片，在此预览</div>
+    return <div className="preview-empty">点击聊天中的新文件产物卡片，在此预览</div>
   }
 
   return (

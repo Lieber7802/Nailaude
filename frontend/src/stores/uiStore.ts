@@ -12,10 +12,16 @@ export interface ConversationRuntimeState {
 interface UIState {
   sidebarVisible: boolean
   previewVisible: boolean
+  leftPaneWidth: number
+  rightPaneWidth: number
   activePreviewTab: 'code' | 'preview' | 'diff'
   runtimeByConversation: Record<string, ConversationRuntimeState>
   toggleSidebar: () => void
   togglePreview: () => void
+  setSidebarVisible: (visible: boolean) => void
+  setPreviewVisible: (visible: boolean) => void
+  setLeftPaneWidth: (width: number) => void
+  setRightPaneWidth: (width: number) => void
   setPreviewTab: (tab: 'code' | 'preview' | 'diff') => void
   setThinkingAgent: (conversationId: string, agentName: string) => void
   clearThinkingAgent: (conversationId: string, agentName: string) => void
@@ -39,12 +45,18 @@ const emptyRuntime = (): ConversationRuntimeState => ({
 export const useUIStore = create<UIState>((set) => ({
   sidebarVisible: true,
   previewVisible: true,
+  leftPaneWidth: 300,
+  rightPaneWidth: 520,
   activePreviewTab: 'code',
   runtimeByConversation: {},
   toggleSidebar: () =>
     set((state) => ({ sidebarVisible: !state.sidebarVisible })),
   togglePreview: () =>
     set((state) => ({ previewVisible: !state.previewVisible })),
+  setSidebarVisible: (visible) => set({ sidebarVisible: visible }),
+  setPreviewVisible: (visible) => set({ previewVisible: visible }),
+  setLeftPaneWidth: (width) => set({ leftPaneWidth: clamp(width, 240, 440) }),
+  setRightPaneWidth: (width) => set({ rightPaneWidth: clamp(width, 340, 760) }),
   setPreviewTab: (tab) => set({ activePreviewTab: tab }),
   setThinkingAgent: (conversationId, agentName) =>
     set((state) => {
@@ -117,3 +129,5 @@ export const useUIStore = create<UIState>((set) => ({
       },
     })),
 }))
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, Math.round(value)))

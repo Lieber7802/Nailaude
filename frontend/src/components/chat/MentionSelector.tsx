@@ -22,7 +22,7 @@ const MentionSelector = ({ agents, onSelect, query, visible }: MentionSelectorPr
   return (
     <div className="mention-selector" role="listbox">
       {filteredAgents.length === 0 ? (
-        <Empty description="没有匹配的 Agent" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        <Empty description="没有匹配的智能体" image={Empty.PRESENTED_IMAGE_SIMPLE} />
       ) : (
         filteredAgents.map((agent) => (
           <button className="mention-selector__item" key={agent.id} type="button" onMouseDown={() => onSelect(agent)}>

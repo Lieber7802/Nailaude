@@ -2,12 +2,14 @@ import {
   ArrowRightOutlined,
   DeleteOutlined,
   HomeFilled,
+  MenuFoldOutlined,
   PlusOutlined,
   SearchOutlined,
   SettingOutlined,
 } from '@ant-design/icons'
 import { Button, Empty, Input, Popconfirm } from 'antd'
 import type { Agent, Conversation } from '../../services/api'
+import { useUIStore } from '../../stores/uiStore'
 
 interface ConversationListProps {
   agents: Agent[]
@@ -33,6 +35,7 @@ const ConversationList = ({
   search,
 }: ConversationListProps) => {
   const agentsById = new Map(agents.map((agent) => [agent.id, agent]))
+  const setSidebarVisible = useUIStore((state) => state.setSidebarVisible)
 
   return (
     <div className="sidebar">
@@ -43,6 +46,15 @@ const ConversationList = ({
           </span>
           <strong>AgentHub</strong>
         </div>
+        <button
+          aria-label="隐藏会话列表"
+          className="pane-toggle pane-toggle--sidebar"
+          title="隐藏会话列表"
+          type="button"
+          onClick={() => setSidebarVisible(false)}
+        >
+          <MenuFoldOutlined />
+        </button>
       </div>
 
       <Button className="sidebar__create" icon={<PlusOutlined />} type="primary" onClick={onCreate}>
@@ -61,8 +73,8 @@ const ConversationList = ({
 
       <section className="sidebar__section">
         <div className="sidebar__section-title">
-          <span className="sidebar__label">常用代理</span>
-          <Button aria-label="添加代理" icon={<PlusOutlined />} size="small" type="text" onClick={onCreateAgent} />
+          <span className="sidebar__label">常用智能体</span>
+          <Button aria-label="添加智能体" icon={<PlusOutlined />} size="small" type="text" onClick={onCreateAgent} />
         </div>
         <div className="agent-list">
           {agents.map((agent) => (
@@ -100,7 +112,7 @@ const ConversationList = ({
                       <span className="conversation-row__time">{conversation.lastMessage ? '15:50' : '新建'}</span>
                     </span>
                     <span className="conversation-row__meta">
-                      {participants.map((agent) => agent.name).join('，') || '未选择 Agent'}
+                      {participants.map((agent) => agent.name).join('，') || '未选择智能体'}
                     </span>
                   </button>
                   <Popconfirm

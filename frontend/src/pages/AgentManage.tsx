@@ -1,5 +1,5 @@
 const AgentManage = () => {
-  return <div>Agent Management</div>
+  return <div>智能体管理</div>
 }
 
 export default AgentManage

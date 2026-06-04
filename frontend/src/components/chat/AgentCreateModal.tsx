@@ -63,7 +63,7 @@ const AgentCreateModal = ({
       confirmLoading={creating}
       okText="添加"
       open={open}
-      title="添加代理"
+      title="添加智能体"
       width={560}
       onCancel={onCancel}
       onOk={() => void form.submit()}
@@ -91,9 +91,9 @@ const AgentCreateModal = ({
         <div className="agent-form-grid">
           <Form.Item
             name="name"
-            label="代理名称"
+            label="智能体名称"
             rules={[
-              { required: true, message: '请输入代理名称' },
+              { required: true, message: '请输入智能体名称' },
               { max: 32, message: '名称最多 32 个字符' },
             ]}
           >
@@ -118,7 +118,7 @@ const AgentCreateModal = ({
         >
           <Input.TextArea
             autoSize={{ minRows: 3, maxRows: 5 }}
-            placeholder="描述这个代理擅长什么、何时应该被分派任务"
+            placeholder="描述这个智能体擅长什么、何时应该被分派任务"
           />
         </Form.Item>
 
@@ -150,7 +150,7 @@ const AgentCreateModal = ({
         <Form.Item name="systemInstruction" label="角色指令">
           <Input.TextArea
             autoSize={{ minRows: 3, maxRows: 6 }}
-            placeholder="可选：补充该代理执行任务时需要遵守的角色设定和输出偏好"
+            placeholder="可选：补充该智能体执行任务时需要遵守的角色设定和输出偏好"
           />
         </Form.Item>
       </Form>

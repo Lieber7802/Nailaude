@@ -140,8 +140,8 @@ class TeamProtocolService:
         if self.summarizer:
             try:
                 self._apply_patch(board, await self.summarizer(board, task_results))
-            except Exception as exc:
-                self.warnings.append(f"Team Board summary unavailable: {exc}")
+            except Exception:
+                pass
         board.version += 1
         await self.db.commit()
         await self.db.refresh(board)

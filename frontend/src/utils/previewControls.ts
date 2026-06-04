@@ -16,3 +16,13 @@ export const FULLSCREEN_ACTIONS = {
   enter: { ariaLabel: '全屏预览', label: '全屏预览' },
   exit: { ariaLabel: '退出全屏预览', label: '退出全屏' },
 } as const
+
+export const PREVIEW_ZOOM = {
+  min: 25,
+  max: 300,
+  step: 10,
+} as const
+
+export function clampPreviewZoom(zoom: number): number {
+  return Math.min(PREVIEW_ZOOM.max, Math.max(PREVIEW_ZOOM.min, Math.round(zoom)))
+}
