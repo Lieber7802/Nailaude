@@ -9,8 +9,14 @@ Fix the three WSL/macOS-first blockers in the real AgentHub multi-agent chain: O
 Modify backend M3 components only:
 
 - `backend/app/adapters/opencode.py`
+- `backend/app/adapters/codex.py`
+- `backend/app/services/deepseek_responses_bridge.py`
 - `backend/app/services/llm_client.py`
+- `backend/app/services/orchestrator_planner.py`
 - `backend/app/services/orchestrator_runtime.py`
+- `backend/app/services/planner_prompt.py`
+- `backend/app/services/process_pool.py`
+- `backend/app/ws/handlers.py`
 - Focused tests under `backend/tests/`
 - `DEVLOG.md`
 
@@ -70,6 +76,32 @@ No shared type or frontend contract changes are expected.
 10. Follow-up regression fix:
    - Add a RED test proving executor exception fallback results still carry `taskId`, `agentId`, and `batchId` into shared-state refresh.
    - Normalize runtime task metadata before audit/status post-processing so Team Board and Project State can refresh even when an adapter raises.
+
+11. Follow-up Codex/DeepSeek bridge fixes:
+   - Add RED tests for large Codex tool outputs, DeepSeek error-body propagation, reasoning-content round-trip, and consecutive function-call grouping.
+   - Truncate large `function_call_output` payloads before forwarding to DeepSeek.
+   - Preserve DeepSeek `reasoning_content` across tool-call turns.
+   - Group consecutive Responses `function_call` items into one Chat Completions assistant `tool_calls` message before tool outputs.
+
+12. Follow-up planner coverage fixes:
+   - Add a RED test proving omitted explicit mentions or requested stages trigger one validation-guided replan.
+   - Strengthen the planner prompt for multi-Agent requirements / implementation / review / README workflows.
+   - Add deterministic contextual coverage validation for explicitly mentioned agents and requested stages.
+
+13. Follow-up runtime environment fixes:
+   - Keep isolated Codex homes outside `/tmp` for WSL compatibility.
+   - Send Codex prompts through stdin instead of argv.
+   - Preserve stdout in `ProcessPoolError` when stderr is empty.
+   - Materialize SQLAlchemy scalar results once in WebSocket planning so available-agent validation is not accidentally disabled.
+
+14. Follow-up planner strictness and stabilization fixes:
+   - Add RED tests for Markdown-wrapped/invalid DeepSeek JSON content diagnostics.
+   - Add RED tests for DeepSeek loose planner field aliases such as `taskId`, `assignedAgentId`, `readAccess`, `writeAccess`, and top-level dependency tables.
+   - Add RED tests for invalid copied agent ids being repaired from task stage/capability context when possible.
+   - Strengthen the planner prompt with exact schema shapes, field-name restrictions, exact agent id copy rules, and staged workflow ordering.
+   - Normalize common loose fields into the shared planner schema before Pydantic validation.
+   - Enforce common app workflow dependencies: requirements -> implementation -> review -> README.
+   - Verify the real Pomodoro planner request repeatedly without executing agents.
 
 ## Tests
 

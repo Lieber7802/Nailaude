@@ -12,6 +12,10 @@ import httpx
 from app.config import settings
 
 
+MAX_TOOL_OUTPUT_CHARS = 6_000
+MAX_DEEPSEEK_ERROR_BODY_CHARS = 2_000
+
+
 class DeepSeekResponsesBridgeError(RuntimeError):
     """Normalized protocol bridge failure."""
 
@@ -34,6 +38,7 @@ class DeepSeekResponsesBridge:
         self.token = token or secrets.token_urlsafe(32)
         self._server: asyncio.Server | None = None
         self._port: int | None = None
+        self._reasoning_by_call_id: dict[str, str] = {}
 
     @property
     def base_url(self) -> str:
@@ -60,6 +65,20 @@ class DeepSeekResponsesBridge:
 
     def to_chat_payload(self, payload: dict) -> dict:
         messages: list[dict] = []
+        pending_tool_calls: list[dict] = []
+        pending_reasoning: list[str] = []
+
+        def flush_function_calls() -> None:
+            if not pending_tool_calls:
+                return
+            message = {"role": "assistant", "content": None, "tool_calls": list(pending_tool_calls)}
+            reasoning = "\n".join(item for item in pending_reasoning if item)
+            if reasoning:
+                message["reasoning_content"] = reasoning
+            messages.append(message)
+            pending_tool_calls.clear()
+            pending_reasoning.clear()
+
         instructions = payload.get("instructions")
         if instructions:
             messages.append({"role": "system", "content": str(instructions)})
@@ -68,6 +87,7 @@ class DeepSeekResponsesBridge:
                 continue
             item_type = item.get("type")
             if item_type == "message":
+                flush_function_calls()
                 messages.append(
                     {
                         "role": self._chat_role(str(item.get("role") or "user")),
@@ -75,30 +95,29 @@ class DeepSeekResponsesBridge:
                     }
                 )
             elif item_type == "function_call":
-                messages.append(
+                call_id = str(item.get("call_id") or item.get("id") or "")
+                pending_tool_calls.append(
                     {
-                        "role": "assistant",
-                        "content": None,
-                        "tool_calls": [
-                            {
-                                "id": str(item.get("call_id") or item.get("id") or ""),
-                                "type": "function",
-                                "function": {
-                                    "name": str(item.get("name") or ""),
-                                    "arguments": str(item.get("arguments") or ""),
-                                },
-                            }
-                        ],
+                        "id": call_id,
+                        "type": "function",
+                        "function": {
+                            "name": str(item.get("name") or ""),
+                            "arguments": str(item.get("arguments") or ""),
+                        },
                     }
                 )
+                if reasoning := self._reasoning_by_call_id.get(call_id):
+                    pending_reasoning.append(reasoning)
             elif item_type == "function_call_output":
+                flush_function_calls()
                 messages.append(
                     {
                         "role": "tool",
                         "tool_call_id": str(item.get("call_id") or ""),
-                        "content": self._content_text(item.get("output")),
+                        "content": self._tool_output_text(item.get("output")),
                     }
                 )
+        flush_function_calls()
         result = {"model": self.model, "messages": messages, "stream": True}
         tools = [self._chat_tool(tool) for tool in payload.get("tools") or [] if tool.get("type") == "function"]
         if tools:
@@ -122,6 +141,7 @@ class DeepSeekResponsesBridge:
         emit("response.created", response=self._response(response_id, "in_progress", []))
         message_item: dict | None = None
         message_text = ""
+        reasoning_text = ""
         tool_items: dict[int, dict] = {}
 
         async with httpx.AsyncClient(transport=self.transport, timeout=settings.DEEPSEEK_TIMEOUT_SECONDS) as client:
@@ -131,7 +151,13 @@ class DeepSeekResponsesBridge:
                 headers={"Authorization": f"Bearer {self.api_key}"},
                 json=self.to_chat_payload(payload),
             ) as response:
-                response.raise_for_status()
+                if response.status_code >= 400:
+                    body = (await response.aread()).decode("utf-8", errors="replace")
+                    if len(body) > MAX_DEEPSEEK_ERROR_BODY_CHARS:
+                        body = f"{body[:MAX_DEEPSEEK_ERROR_BODY_CHARS]}..."
+                    raise DeepSeekResponsesBridgeError(
+                        f"DeepSeek request failed {response.status_code}: {body}"
+                    )
                 async for line in response.aiter_lines():
                     if not line.startswith("data:"):
                         continue
@@ -143,6 +169,9 @@ class DeepSeekResponsesBridge:
                     if not choices:
                         continue
                     delta = choices[0].get("delta") or {}
+                    reasoning = delta.get("reasoning_content")
+                    if reasoning:
+                        reasoning_text += str(reasoning)
                     content = delta.get("content")
                     if content:
                         if message_item is None:
@@ -208,6 +237,8 @@ class DeepSeekResponsesBridge:
             output_items.append(complete_message)
         for index in sorted(tool_items):
             item = {**tool_items[index], "status": "completed"}
+            if reasoning_text:
+                self._reasoning_by_call_id[item["call_id"]] = reasoning_text
             output_index = len(output_items)
             emit(
                 "response.function_call_arguments.done",
@@ -316,3 +347,28 @@ class DeepSeekResponsesBridge:
         if content is None:
             return ""
         return json.dumps(content, ensure_ascii=False, default=str)
+
+    def _tool_output_text(self, output) -> str:
+        return self._truncate_text(self._content_text(output), MAX_TOOL_OUTPUT_CHARS, "tool output")
+
+    def _truncate_text(self, text: str, limit: int, label: str) -> str:
+        if len(text) <= limit:
+            return text
+
+        marker = ""
+        for _ in range(3):
+            available = max(0, limit - len(marker))
+            head_chars = available // 2
+            tail_chars = available - head_chars
+            omitted = max(0, len(text) - head_chars - tail_chars)
+            marker = (
+                f"\n\n[AgentHub truncated {omitted} chars from {label} "
+                "to keep the DeepSeek bridge request valid.]\n\n"
+            )
+
+        available = max(0, limit - len(marker))
+        if available <= 0:
+            return marker[:limit]
+        head_chars = available // 2
+        tail_chars = available - head_chars
+        return text[:head_chars] + marker + text[-tail_chars:]

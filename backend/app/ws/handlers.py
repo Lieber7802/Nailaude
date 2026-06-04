@@ -467,6 +467,8 @@ async def plan_job(job: dict, db: AsyncSession) -> dict:
     participant_ids = set(job["conversation"].participant_ids or [])
     participant_agents = await db.scalars(select(Agent).where(Agent.id.in_(participant_ids)))
     catalog = await db.scalars(select(Agent))
+    participant_agent_list = participant_agents.all()
+    catalog_agents = catalog.all()
     project_service = ProjectStateService(db)
     project_state = await project_service.get_state(job["conversation"].id)
     if project_state is None:
@@ -488,11 +490,11 @@ async def plan_job(job: dict, db: AsyncSession) -> dict:
         "clarificationAnswers": job.get("clarification_answers") or [],
         "participants": [
             {"id": agent.id, "name": agent.name, "description": agent.description, "capabilities": agent.capabilities}
-            for agent in participant_agents.all()
+            for agent in participant_agent_list
         ],
         "availableAgentCatalog": [
             {"id": agent.id, "name": agent.name, "description": agent.description, "capabilities": agent.capabilities}
-            for agent in catalog.all()
+            for agent in catalog_agents
         ],
         "projectPlanningSummary": serialize_project_state(project_state),
         "teamBoardSummary": serialize_team_board(team_board),
@@ -500,7 +502,7 @@ async def plan_job(job: dict, db: AsyncSession) -> dict:
         "fileTreeSummary": list((project_state.file_tree or {}).get("paths") or [])[:500],
         "previousValidationErrors": [],
     }
-    available_agent_ids = {agent.id for agent in catalog.all()}
+    available_agent_ids = {agent.id for agent in catalog_agents}
     result = await OrchestratorPlanner().plan(context, participant_ids, available_agent_ids)
     return result.model_dump(by_alias=True)
 

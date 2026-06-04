@@ -34,6 +34,29 @@ async def test_llm_client_requests_json_and_records_usage():
 
 
 @pytest.mark.asyncio
+async def test_llm_client_accepts_markdown_wrapped_json_content():
+    async def handler(_: httpx.Request) -> httpx.Response:
+        return response({"choices": [{"message": {"content": '```json\n{"status":"ready"}\n```'}}]})
+
+    client = LLMClient(api_key="test-key", transport=httpx.MockTransport(handler))
+
+    result = await client.request_json([{"role": "user", "content": "plan"}])
+
+    assert result.content == {"status": "ready"}
+
+
+@pytest.mark.asyncio
+async def test_llm_client_error_includes_bounded_invalid_json_preview():
+    async def handler(_: httpx.Request) -> httpx.Response:
+        return response({"choices": [{"message": {"content": "not json at all"}}]})
+
+    client = LLMClient(api_key="test-key", transport=httpx.MockTransport(handler))
+
+    with pytest.raises(LLMClientError, match="not json at all"):
+        await client.request_json([{"role": "user", "content": "plan"}])
+
+
+@pytest.mark.asyncio
 async def test_llm_client_streams_text_deltas_and_records_usage():
     async def handler(_: httpx.Request) -> httpx.Response:
         return httpx.Response(

@@ -27,6 +27,39 @@ async def test_process_pool_raises_on_non_zero_exit(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_process_pool_reports_stdout_when_stderr_is_empty(tmp_path):
+    pool = ProcessPool(default_timeout=2)
+
+    with pytest.raises(ProcessPoolError, match="stdout detail"):
+        await pool.run([sys.executable, "-c", "print('stdout detail'); raise SystemExit(7)"], cwd=str(tmp_path))
+
+
+@pytest.mark.asyncio
+async def test_process_pool_closes_child_stdin_for_non_interactive_clis(tmp_path):
+    pool = ProcessPool(default_timeout=2)
+
+    result = await pool.run(
+        [sys.executable, "-c", "import sys; print(repr(sys.stdin.read()))"],
+        cwd=str(tmp_path),
+    )
+
+    assert result.stdout.strip() == "''"
+
+
+@pytest.mark.asyncio
+async def test_process_pool_can_write_explicit_stdin(tmp_path):
+    pool = ProcessPool(default_timeout=2)
+
+    result = await pool.run(
+        [sys.executable, "-c", "import sys; print(sys.stdin.read())"],
+        cwd=str(tmp_path),
+        stdin_text="hello from stdin",
+    )
+
+    assert result.stdout.strip() == "hello from stdin"
+
+
+@pytest.mark.asyncio
 async def test_process_pool_terminates_timed_out_process(tmp_path):
     pool = ProcessPool(default_timeout=0.05)
 
