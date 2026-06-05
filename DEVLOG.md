@@ -1908,3 +1908,40 @@
 ### Teammate notes
 - Existing local databases will pick up refreshed built-in prompts the next time seed runs, such as through `/api/v1/agents`.
 - 产品架构师 owns PRD/SPEC/checklist planning documents; 文档专家 is intentionally narrowed to final README/usage/setup handoff docs.
+
+## [2026-06-05] Codex - Conversation agent add flow split
+
+### Problem judgment
+- The sidebar agent plus and chat header "add agent" action both opened custom Agent creation.
+- The intended UX is different: sidebar creates new custom Agents, while chat header adds an existing Agent to the current conversation.
+
+### Completed
+- Added an existing-Agent picker modal for the current conversation.
+- Wired chat header "+ 添加智能体" to update the active conversation `participantIds`.
+- Kept the sidebar "常用智能体" plus wired to custom Agent creation.
+- Added frontend helpers to filter already-participating Agents and merge participant IDs without duplicates.
+
+### Changed files
+- `frontend/src/components/chat/AddConversationAgentsModal.tsx`
+- `frontend/src/components/chat/ChatArea.tsx`
+- `frontend/src/pages/Workspace.tsx`
+- `frontend/src/services/api.ts`
+- `frontend/src/stores/conversationStore.ts`
+- `frontend/src/utils/chatUi.ts`
+- `frontend/tests/chatUi.test.mjs`
+- `docs/plans/M4_CONVERSATION_AGENT_PICKER_PLAN.md`
+- `docs/plans/M4_CONVERSATION_AGENT_PICKER_CHECKLIST.md`
+- `DEVLOG.md`
+
+### Interface changes
+- No shared type, backend, or WebSocket contract changes.
+- Frontend now uses existing `PATCH /api/v1/conversations/{id}` for participant updates.
+- No new dependencies.
+
+### Verification
+- Frontend tests: `cd frontend && npm test` -> `28 passed`.
+- Frontend build: `cd frontend && npm run build` -> passed; Vite kept the existing chunk-size warning.
+- Browser smoke check: sidebar plus opens "新增自定义智能体"; chat header "+ 添加智能体" opens "添加已有智能体" for the selected conversation.
+
+### Teammate notes
+- This change only adds Agents to conversations. Removing participants remains out of scope.

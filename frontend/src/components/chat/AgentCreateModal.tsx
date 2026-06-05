@@ -61,9 +61,9 @@ const AgentCreateModal = ({
   return (
     <Modal
       confirmLoading={creating}
-      okText="添加"
+      okText="创建"
       open={open}
-      title="添加智能体"
+      title="新增自定义智能体"
       width={560}
       onCancel={onCancel}
       onOk={() => void form.submit()}

@@ -28,6 +28,7 @@ export type {
 
 export type CreateAgentInput = CreateAgentDTO
 export type CreateConversationInput = CreateConversationDTO
+export type UpdateConversationInput = Partial<Pick<CreateConversationDTO, 'title' | 'workDir' | 'participantIds'>>
 export type Message = Omit<SharedMessage, 'metadata'> & {
   mentions?: Mention[]
   metadata: SharedMessage['metadata'] & { clientMessageId?: string }
@@ -54,6 +55,8 @@ export const conversationApi = {
   create: (data: CreateConversationInput) =>
     fetchJSON<Conversation>('/conversations', { method: 'POST', body: JSON.stringify(data) }),
   get: (id: string) => fetchJSON<Conversation>(`/conversations/${id}`),
+  update: (id: string, data: UpdateConversationInput) =>
+    fetchJSON<Conversation>(`/conversations/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   delete: (id: string) => fetchJSON<{ id: string }>(`/conversations/${id}`, { method: 'DELETE' }),
 }
 

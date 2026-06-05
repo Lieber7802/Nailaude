@@ -1,5 +1,6 @@
 import { message as antdMessage } from 'antd'
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import AddConversationAgentsModal from '../components/chat/AddConversationAgentsModal'
 import ChatArea from '../components/chat/ChatArea'
 import ConversationList from '../components/chat/ConversationList'
 import AgentCreateModal from '../components/chat/AgentCreateModal'
@@ -25,6 +26,7 @@ import { useMessageStore } from '../stores/messageStore'
 import { useUIStore } from '../stores/uiStore'
 import { useOrchestratorStore } from '../stores/orchestratorStore'
 import { orchestratorApi } from '../services/orchestratorApi'
+import { mergeConversationAgentIds } from '../utils/chatUi'
 
 const EMPTY_MESSAGES: Message[] = []
 const PreviewPanel = lazy(() => import('../components/preview/PreviewPanel'))
@@ -35,6 +37,8 @@ const Workspace = () => {
   const [creating, setCreating] = useState(false)
   const [agentCreateOpen, setAgentCreateOpen] = useState(false)
   const [creatingAgent, setCreatingAgent] = useState(false)
+  const [conversationAgentOpen, setConversationAgentOpen] = useState(false)
+  const [updatingConversationAgents, setUpdatingConversationAgents] = useState(false)
   const [platforms, setPlatforms] = useState<AgentPlatform[]>([])
   const [loadingPlatforms, setLoadingPlatforms] = useState(false)
   const agents = useAgentStore((state) => state.agents)
@@ -45,6 +49,7 @@ const Workspace = () => {
   const activeId = useConversationStore((state) => state.activeId)
   const setConversations = useConversationStore((state) => state.setConversations)
   const addConversation = useConversationStore((state) => state.addConversation)
+  const updateConversation = useConversationStore((state) => state.updateConversation)
   const removeConversation = useConversationStore((state) => state.removeConversation)
   const touchConversation = useConversationStore((state) => state.touchConversation)
   const setConversationError = useConversationStore((state) => state.setError)
@@ -141,6 +146,24 @@ const Workspace = () => {
         void antdMessage.error(error.message)
       })
       .finally(() => setLoadingPlatforms(false))
+  }
+
+  const handleAddAgentsToConversation = async (agentIds: string[]) => {
+    if (!activeConversation || agentIds.length === 0) return
+    setUpdatingConversationAgents(true)
+    try {
+      const participantIds = mergeConversationAgentIds(activeConversation.participantIds, agentIds)
+      const conversation = await conversationApi.update(activeConversation.id, { participantIds })
+      updateConversation(conversation)
+      setConversationAgentOpen(false)
+      void antdMessage.success('智能体已加入当前对话')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '添加智能体到对话失败'
+      setConversationError(message)
+      void antdMessage.error(message)
+    } finally {
+      setUpdatingConversationAgents(false)
+    }
   }
 
   const handleCreateAgent = async (payload: CreateAgentInput) => {
@@ -251,7 +274,7 @@ const Workspace = () => {
             messages={messages}
             runtime={runtime}
             wsStatus={status}
-            onCreateAgent={openAgentCreateModal}
+            onAddAgentToConversation={() => setConversationAgentOpen(true)}
             onSend={handleSend}
             onStop={handleStop}
           />
@@ -276,6 +299,14 @@ const Workspace = () => {
         platforms={platforms}
         onCancel={() => setAgentCreateOpen(false)}
         onCreate={handleCreateAgent}
+      />
+      <AddConversationAgentsModal
+        agents={agents}
+        open={conversationAgentOpen}
+        participantIds={activeConversation?.participantIds || []}
+        updating={updatingConversationAgents}
+        onAdd={handleAddAgentsToConversation}
+        onCancel={() => setConversationAgentOpen(false)}
       />
     </>
   )

@@ -18,12 +18,21 @@ interface ChatAreaProps {
   messages: Message[]
   runtime: ConversationRuntimeState | null
   wsStatus: string
-  onCreateAgent: () => void
+  onAddAgentToConversation: () => void
   onSend: (content: string) => void
   onStop: () => void
 }
 
-const ChatArea = ({ agents, conversation, messages, onCreateAgent, onSend, onStop, runtime, wsStatus }: ChatAreaProps) => {
+const ChatArea = ({
+  agents,
+  conversation,
+  messages,
+  onAddAgentToConversation,
+  onSend,
+  onStop,
+  runtime,
+  wsStatus,
+}: ChatAreaProps) => {
   const participantAgents = agents.filter((agent) => conversation?.participantIds.includes(agent.id))
   const disabled = !conversation || wsStatus !== 'open' || participantAgents.length === 0
   const collaborationLabel = getCollaborationLabel(runtime, wsStatus)
@@ -53,9 +62,9 @@ const ChatArea = ({ agents, conversation, messages, onCreateAgent, onSend, onSto
             {conversation && (
               <button
                 className="agent-chip agent-chip--muted agent-chip--button"
-                title="添加自定义智能体"
+                title="从已有智能体中添加到当前对话"
                 type="button"
-                onClick={onCreateAgent}
+                onClick={onAddAgentToConversation}
               >
                 + 添加智能体
               </button>

@@ -74,7 +74,7 @@ const ConversationList = ({
       <section className="sidebar__section">
         <div className="sidebar__section-title">
           <span className="sidebar__label">常用智能体</span>
-          <Button aria-label="添加智能体" icon={<PlusOutlined />} size="small" type="text" onClick={onCreateAgent} />
+          <Button aria-label="新增自定义智能体" icon={<PlusOutlined />} size="small" type="text" onClick={onCreateAgent} />
         </div>
         <div className="agent-list">
           {agents.map((agent) => (

@@ -28,6 +28,18 @@ export function buildAttachmentSummary(files: AttachmentSummaryInput[]): string 
   return files.map((file) => `- ${file.name} (${formatFileSize(file.size)})`).join('\n')
 }
 
+export function getAvailableConversationAgentIds<T extends { id: string }>(
+  agents: T[],
+  participantIds: string[]
+): string[] {
+  const participantIdSet = new Set(participantIds)
+  return agents.filter((agent) => !participantIdSet.has(agent.id)).map((agent) => agent.id)
+}
+
+export function mergeConversationAgentIds(participantIds: string[], selectedAgentIds: string[]): string[] {
+  return [...new Set([...participantIds, ...selectedAgentIds])]
+}
+
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`

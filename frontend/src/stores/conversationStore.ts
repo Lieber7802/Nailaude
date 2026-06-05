@@ -9,6 +9,7 @@ interface ConversationState {
   setConversations: (conversations: Conversation[]) => void
   setActive: (id: string | null) => void
   addConversation: (conversation: Conversation) => void
+  updateConversation: (conversation: Conversation) => void
   removeConversation: (id: string) => void
   touchConversation: (id: string, lastMessage: string, updatedAt?: string) => void
   setLoading: (loading: boolean) => void
@@ -30,6 +31,10 @@ export const useConversationStore = create<ConversationState>((set) => ({
     set((state) => ({
       conversations: [conversation, ...state.conversations.filter((item) => item.id !== conversation.id)],
       activeId: conversation.id,
+    })),
+  updateConversation: (conversation) =>
+    set((state) => ({
+      conversations: state.conversations.map((item) => (item.id === conversation.id ? conversation : item)),
     })),
   removeConversation: (id) =>
     set((state) => ({

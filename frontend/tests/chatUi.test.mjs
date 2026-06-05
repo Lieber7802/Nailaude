@@ -1,7 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { buildAttachmentSummary, parseBackendTimestamp } from '../src/utils/chatUi.ts'
+import {
+  buildAttachmentSummary,
+  getAvailableConversationAgentIds,
+  mergeConversationAgentIds,
+  parseBackendTimestamp,
+} from '../src/utils/chatUi.ts'
 
 test('treats backend ISO timestamps without timezone as UTC', () => {
   assert.equal(parseBackendTimestamp('2026-06-04T07:00:00').toISOString(), '2026-06-04T07:00:00.000Z')
@@ -19,4 +24,18 @@ test('builds attachment summaries for selected files', () => {
     ]),
     '- spec.md (512 B)\n- screenshot.png (1.5 KB)'
   )
+})
+
+test('conversation agent picker only offers agents not already participating', () => {
+  const agents = [{ id: 'agent-a' }, { id: 'agent-b' }, { id: 'agent-c' }]
+
+  assert.deepEqual(getAvailableConversationAgentIds(agents, ['agent-a', 'agent-c']), ['agent-b'])
+})
+
+test('conversation agent updates merge selected agents without duplicates', () => {
+  assert.deepEqual(mergeConversationAgentIds(['agent-a', 'agent-b'], ['agent-b', 'agent-c']), [
+    'agent-a',
+    'agent-b',
+    'agent-c',
+  ])
 })
