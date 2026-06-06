@@ -6,6 +6,7 @@ import {
   FULLSCREEN_ACTIONS,
   PREVIEW_VIEWPORT_LABEL_CLASS,
   PREVIEW_VIEWPORT_LABEL_HIDE_WIDTH,
+  PREVIEW_ZOOM_CONTROL_MAX_WIDTH,
   PREVIEW_ZOOM_SLIDER_MIN_WIDTH,
   PREVIEW_ZOOM,
   VIEWPORT_OPTIONS,
@@ -32,6 +33,10 @@ test('preview viewport hidden label class is scoped to text only', () => {
 
 test('preview zoom slider keeps a narrow-pane minimum width', () => {
   assert.equal(PREVIEW_ZOOM_SLIDER_MIN_WIDTH, 56)
+})
+
+test('preview zoom controls stay compact in wide panes', () => {
+  assert.equal(PREVIEW_ZOOM_CONTROL_MAX_WIDTH, 340)
 })
 
 test('fullscreen action labels include enter and exit states', () => {

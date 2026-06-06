@@ -2052,3 +2052,31 @@
 - 前端测试：`cd frontend && zsh -lic 'npm test'` -> `34 passed`。
 - 前端构建：`cd frontend && zsh -lic 'npm run build'` -> 通过；Vite 保留既有 chunk size warning。
 - 补丁检查：`git diff --check` -> 通过。
+
+## [2026-06-06] Codex - 右侧预览缩放条宽窗格空白修复
+
+### 问题判断
+- 上一版为了修复窄窗格裁切，将 `zoom-switcher` 设置为 `flex: 1`，导致右侧预览窗格较宽时缩放控件占满剩余空间，slider 右侧出现大面积空白。
+- 期望行为是宽窗格下缩放控件保持内容紧凑，窄窗格下仍可自动收缩。
+
+### 完成内容
+- 将 `zoom-switcher` 从 `flex: 1 1 0` 改为 `flex: 0 1 340px`，宽窗格下不再主动占满剩余空间。
+- 为缩放控件增加 `max-width: min(100%, 340px)`，保证宽时紧凑、窄时跟随容器收缩。
+- 补充 `PREVIEW_ZOOM_CONTROL_MAX_WIDTH` 配置与测试，锁定宽窗格最大紧凑宽度。
+
+### 修改文件
+- `frontend/src/index.css`
+- `frontend/src/utils/previewControls.ts`
+- `frontend/tests/previewControls.test.mjs`
+- `docs/plans/M5_UI_BUGFIX_PLAN.md`
+- `docs/plans/M5_UI_BUGFIX_CHECKLIST.md`
+- `DEVLOG.md`
+
+### 接口变化
+- 未修改 shared type、REST、WebSocket 或后端契约。
+- 未新增依赖。
+
+### 验证
+- 前端测试：`cd frontend && zsh -lic 'npm test'` -> `35 passed`。
+- 前端构建：`cd frontend && zsh -lic 'npm run build'` -> 通过；Vite 保留既有 chunk size warning。
+- 补丁检查：`git diff --check` -> 通过。

@@ -13,6 +13,7 @@
 - [x] Collaboration status shows duration and error/blocked styling
 - [x] Narrow preview viewport buttons hide labels and keep icons
 - [x] Narrow preview zoom controls shrink to the pane width
+- [x] Wide preview zoom controls keep compact width without empty filler
 
 ## Verification
 - [x] Targeted frontend tests pass

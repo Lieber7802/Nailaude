@@ -1907,8 +1907,9 @@ button {
 }
 
 .zoom-switcher {
-  flex: 1 1 0;
+  flex: 0 1 340px;
   justify-content: flex-start;
+  max-width: min(100%, 340px);
 }
 
 .preview-device-bar button {
