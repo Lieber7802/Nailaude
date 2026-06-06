@@ -146,7 +146,7 @@ def test_cannot_plan_fails_run_without_publishing_input_request(client, monkeypa
     assert failed["data"]["status"] == "failed"
 
 
-def test_elevated_write_approval_resumes_without_replanning(client, monkeypatch, create_agent):
+def test_risky_write_plan_executes_without_approval_prompt(client, monkeypatch, create_agent):
     work_dir = WORKSPACE_ROOT / f"pytest-approval-{uuid.uuid4()}"
     work_dir.mkdir(parents=True)
     conversation, _agents = _create_conversation(client, create_agent, work_dir)
@@ -158,26 +158,25 @@ def test_elevated_write_approval_resumes_without_replanning(client, monkeypatch,
         result = await OrchestratorService().build_mock_planner_result(
             job["conversation"], job["content"], job["mentions"], job["agents"]
         )
+        result["tasks"][0]["riskHints"]["mayDeleteOrRenameFiles"] = True
         result["tasks"][0]["riskHints"]["mayTouchConfigFiles"] = True
+        result["tasks"][0]["riskHints"]["estimatedFilesTouched"] = 99
         return result
 
     monkeypatch.setattr(ws_handlers, "plan_job", fake_plan_job)
 
     with client.websocket_connect(f"/ws/{conversation['id']}") as websocket:
         websocket.send_json({"type": "send_message", "data": {"content": "update config", "mentions": []}})
+        events = []
         while True:
             event = websocket.receive_json()
-            if event["type"] == "orchestrator_approval_required":
-                run_id = event["data"]["runId"]
-                assert event["data"]["tasks"][0]["riskHints"]["mayTouchConfigFiles"] is True
-                break
-        websocket.send_json({"type": "orchestrator_approval_response", "data": {"runId": run_id, "approved": True}})
-        while True:
-            event = websocket.receive_json()
+            events.append(event["type"])
+            assert event["type"] != "orchestrator_approval_required"
             if event["type"] == "orchestrator_status" and event["data"]["status"] == "completed":
                 break
 
     assert calls == 1
+    assert "orchestrator_approval_required" not in events
     shutil.rmtree(work_dir)
 
 
@@ -227,38 +226,32 @@ def test_cross_conversation_input_response_does_not_consume_paused_job(client, m
                 break
 
 
-def test_cross_conversation_approval_response_does_not_consume_paused_job(client, monkeypatch, create_agent):
-    work_dir = WORKSPACE_ROOT / f"pytest-cross-approval-{uuid.uuid4()}"
-    work_dir.mkdir(parents=True)
-    first, _agents = _create_conversation(client, create_agent, work_dir)
-    second, _agents = _create_conversation(client, create_agent)
+def test_approval_response_without_paused_job_returns_error(client, create_agent):
+    conversation, _agents = _create_conversation(client, create_agent)
 
-    async def fake_plan_job(job, db):
-        result = await OrchestratorService().build_mock_planner_result(
-            job["conversation"], job["content"], job["mentions"], job["agents"]
+    with client.websocket_connect(f"/ws/{conversation['id']}") as websocket:
+        websocket.send_json(
+            {"type": "orchestrator_approval_response", "data": {"runId": str(uuid.uuid4()), "approved": True}}
         )
-        result["tasks"][0]["riskHints"]["mayTouchConfigFiles"] = True
-        return result
+        error = websocket.receive_json()
 
-    monkeypatch.setattr(ws_handlers, "plan_job", fake_plan_job)
+    assert error["type"] == "error"
+    assert error["data"]["error"] == "Paused orchestrator run not found"
 
-    with client.websocket_connect(f"/ws/{first['id']}") as first_ws:
-        first_ws.send_json({"type": "send_message", "data": {"content": "build", "mentions": []}})
-        while True:
-            event = first_ws.receive_json()
-            if event["type"] == "orchestrator_approval_required":
-                run_id = event["data"]["runId"]
-                break
-        with client.websocket_connect(f"/ws/{second['id']}") as second_ws:
-            second_ws.send_json({"type": "orchestrator_approval_response", "data": {"runId": run_id, "approved": True}})
-            error = second_ws.receive_json()
-        assert error["type"] == "error"
-        first_ws.send_json({"type": "orchestrator_approval_response", "data": {"runId": run_id, "approved": True}})
-        while True:
-            event = first_ws.receive_json()
-            if event["type"] == "orchestrator_status" and event["data"]["status"] == "completed":
-                break
-    shutil.rmtree(work_dir)
+
+def test_risky_write_tasks_do_not_have_elevated_approval_reason():
+    tasks = [
+        {
+            "accessMode": "write",
+            "riskHints": {
+                "mayDeleteOrRenameFiles": True,
+                "mayTouchConfigFiles": True,
+                "estimatedFilesTouched": 99,
+            },
+        }
+    ]
+
+    assert ws_handlers.elevated_write_approval_reason(tasks) is None
 
 
 @pytest.mark.asyncio

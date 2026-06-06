@@ -20,13 +20,13 @@ def test_scheduler_allows_one_write_and_two_reads_in_same_batch():
     assert batches[0]["taskIds"] == ["write", "read-1", "read-2"]
 
 
-def test_scheduler_separates_independent_writes_and_honors_dependencies():
+def test_scheduler_allows_multiple_write_tasks_and_honors_dependencies():
     plan = ReadyPlannerResult.model_validate(
         {
             "status": "ready",
             "tasks": [
                 task("write-1", access_mode="write"),
-                task("write-2", access_mode="write"),
+                task("write-2", access_mode="write", agent_id="agent-2"),
                 task("review", depends_on=["write-2"]),
             ],
         }
@@ -34,4 +34,4 @@ def test_scheduler_separates_independent_writes_and_honors_dependencies():
 
     batches = OrchestratorScheduler().schedule(plan.tasks)
 
-    assert [batch["taskIds"] for batch in batches] == [["write-1"], ["write-2"], ["review"]]
+    assert [batch["taskIds"] for batch in batches] == [["write-1", "write-2"], ["review"]]

@@ -1,7 +1,16 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { clampPreviewZoom, FULLSCREEN_ACTIONS, PREVIEW_ZOOM, VIEWPORT_OPTIONS } from '../src/utils/previewControls.ts'
+import {
+  clampPreviewZoom,
+  FULLSCREEN_ACTIONS,
+  PREVIEW_VIEWPORT_LABEL_CLASS,
+  PREVIEW_VIEWPORT_LABEL_HIDE_WIDTH,
+  PREVIEW_ZOOM_CONTROL_MAX_WIDTH,
+  PREVIEW_ZOOM_SLIDER_MIN_WIDTH,
+  PREVIEW_ZOOM,
+  VIEWPORT_OPTIONS,
+} from '../src/utils/previewControls.ts'
 
 test('preview viewport controls expose clear labels', () => {
   assert.deepEqual(
@@ -12,6 +21,22 @@ test('preview viewport controls expose clear labels', () => {
       { label: '手机', viewport: 'mobile' },
     ]
   )
+})
+
+test('preview viewport labels hide before narrow panes force vertical text', () => {
+  assert.equal(PREVIEW_VIEWPORT_LABEL_HIDE_WIDTH, 430)
+})
+
+test('preview viewport hidden label class is scoped to text only', () => {
+  assert.equal(PREVIEW_VIEWPORT_LABEL_CLASS, 'viewport-switcher__label')
+})
+
+test('preview zoom slider keeps a narrow-pane minimum width', () => {
+  assert.equal(PREVIEW_ZOOM_SLIDER_MIN_WIDTH, 56)
+})
+
+test('preview zoom controls stay compact in wide panes', () => {
+  assert.equal(PREVIEW_ZOOM_CONTROL_MAX_WIDTH, 340)
 })
 
 test('fullscreen action labels include enter and exit states', () => {

@@ -43,6 +43,29 @@ class BrokenClient:
         raise ImportError("Using SOCKS proxy, but the 'socksio' package is not installed")
 
 
+def four_agent_context() -> dict:
+    return {
+        "userRequest": "@代码工匠 @审查大师 @文档专家 @产品架构师 请帮我生成一个简单的电商页面，可以挑选商品进行下单和付款",
+        "mentions": [
+            {"agentId": "agent-product", "agentName": "产品架构师"},
+            {"agentId": "agent-code", "agentName": "代码工匠"},
+            {"agentId": "agent-review", "agentName": "审查大师"},
+            {"agentId": "agent-docs", "agentName": "文档专家"},
+        ],
+        "participants": [
+            {
+                "id": "agent-product",
+                "name": "产品架构师",
+                "description": "需求分析与产品架构专家，负责 PRD、项目 SPEC、功能 checklist 和验收标准。",
+                "capabilities": ["产品架构", "需求分析", "PRD", "SPEC", "checklist", "验收标准"],
+            },
+            {"id": "agent-code", "name": "代码工匠", "description": "代码生成 / 前端", "capabilities": ["代码生成", "前端"]},
+            {"id": "agent-review", "name": "审查大师", "description": "代码审查 / 最佳实践", "capabilities": ["代码审查"]},
+            {"id": "agent-docs", "name": "文档专家", "description": "README / 使用说明", "capabilities": ["README", "使用说明"]},
+        ],
+    }
+
+
 @pytest.mark.asyncio
 async def test_planner_replans_once_after_invalid_plan():
     client = FakeClient(
@@ -130,38 +153,20 @@ async def test_planner_replans_when_explicit_mentions_or_requested_stages_are_om
 
 
 @pytest.mark.asyncio
-async def test_planner_routes_requirements_to_product_architect_and_readme_to_docs():
-    context = {
-        "userRequest": "@产品架构师 @代码工匠 @审查大师 @文档专家 先做需求分析和PRD，再实现页面，审查后写README。",
-        "mentions": [
-            {"agentId": "agent-product", "agentName": "产品架构师"},
-            {"agentId": "agent-code", "agentName": "代码工匠"},
-            {"agentId": "agent-review", "agentName": "审查大师"},
-            {"agentId": "agent-docs", "agentName": "文档专家"},
-        ],
-        "participants": [
-            {
-                "id": "agent-product",
-                "name": "产品架构师",
-                "description": "需求分析、PRD、SPEC 和 checklist",
-                "capabilities": ["产品架构", "需求分析", "PRD", "SPEC", "checklist"],
-            },
-            {"id": "agent-code", "name": "代码工匠", "description": "代码实现", "capabilities": ["代码生成"]},
-            {"id": "agent-review", "name": "审查大师", "description": "代码审查", "capabilities": ["代码审查"]},
-            {"id": "agent-docs", "name": "文档专家", "description": "README 和使用说明", "capabilities": ["README", "文档"]},
-        ],
-    }
+async def test_planner_preserves_llm_agent_ids_for_ecommerce_page_requirements():
+    context = four_agent_context()
     client = FakeClient(
         [
             {
                 "status": "ready",
-                "reasoningSummary": "model mixed up docs roles",
+                "reasoningSummary": "llm semantic assignment",
                 "tasks": [
                     {
-                        **task("requirements", "agent-docs"),
-                        "agentName": "文档专家",
-                        "title": "需求分析与PRD",
-                        "instruction": "输出 PRD.md、SPEC.md 和 CHECKLIST.md。",
+                        **task("requirements", "agent-product"),
+                        "agentName": "产品架构师",
+                        "title": "电商页面需求分析与规划",
+                        "objective": "明确简单电商页面的功能需求，包括商品展示、选择、下单和付款流程。",
+                        "instruction": "编写 PRD.md、SPEC.md 和 CHECKLIST.md，不创建 index.html。",
                         "accessMode": "write",
                     },
                     {
@@ -174,12 +179,13 @@ async def test_planner_routes_requirements_to_product_architect_and_readme_to_do
                     {
                         **task("review", "agent-review"),
                         "agentName": "审查大师",
-                        "title": "代码审查",
-                        "instruction": "审查实现质量。",
+                        "title": "审查电商页面实现质量",
+                        "instruction": "审查 index.html 的功能完整性、可访问性和安全性。",
+                        "accessMode": "read",
                     },
                     {
-                        **task("readme", "agent-product"),
-                        "agentName": "产品架构师",
+                        **task("readme", "agent-docs"),
+                        "agentName": "文档专家",
                         "title": "README 文档",
                         "instruction": "编写 README.md。",
                         "accessMode": "write",
@@ -197,9 +203,46 @@ async def test_planner_routes_requirements_to_product_architect_and_readme_to_do
     tasks_by_id = {item.id: item for item in result.tasks}
     assert tasks_by_id["requirements"].agent_id == "agent-product"
     assert tasks_by_id["requirements"].agent_name == "产品架构师"
+    assert tasks_by_id["review"].agent_id == "agent-review"
+    assert tasks_by_id["review"].agent_name == "审查大师"
+    assert tasks_by_id["review"].access_mode == "read"
     assert tasks_by_id["readme"].agent_id == "agent-docs"
     assert tasks_by_id["readme"].agent_name == "文档专家"
-    assert tasks_by_id["requirements"].access_mode == "write"
+    assert {item.agent_id for item in result.tasks} == {"agent-product", "agent-code", "agent-review", "agent-docs"}
+
+
+@pytest.mark.asyncio
+async def test_planner_does_not_override_valid_agent_id_when_agent_name_conflicts():
+    context = four_agent_context()
+    client = FakeClient(
+        [
+            {
+                "status": "ready",
+                "reasoningSummary": "valid id wins",
+                "tasks": [
+                    {
+                        **task("requirements", "agent-product"),
+                        "agentName": "代码工匠",
+                        "title": "电商页面需求分析与 PRD",
+                        "instruction": "编写 PRD.md、SPEC.md 和 CHECKLIST.md。",
+                        "accessMode": "write",
+                    },
+                    {**task("implementation", "agent-code"), "agentName": "代码工匠", "title": "实现页面", "accessMode": "write"},
+                    {**task("review", "agent-review"), "agentName": "审查大师", "title": "代码审查", "accessMode": "read"},
+                    {**task("readme", "agent-docs"), "agentName": "文档专家", "title": "README 文档", "accessMode": "write"},
+                ],
+            }
+        ]
+    )
+
+    result = await OrchestratorPlanner(client).plan(
+        context,
+        participant_ids={"agent-product", "agent-code", "agent-review", "agent-docs"},
+    )
+
+    requirements = {item.id: item for item in result.tasks}["requirements"]
+    assert requirements.agent_id == "agent-product"
+    assert requirements.agent_name == "代码工匠"
 
 
 @pytest.mark.asyncio
@@ -253,7 +296,7 @@ async def test_planner_normalizes_common_loose_task_fields():
 
 
 @pytest.mark.asyncio
-async def test_planner_forces_write_access_for_implementation_tasks_even_if_model_says_read():
+async def test_planner_preserves_explicit_read_access_for_implementation_like_task():
     client = FakeClient(
         [
             {
@@ -276,11 +319,11 @@ async def test_planner_forces_write_access_for_implementation_tasks_even_if_mode
         participant_ids={"agent-1"},
     )
 
-    assert result.tasks[0].access_mode == "write"
+    assert result.tasks[0].access_mode == "read"
 
 
 @pytest.mark.asyncio
-async def test_planner_forces_write_access_for_document_producing_stages():
+async def test_planner_preserves_explicit_read_access_for_document_like_task():
     client = FakeClient(
         [
             {
@@ -300,6 +343,31 @@ async def test_planner_forces_write_access_for_document_producing_stages():
 
     result = await OrchestratorPlanner(client).plan(
         {"userRequest": "Create an app"}, participant_ids={"agent-1"}
+    )
+
+    assert result.tasks[0].access_mode == "read"
+
+
+@pytest.mark.asyncio
+async def test_planner_defaults_missing_access_mode_from_write_aliases_or_text():
+    client = FakeClient(
+        [
+            {
+                "status": "ready",
+                "tasks": [
+                    {
+                        **task("one"),
+                        "title": "Create output.txt",
+                        "instruction": "Create output.txt in the workspace.",
+                    }
+                ],
+            },
+        ]
+    )
+    del client.outputs[0]["tasks"][0]["accessMode"]
+
+    result = await OrchestratorPlanner(client).plan(
+        {"userRequest": "创建 output.txt"}, participant_ids={"agent-1"}
     )
 
     assert result.tasks[0].access_mode == "write"
@@ -407,6 +475,23 @@ def test_resolve_agent_id_does_not_override_valid_id():
     assert task_data["agentId"] == "real-id-1"
 
 
+def test_resolve_agent_id_does_not_override_valid_review_id_with_implementation_words():
+    planner = OrchestratorPlanner.__new__(OrchestratorPlanner)
+    context = {
+        "participants": [
+            {"id": "agent-code", "name": "代码工匠", "description": "代码生成", "capabilities": ["代码生成"]},
+            {"id": "agent-review", "name": "审查大师", "description": "代码审查", "capabilities": ["代码审查"]},
+        ]
+    }
+    task_data = task("review", "agent-review")
+    task_data["agentName"] = "审查大师"
+    task_data["title"] = "审查页面实现质量"
+    task_data["instruction"] = "检查实现后的页面代码质量。"
+    planner._resolve_agent_id(task_data, context)
+    assert task_data["agentId"] == "agent-review"
+    assert task_data["agentName"] == "审查大师"
+
+
 def test_resolve_agent_id_from_nested_agent_object():
     planner = OrchestratorPlanner.__new__(OrchestratorPlanner)
     context = {
@@ -439,6 +524,27 @@ def test_resolve_agent_id_no_match_keeps_original():
     task_data["agentName"] = "未知代理"
     planner._resolve_agent_id(task_data, context)
     assert task_data["agentId"] == "completely-unknown"
+
+
+def test_resolve_agent_id_from_agent_string_name_when_id_missing():
+    planner = OrchestratorPlanner.__new__(OrchestratorPlanner)
+    context = {
+        "participants": [
+            {"id": "real-id-1", "name": "代码工匠", "description": "", "capabilities": []},
+        ]
+    }
+    task_data = {
+        "id": "one",
+        "agent": "代码工匠",
+        "title": "Create page",
+        "objective": "Create page",
+        "instruction": "Create page",
+        "acceptanceCriteria": ["Done"],
+        "accessMode": "write",
+        "dependsOn": [],
+    }
+    planner._resolve_agent_id(task_data, context)
+    assert task_data["agentId"] == "real-id-1"
 
 
 @pytest.mark.asyncio
@@ -607,3 +713,25 @@ async def test_planner_enforces_common_app_stage_dependencies():
     assert result.tasks[1].depends_on == ["requirements"]
     assert result.tasks[2].depends_on == ["implementation"]
     assert result.tasks[3].depends_on == ["implementation", "review"]
+
+
+@pytest.mark.asyncio
+async def test_planner_still_fails_when_explicitly_mentioned_agent_is_truly_omitted():
+    context = four_agent_context()
+    incomplete_plan = {
+        "status": "ready",
+        "reasoningSummary": "omits product architect",
+        "tasks": [
+            {**task("implementation", "agent-code"), "agentName": "代码工匠", "title": "实现电商页面", "accessMode": "write"},
+            {**task("review", "agent-review"), "agentName": "审查大师", "title": "代码审查", "accessMode": "read"},
+            {**task("readme", "agent-docs"), "agentName": "文档专家", "title": "README 文档", "accessMode": "write"},
+        ],
+    }
+    client = FakeClient([incomplete_plan, incomplete_plan])
+
+    with pytest.raises(PlannerFailure, match="missing agent ids: agent-product"):
+        await OrchestratorPlanner(client).plan(
+            context,
+            participant_ids={"agent-product", "agent-code", "agent-review", "agent-docs"},
+        )
+    assert client.calls == 2

@@ -3,6 +3,11 @@ export interface AttachmentSummaryInput {
   size: number
 }
 
+export interface ConversationListTimeInput {
+  createdAt?: string
+  updatedAt?: string
+}
+
 const LOCAL_TIME_FORMATTER = new Intl.DateTimeFormat('zh-CN', {
   hour: '2-digit',
   minute: '2-digit',
@@ -23,6 +28,11 @@ export function formatChatTime(value: string | Date): string {
   return LOCAL_TIME_FORMATTER.format(date)
 }
 
+export function formatConversationListTime(conversation: ConversationListTimeInput): string {
+  const timestamp = conversation.updatedAt || conversation.createdAt
+  return timestamp ? formatChatTime(timestamp) : '新建'
+}
+
 export function buildAttachmentSummary(files: AttachmentSummaryInput[]): string {
   if (files.length === 0) return ''
   return files.map((file) => `- ${file.name} (${formatFileSize(file.size)})`).join('\n')
@@ -38,6 +48,12 @@ export function getAvailableConversationAgentIds<T extends { id: string }>(
 
 export function mergeConversationAgentIds(participantIds: string[], selectedAgentIds: string[]): string[] {
   return [...new Set([...participantIds, ...selectedAgentIds])]
+}
+
+export function normalizeWorkspaceNameInput(value: string): string {
+  const trimmed = value.trim().replace(/\\/g, '/').replace(/^\/+|\/+$/g, '')
+  if (!trimmed) return ''
+  return trimmed.toLowerCase().startsWith('workspaces/') ? trimmed : `workspaces/${trimmed}`
 }
 
 function formatFileSize(bytes: number): string {

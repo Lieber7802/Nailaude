@@ -41,7 +41,7 @@ def test_handoff_builder_keeps_contract_and_compresses_low_priority_notes():
     )
 
     assert envelope["task"]["id"] == "task-1"
-    assert envelope["workspace"]["accessMode"] == "read"
+    assert envelope["workspace"]["accessMode"] == "write"
     assert envelope["manifest"]["estimatedTokens"] <= 900
     assert envelope["manifest"]["warnings"]
     assert len(envelope["collaboration"]["relevantTeamNotes"]) < len(notes)

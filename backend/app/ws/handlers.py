@@ -513,17 +513,7 @@ async def plan_job(job: dict, db: AsyncSession) -> dict:
     return result.model_dump(by_alias=True)
 
 
-def elevated_write_approval_reason(tasks: list[dict]) -> str | None:
-    for task in tasks:
-        if task.get("accessMode") != "write":
-            continue
-        risk_hints = task.get("riskHints") or {}
-        if risk_hints.get("mayDeleteOrRenameFiles"):
-            return "Write task may delete or rename files"
-        if risk_hints.get("mayTouchConfigFiles"):
-            return "Write task may modify configuration files"
-        if int(risk_hints.get("estimatedFilesTouched") or 0) > 10:
-            return "Write task may modify more than 10 files"
+def elevated_write_approval_reason(_tasks: list[dict]) -> str | None:
     return None
 
 

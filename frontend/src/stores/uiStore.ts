@@ -1,12 +1,14 @@
 import { create } from 'zustand'
 import type { Task } from '../services/api'
 import type { OrchestratorRunStatus } from '../../../packages/shared/types'
+import type { CollaborationTaskTiming } from '../utils/orchestratorUi'
 
 export interface ConversationRuntimeState {
-  thinkingAgents: string[]
-  orchestratorStatus: OrchestratorRunStatus | null
-  tasks: Task[]
   error: string | null
+  orchestratorStatus: OrchestratorRunStatus | null
+  taskTimings: Record<string, CollaborationTaskTiming>
+  tasks: Task[]
+  thinkingAgents: string[]
 }
 
 interface UIState {
@@ -36,10 +38,11 @@ interface UIState {
 }
 
 const emptyRuntime = (): ConversationRuntimeState => ({
-  thinkingAgents: [],
-  orchestratorStatus: null,
-  tasks: [],
   error: null,
+  orchestratorStatus: null,
+  taskTimings: {},
+  tasks: [],
+  thinkingAgents: [],
 })
 
 export const useUIStore = create<UIState>((set) => ({
@@ -61,11 +64,19 @@ export const useUIStore = create<UIState>((set) => ({
   setThinkingAgent: (conversationId, agentName) =>
     set((state) => {
       const current = state.runtimeByConversation[conversationId] || emptyRuntime()
+      const currentTiming = current.taskTimings[agentName]
+      const nextTiming =
+        currentTiming && !currentTiming.endedAt ? currentTiming : { startedAt: Date.now() }
+
       return {
         runtimeByConversation: {
           ...state.runtimeByConversation,
           [conversationId]: {
             ...current,
+            taskTimings: {
+              ...current.taskTimings,
+              [agentName]: nextTiming,
+            },
             thinkingAgents: current.thinkingAgents.includes(agentName)
               ? current.thinkingAgents
               : [...current.thinkingAgents, agentName],
@@ -76,11 +87,23 @@ export const useUIStore = create<UIState>((set) => ({
   clearThinkingAgent: (conversationId, agentName) =>
     set((state) => {
       const current = state.runtimeByConversation[conversationId] || emptyRuntime()
+      const currentTiming = current.taskTimings[agentName]
+      const taskTimings = currentTiming
+        ? {
+            ...current.taskTimings,
+            [agentName]: {
+              ...currentTiming,
+              endedAt: currentTiming.endedAt ?? Date.now(),
+            },
+          }
+        : current.taskTimings
+
       return {
         runtimeByConversation: {
           ...state.runtimeByConversation,
           [conversationId]: {
             ...current,
+            taskTimings,
             thinkingAgents: current.thinkingAgents.filter((name) => name !== agentName),
           },
         },
@@ -89,16 +112,31 @@ export const useUIStore = create<UIState>((set) => ({
   clearThinkingAgents: (conversationId) =>
     set((state) => {
       const current = state.runtimeByConversation[conversationId] || emptyRuntime()
+      const now = Date.now()
+      const taskTimings = { ...current.taskTimings }
+
+      for (const agentName of current.thinkingAgents) {
+        const currentTiming = taskTimings[agentName]
+        if (currentTiming) {
+          taskTimings[agentName] = {
+            ...currentTiming,
+            endedAt: currentTiming.endedAt ?? now,
+          }
+        }
+      }
+
       return {
         runtimeByConversation: {
           ...state.runtimeByConversation,
-          [conversationId]: { ...current, thinkingAgents: [] },
+          [conversationId]: { ...current, taskTimings, thinkingAgents: [] },
         },
       }
     }),
   setOrchestratorStatus: (conversationId, status, tasks) =>
     set((state) => {
       const current = state.runtimeByConversation[conversationId] || emptyRuntime()
+      const taskTimings = updateTaskTimings(current.taskTimings, tasks)
+
       return {
         runtimeByConversation: {
           ...state.runtimeByConversation,
@@ -106,6 +144,7 @@ export const useUIStore = create<UIState>((set) => ({
             ...current,
             error: status === 'planning' ? null : current.error,
             orchestratorStatus: status,
+            taskTimings,
             tasks,
           },
         },
@@ -131,3 +170,32 @@ export const useUIStore = create<UIState>((set) => ({
 }))
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, Math.round(value)))
+
+const TERMINAL_TASK_STATUSES = new Set<Task['status']>(['completed', 'failed', 'blocked', 'cancelled'])
+
+function updateTaskTimings(
+  currentTimings: Record<string, CollaborationTaskTiming>,
+  tasks: Task[]
+): Record<string, CollaborationTaskTiming> {
+  const now = Date.now()
+  const taskTimings = { ...currentTimings }
+
+  for (const task of tasks) {
+    const currentTiming = taskTimings[task.agentName]
+
+    if (task.status === 'running') {
+      taskTimings[task.agentName] =
+        currentTiming && !currentTiming.endedAt ? currentTiming : { startedAt: now }
+      continue
+    }
+
+    if (TERMINAL_TASK_STATUSES.has(task.status)) {
+      taskTimings[task.agentName] = {
+        startedAt: currentTiming?.startedAt ?? now,
+        endedAt: currentTiming?.endedAt ?? now,
+      }
+    }
+  }
+
+  return taskTimings
+}

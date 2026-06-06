@@ -1,6 +1,7 @@
 import { FolderOpenOutlined, TeamOutlined, UserOutlined } from '@ant-design/icons'
 import { Form, Input, Modal, Radio, Select } from 'antd'
 import type { Agent, CreateConversationInput } from '../../services/api'
+import { normalizeWorkspaceNameInput } from '../../utils/chatUi'
 
 interface NewConversationModalProps {
   agents: Agent[]
@@ -42,7 +43,7 @@ const NewConversationModal = ({ agents, creating, onCancel, onCreate, open }: Ne
           const payload: CreateConversationInput = {
             title: values.title || (values.type === 'group' ? '新的群聊' : '新的单聊'),
             type: values.type,
-            workDir: values.workDir,
+            workDir: normalizeWorkspaceNameInput(values.workDir || ''),
             participantIds,
           }
           void onCreate(payload).then(() => form.resetFields())
@@ -78,9 +79,9 @@ const NewConversationModal = ({ agents, creating, onCancel, onCreate, open }: Ne
         </Form.Item>
         <Form.Item
           name="workDir"
-          label="工作目录（留空自动生成）"
+          label="工作目录名称"
         >
-          <Input prefix={<FolderOpenOutlined />} placeholder="留空自动生成，或手动输入 workspaces/xxx" />
+          <Input prefix={<FolderOpenOutlined />} placeholder="例如 todo-app，留空自动生成唯一目录" />
         </Form.Item>
       </Form>
     </Modal>

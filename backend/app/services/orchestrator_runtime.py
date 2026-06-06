@@ -10,22 +10,6 @@ from app.services.orchestrator_scheduler import OrchestratorScheduler
 from app.services.workspace_snapshot import WorkspaceSnapshotService
 
 
-NO_CHANGE_SUCCESS_KEYWORDS = (
-    "review",
-    "audit",
-    "inspect",
-    "validate",
-    "verify",
-    "check",
-    "quality",
-    "审查",
-    "检查",
-    "评估",
-    "验证",
-    "质量",
-)
-
-
 def utc_timestamp() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -119,11 +103,7 @@ class OrchestratorRuntime:
                 warnings.extend(snapshot.warnings)
                 try:
                     async def run_task(task: dict) -> tuple[dict, dict]:
-                        workspace = (
-                            self.snapshot_service.write_workspace(work_dir, snapshot)
-                            if task["accessMode"] == "write"
-                            else self.snapshot_service.create_read_copy(snapshot)
-                        )
+                        workspace = self.snapshot_service.write_workspace(work_dir, snapshot)
                         workspace.batch_id = batch["id"]
                         workspace.cancel_event = cancel_event
                         before = self.snapshot_service.capture_workspace_state(workspace.path)
@@ -135,16 +115,6 @@ class OrchestratorRuntime:
                         after = self.snapshot_service.capture_workspace_state(workspace.path)
                         audit = self.snapshot_service.diff_workspace_states(before, after)
                         result.update({**audit, "audit": audit})
-                        if (
-                            task["accessMode"] == "write"
-                            and result.get("status") == "success"
-                            and not audit["filesChanged"]
-                            and not self._allows_no_change_success(task, result)
-                        ):
-                            result.update(
-                                status="failed",
-                                error="Write task reported success but produced no workspace changes",
-                            )
                         return task, result
 
                     workers = [asyncio.create_task(run_task(task)) for task in runnable]
@@ -213,18 +183,3 @@ class OrchestratorRuntime:
         result.setdefault("agentId", task["agentId"])
         result.setdefault("batchId", batch_id)
         return result
-
-    def _allows_no_change_success(self, task: dict, result: dict) -> bool:
-        if not str(result.get("summary") or "").strip():
-            return False
-        text = " ".join(
-            str(value)
-            for value in (
-                task.get("title"),
-                task.get("objective"),
-                task.get("instruction"),
-                " ".join(str(item) for item in task.get("acceptanceCriteria") or []),
-            )
-            if value
-        ).lower()
-        return any(keyword in text for keyword in NO_CHANGE_SUCCESS_KEYWORDS)

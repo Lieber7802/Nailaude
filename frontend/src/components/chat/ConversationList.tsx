@@ -10,6 +10,7 @@ import {
 import { Button, Empty, Input, Popconfirm } from 'antd'
 import type { Agent, Conversation } from '../../services/api'
 import { useUIStore } from '../../stores/uiStore'
+import { formatConversationListTime } from '../../utils/chatUi'
 
 interface ConversationListProps {
   agents: Agent[]
@@ -57,9 +58,14 @@ const ConversationList = ({
         </button>
       </div>
 
-      <Button className="sidebar__create" icon={<PlusOutlined />} type="primary" onClick={onCreate}>
-        新建对话
-      </Button>
+      <div className="sidebar__primary-actions">
+        <Button className="sidebar__create" icon={<PlusOutlined />} type="primary" onClick={onCreate}>
+          新建对话
+        </Button>
+        <Button className="sidebar__create sidebar__create--secondary" icon={<PlusOutlined />} onClick={onCreateAgent}>
+          创建智能体
+        </Button>
+      </div>
 
       <Input
         allowClear
@@ -74,7 +80,6 @@ const ConversationList = ({
       <section className="sidebar__section">
         <div className="sidebar__section-title">
           <span className="sidebar__label">常用智能体</span>
-          <Button aria-label="新增自定义智能体" icon={<PlusOutlined />} size="small" type="text" onClick={onCreateAgent} />
         </div>
         <div className="agent-list">
           {agents.map((agent) => (
@@ -109,7 +114,7 @@ const ConversationList = ({
                   <button className="conversation-row__main" type="button" onClick={() => onSelect(conversation.id)}>
                     <span className="conversation-row__top">
                       <span className="conversation-row__title">{conversation.title}</span>
-                      <span className="conversation-row__time">{conversation.lastMessage ? '15:50' : '新建'}</span>
+                      <span className="conversation-row__time">{formatConversationListTime(conversation)}</span>
                     </span>
                     <span className="conversation-row__meta">
                       {participants.map((agent) => agent.name).join('，') || '未选择智能体'}
