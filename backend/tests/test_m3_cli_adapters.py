@@ -9,6 +9,7 @@ import pytest
 
 from app.adapters.codex import CodexAdapter, codex_sandbox_mode, resolve_codex_binary
 from app.adapters.opencode import OpenCodeAdapter
+from app.adapters.prompt_contracts import generated_project_dev_server_contract
 from app.schemas.conversation import WORKSPACE_ROOT
 from app.services.process_pool import ProcessPoolError, ProcessResult
 
@@ -435,8 +436,8 @@ async def test_opencode_adapter_generates_review_fallback_when_review_returns_no
             str(tmp_path),
             "Review index.html for quality, performance, and security issues.",
             {
-                "task": {"accessMode": "read", "instruction": "Review index.html"},
-                "workspace": {"accessMode": "read"},
+                "task": {"accessMode": "write", "instruction": "Review index.html"},
+                "workspace": {"accessMode": "write"},
                 "navigationHints": {"inspectFirst": ["index.html"]},
             },
         )
@@ -478,8 +479,7 @@ async def test_opencode_adapter_summarizes_tool_read_text_instead_of_streaming_f
 
     text_event = events[0]
     assert text_event.type == "text_delta"
-    assert "OpenCode 已完成本次执行。" in text_event.content
-    assert "正在查看项目文件。" in text_event.content
+    assert "审查完成" in text_event.content
     assert "<script>" not in text_event.content
     assert "</content>" not in text_event.content
     assert "metadata" not in text_event.content
@@ -531,6 +531,22 @@ async def test_opencode_prompt_requires_preview_entry_for_app_generation(tmp_pat
     assert "必须创建或更新 index.html" in prompt
     assert "不要只创建 README.md" in prompt
     assert "右侧预览" in prompt
+    assert "不要设置 server.open、open: true" in prompt
+    assert "不要硬编码 AgentHub 正在使用的端口" in prompt
+    assert "不要运行会自动打开浏览器窗口的命令" in prompt
+
+
+def test_codex_prompt_includes_generated_project_dev_server_safety(tmp_path):
+    adapter = CodexAdapter(pool=CodexJsonPool(), binary_path="codex", bridge_factory=fake_bridge_factory)
+
+    prompt = adapter._build_prompt(
+        "Create a React/Vite todo app.",
+        {"task": {"accessMode": "write"}, "workspace": {"accessMode": "write"}},
+    )
+
+    assert "不要设置 server.open、open: true" in prompt
+    assert "不要硬编码 AgentHub 正在使用的端口" in prompt
+    assert "不要运行会自动打开浏览器窗口的命令" in prompt
 
 
 def test_opencode_prompt_requires_preview_entry_for_system_implementation_requests():
@@ -538,8 +554,14 @@ def test_opencode_prompt_requires_preview_entry_for_system_implementation_reques
 
     assert adapter._should_require_preview_entry(
         "根据需求文档实现学生课程签到系统的完整代码。",
-        {"workspace": {"accessMode": "write"}, "task": {"accessMode": "write"}},
+        {"workspace": {"accessMode": "read"}, "task": {"accessMode": "read"}},
     )
+
+
+def test_generated_project_dev_server_contract_no_longer_requires_write_access():
+    prompt = generated_project_dev_server_contract({"workspace": {"accessMode": "read"}, "task": {"accessMode": "read"}})
+
+    assert "不要设置 server.open" in prompt
 
 
 @pytest.mark.parametrize(

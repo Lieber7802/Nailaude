@@ -50,6 +50,12 @@ export function mergeConversationAgentIds(participantIds: string[], selectedAgen
   return [...new Set([...participantIds, ...selectedAgentIds])]
 }
 
+export function normalizeWorkspaceNameInput(value: string): string {
+  const trimmed = value.trim().replace(/\\/g, '/').replace(/^\/+|\/+$/g, '')
+  if (!trimmed) return ''
+  return trimmed.toLowerCase().startsWith('workspaces/') ? trimmed : `workspaces/${trimmed}`
+}
+
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`

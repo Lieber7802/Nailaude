@@ -19,6 +19,7 @@ from app.adapters.base import AgentAdapter, AgentEvent, AgentSession
 from app.config import settings
 from app.services.process_pool import ProcessPool, ProcessPoolError
 from app.adapters.codex import LANGUAGE_BY_SUFFIX, MAX_FILE_BYTES, SKIPPED_DIRS
+from app.adapters.prompt_contracts import generated_project_dev_server_contract
 from app.services.workspace_scanner import WorkspaceScanner
 from app.services.workspace_paths import resolve_workspace_path
 
@@ -290,6 +291,7 @@ class OpenCodeAdapter(AgentAdapter):
 
     def _build_prompt(self, instruction: str, context: dict) -> str:
         public_context = {key: value for key, value in context.items() if not key.startswith("_")}
+        dev_server_contract = generated_project_dev_server_contract(public_context)
         preview_contract = self._preview_contract(instruction, public_context)
         review_contract = self._review_contract(instruction, public_context)
         return (
@@ -298,6 +300,7 @@ class OpenCodeAdapter(AgentAdapter):
             "write files only inside the provided workspace, and summarize the result.\n"
             f"{review_contract}"
             f"{preview_contract}"
+            f"{dev_server_contract}"
             f"{json.dumps(public_context, ensure_ascii=False, default=str)}"
         )
 
@@ -574,7 +577,6 @@ class OpenCodeAdapter(AgentAdapter):
 
     def _is_review_task(self, instruction: str, context: dict) -> bool:
         task = context.get("task") or {}
-        workspace = context.get("workspace") or {}
         text = " ".join(
             str(value)
             for value in (
@@ -586,9 +588,7 @@ class OpenCodeAdapter(AgentAdapter):
             if value
         ).lower()
         review_words = ("review", "audit", "inspect", "审查", "评审", "代码审查", "检查", "质量")
-        return any(word in text for word in review_words) and (
-            task.get("accessMode") == "read" or workspace.get("accessMode") == "read"
-        )
+        return any(word in text for word in review_words)
 
     def _review_fallback_summary(self, root: Path, context: dict) -> str:
         snapshot = self._snapshot_workspace(root)
@@ -668,10 +668,7 @@ class OpenCodeAdapter(AgentAdapter):
         )
 
     def _should_require_preview_entry(self, instruction: str, context: dict) -> bool:
-        workspace = context.get("workspace") or {}
         task = context.get("task") or {}
-        if workspace.get("accessMode") != "write" and task.get("accessMode") != "write":
-            return False
         if self._is_document_output_task(instruction, task):
             return False
         text = " ".join(
@@ -745,10 +742,12 @@ class OpenCodeAdapter(AgentAdapter):
         return any(name.lower().endswith((".html", ".htm")) for name in snapshot)
 
     def _build_preview_repair_prompt(self, instruction: str, context: dict) -> str:
+        dev_server_contract = generated_project_dev_server_contract(context)
         return (
             "上一轮执行没有创建可供 AgentHub 右侧预览的 HTML 入口。"
             "必须创建或更新 index.html，实现用户要求的可交互小程序/页面。"
             "不要只创建 README.md 或说明文字；必须产出可直接在浏览器 iframe 中打开的 index.html。\n\n"
+            f"{dev_server_contract}"
             f"原始用户要求：{instruction}\n\n"
             "AgentHub handoff context follows as JSON.\n"
             f"{json.dumps(context, ensure_ascii=False, default=str)}"

@@ -14,7 +14,7 @@ from app.models.agent import Agent
 from app.models.artifact import Artifact
 from app.models.conversation import Conversation
 from app.models.message import Message
-from app.schemas.conversation import ConversationCreate, ConversationUpdate, WINDOWS_WORKSPACE_PATTERN
+from app.schemas.conversation import ConversationCreate, ConversationUpdate, WINDOWS_WORKSPACE_PATTERN, validate_work_dir
 from app.services.workspace_paths import resolve_workspace_path
 
 router = APIRouter()
@@ -90,10 +90,7 @@ async def create_conversation(payload: ConversationCreate, db: AsyncSession = De
     """Create a new conversation"""
     await validate_participants(payload.participant_ids, db)
     work_dir = payload.work_dir or f"workspaces/{uuid.uuid4().hex[:12]}"
-    if payload.work_dir:
-        ensure_workspace_directory(payload.work_dir)
-    else:
-        ensure_workspace_directory(work_dir)
+    ensure_workspace_directory(work_dir)
     conversation = Conversation(
         title=payload.title,
         type=payload.type,
@@ -153,7 +150,8 @@ async def update_conversation(
     if "participant_ids" in updates:
         await validate_participants(updates["participant_ids"], db)
     if "work_dir" in updates:
-        ensure_workspace_directory(updates["work_dir"] or "")
+        updates["work_dir"] = validate_work_dir(updates["work_dir"]) or ""
+        ensure_workspace_directory(updates["work_dir"])
     for key, value in updates.items():
         setattr(conversation, key, value)
 

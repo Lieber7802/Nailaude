@@ -9,23 +9,49 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 WORKSPACE_ROOT = (PROJECT_ROOT / "workspaces").resolve(strict=False)
 WINDOWS_WORKSPACE_PATTERN = re.compile(r"^[A-Za-z]:[/\\].*[/\\]workspaces[/\\].+")
+WORKSPACES_PREFIX_PATTERN = re.compile(r"^workspaces(?:/|\\)(.+)$", re.IGNORECASE)
 
 
 def validate_work_dir(value: str | None) -> str | None:
-    if value is None or value == "":
+    if value is None:
+        return value
+
+    value = value.strip()
+    if value == "":
         return value
 
     if WINDOWS_WORKSPACE_PATTERN.match(value):
         return value
 
-    raw_path = Path(value).expanduser()
+    normalized_value = value.replace("\\", "/")
+    raw_path = Path(normalized_value).expanduser()
+    if raw_path.is_absolute():
+        return validate_workspace_path(value, raw_path)
+
+    match = WORKSPACES_PREFIX_PATTERN.match(normalized_value)
+    if match:
+        return normalize_workspace_suffix(match.group(1))
+
+    return normalize_workspace_suffix(normalized_value)
+
+
+def validate_workspace_path(original_value: str, raw_path: Path) -> str:
     candidate = raw_path if raw_path.is_absolute() else PROJECT_ROOT / raw_path
     resolved = candidate.resolve(strict=False)
     try:
         resolved.relative_to(WORKSPACE_ROOT)
     except ValueError as exc:
         raise ValueError("workDir must stay under the project workspaces directory") from exc
-    return value
+    return original_value.replace("\\", "/")
+
+
+def normalize_workspace_suffix(value: str) -> str:
+    suffix = value.replace("\\", "/").strip("/")
+    parts = [part for part in suffix.split("/") if part]
+    if not parts or any(part in {".", ".."} for part in parts):
+        raise ValueError("workDir must be a workspace folder name")
+    normalized = "/".join(parts)
+    return validate_workspace_path(f"workspaces/{normalized}", PROJECT_ROOT / "workspaces" / normalized)
 
 
 class ConversationCreate(BaseModel):

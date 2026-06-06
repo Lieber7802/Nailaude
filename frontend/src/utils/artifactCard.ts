@@ -1,7 +1,7 @@
 import type { Artifact } from '../services/api'
-import { isMarkdownFile } from './markdownPreview.ts'
+import { isHtmlFile, isMarkdownFile } from './markdownPreview.ts'
 
-export const MESSAGE_ARTIFACT_COLLAPSE_LIMIT = 5
+export const MESSAGE_ARTIFACT_COLLAPSE_LIMIT = 3
 
 export type ArtifactCardKind = 'code' | 'diff' | 'markdown' | 'webpage' | 'file'
 
@@ -19,7 +19,13 @@ export interface VisibleMessageArtifacts {
 }
 
 export function getOrderedMessageArtifacts(artifacts: Artifact[]): Artifact[] {
-  return [...artifacts].sort((left, right) => artifactMessageOrder(left) - artifactMessageOrder(right))
+  return artifacts
+    .map((artifact, index) => ({ artifact, index }))
+    .sort((left, right) => {
+      const priorityDelta = artifactMessageOrder(left.artifact) - artifactMessageOrder(right.artifact)
+      return priorityDelta || left.index - right.index
+    })
+    .map((item) => item.artifact)
 }
 
 export function getVisibleMessageArtifacts(artifacts: Artifact[], expanded: boolean): VisibleMessageArtifacts {
@@ -82,7 +88,17 @@ export function formatBytes(chars: number): string {
 }
 
 function artifactMessageOrder(artifact: Artifact): number {
-  if (artifact.type === 'diff') return 30
-  if (artifact.type === 'webpage') return 20
-  return 10
+  if (artifact.type === 'diff') return 50
+  if (artifact.type === 'webpage' || artifact.previewUrl) return 0
+  if (artifact.files.some((file) => isHtmlFile(file))) return 5
+  if (artifact.files.some((file) => isReadmeFile(file))) return 10
+  if (artifact.files.some((file) => isMarkdownFile(file))) return 15
+  if (artifact.type === 'document' || artifact.type === 'file') return 20
+  return 30
+}
+
+function isReadmeFile(file?: { name: string }): boolean {
+  if (!file) return false
+  const filename = file.name.trim().toLowerCase().split('/').pop() || ''
+  return /^readme(\.[a-z0-9_-]+)?$/.test(filename)
 }

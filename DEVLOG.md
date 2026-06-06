@@ -2080,3 +2080,183 @@
 - 前端测试：`cd frontend && zsh -lic 'npm test'` -> `35 passed`。
 - 前端构建：`cd frontend && zsh -lic 'npm run build'` -> 通过；Vite 保留既有 chunk size warning。
 - 补丁检查：`git diff --check` -> 通过。
+
+## [2026-06-06] Codex - 工作目录名称与生成项目端口安全优化
+
+### 问题判断
+- 新建对话表单要求用户理解并输入 `workspaces/xxx`，裸目录名会被后端拒绝，体验不友好。
+- 生成项目可能写入 `server.open` / `open: true` 或硬编码 `5173`，导致运行生成项目时自动弹浏览器窗口并与 AgentHub 主前端端口混淆。
+
+### 完成内容
+- 后端 `workDir` 规范化支持裸目录名：`todo-app` 会保存为 `workspaces/todo-app`，空值仍自动生成唯一目录，逃逸路径仍拒绝。
+- 新建对话弹窗将“工作目录（留空自动生成）”改为“工作目录名称”，placeholder 改为直接输入 `todo-app` 的心智模型。
+- 前端提交时统一把目录名补成 `workspaces/<name>`，保留已输入 `workspaces/<name>` 的兼容行为。
+- OpenCode/Codex Adapter 增加生成项目前端 dev-server prompt 约束：不设置 `server.open` / `open: true`，不硬编码 AgentHub 端口，验证优先用 build/test/typecheck。
+- WebSocket 测试改用项目内相对 workspace 并清理临时目录，避免完整测试后留下 `D:/` 残留。
+
+### 修改文件
+- `backend/app/adapters/prompt_contracts.py`
+- `backend/app/adapters/opencode.py`
+- `backend/app/adapters/codex.py`
+- `backend/app/api/conversations.py`
+- `backend/app/schemas/conversation.py`
+- `backend/tests/test_m1_1_api.py`
+- `backend/tests/test_m1_2_websocket.py`
+- `backend/tests/test_m3_cli_adapters.py`
+- `frontend/src/components/chat/NewConversationModal.tsx`
+- `frontend/src/utils/chatUi.ts`
+- `frontend/tests/chatUi.test.mjs`
+- `docs/API_SPEC.md`
+- `docs/plans/M5_WORKSPACE_PREVIEW_SAFETY_PLAN.md`
+- `docs/plans/M5_WORKSPACE_PREVIEW_SAFETY_CHECKLIST.md`
+- `DEVLOG.md`
+
+### 接口变化
+- `CreateConversationDTO.workDir` 类型未变，仍为字符串。
+- REST 创建/更新会话现在接受裸工作目录名并规范化到 `workspaces/` 下；API 文档已同步。
+- 未新增依赖。
+
+### 验证
+- 目标后端测试：`python -m pytest backend/tests/test_m1_1_api.py::test_create_conversation_accepts_workspace_folder_name backend/tests/test_m1_1_api.py::test_create_conversation_rejects_workspace_name_that_escapes_root backend/tests/test_m3_cli_adapters.py::test_opencode_prompt_requires_preview_entry_for_app_generation backend/tests/test_m3_cli_adapters.py::test_codex_prompt_includes_generated_project_dev_server_safety` -> `4 passed`。
+- 相关后端套件：`python -m pytest backend/tests/test_m1_1_api.py backend/tests/test_m3_cli_adapters.py` -> `39 passed`。
+- 完整后端测试：`python -m pytest backend/tests` -> `200 passed`。
+- 前端测试：`npm test` -> `36 passed`。
+- 前端构建：`npm run build` -> 通过；Vite 保留既有 chunk size warning。
+
+## [2026-06-06] Codex - 关闭高风险写入审批弹窗
+
+### 问题判断
+- 代码工匠创建/修改较多文件，或 Planner 标记配置文件、删除/重命名风险时，Orchestrator 会进入 `awaiting_approval` 并显示 `Allow execution` 审批卡。
+- 用户确认 Agent 都在工作区内执行，希望完全放开这些写操作，不再出现“是否允许执行 / 高危写入许可”弹窗。
+
+### 完成内容
+- 移除 Orchestrator 高风险写入审批触发条件：`mayDeleteOrRenameFiles`、`mayTouchConfigFiles`、`estimatedFilesTouched > 10` 均不再阻塞执行。
+- 保留 shared WebSocket 类型与前端审批卡兼容代码，但当前后端策略不再推送 `orchestrator_approval_required`。
+- 将原审批恢复测试改为风险写任务直接执行回归测试，并补充 helper 断言，确保风险 hints 不再生成审批原因。
+- API 文档标注审批消息为兼容保留、当前正常流程不再要求用户审批。
+
+### 修改文件
+- `backend/app/ws/handlers.py`
+- `backend/tests/test_m3_websocket_interactions.py`
+- `docs/API_SPEC.md`
+- `docs/plans/M5_DISABLE_WRITE_APPROVAL_PLAN.md`
+- `docs/plans/M5_DISABLE_WRITE_APPROVAL_CHECKLIST.md`
+- `DEVLOG.md`
+
+### 接口变化
+- 未修改 `packages/shared/types.ts`。
+- `orchestrator_approval_required` / `orchestrator_approval_response` 协议兼容保留，但后端不再因工作区写入风险主动发起审批。
+- 未新增依赖。
+
+### 验证
+- 先跑新目标测试确认旧逻辑红灯：`backend/.venv/bin/python -m pytest backend/tests/test_m3_websocket_interactions.py::test_risky_write_plan_executes_without_approval_prompt backend/tests/test_m3_websocket_interactions.py::test_approval_response_without_paused_job_returns_error backend/tests/test_m3_websocket_interactions.py::test_risky_write_tasks_do_not_have_elevated_approval_reason` -> `2 failed, 1 passed`。
+- 修改后目标测试：同上命令 -> `3 passed`。
+- 相关后端套件：`backend/.venv/bin/python -m pytest backend/tests/test_m3_websocket_interactions.py` -> `8 passed`。
+- 补丁检查：`git diff --check` -> 通过。
+
+## [2026-06-06] Codex - 移除 accessMode 运行时读写权限语义
+
+### 问题判断
+- `accessMode` 读写划分在当前 MVP 中已经不再提供实际安全收益，反而会导致 Planner 中文任务归类误判后触发 read copy、写任务无变更失败、审查 fallback 不生效等问题。
+- 用户确认 Agent 都在项目工作区内执行，希望不再因为读写权限判断导致审查或后续任务误失败。
+
+### 完成内容
+- Scheduler 不再限制同一批只能有一个 `write` 任务；现在只保留依赖顺序、同一 Agent 不并行和单批最多 3 个任务。
+- Runtime 不再根据 `accessMode` 创建 read copy；所有任务都使用真实会话工作区执行。
+- Runtime 移除“写任务成功但无文件变更 => failed”的校验，审查/文档/文本总结不再因此被误判失败。
+- Handoff 的 workspace access metadata 统一为 `write`，避免下游 Adapter 继续按旧读写权限分支。
+- OpenCode review fallback 和 preview contract 不再以 `accessMode` 为开关，改为按任务文本意图识别。
+- dev-server prompt safety contract 不再要求写权限才注入。
+- API 文档补充：`accessMode` 为兼容保留的计划元数据，不再作为执行权限。
+
+### 修改文件
+- `backend/app/services/orchestrator_scheduler.py`
+- `backend/app/services/orchestrator_runtime.py`
+- `backend/app/services/handoff_builder.py`
+- `backend/app/adapters/opencode.py`
+- `backend/app/adapters/prompt_contracts.py`
+- `backend/tests/test_m3_scheduler.py`
+- `backend/tests/test_m3_orchestrator_runtime.py`
+- `backend/tests/test_m3_websocket_runtime.py`
+- `backend/tests/test_m3_cli_adapters.py`
+- `backend/tests/test_m3_handoff_builder.py`
+- `docs/API_SPEC.md`
+- `docs/plans/M5_REMOVE_ACCESS_MODE_RUNTIME_PLAN.md`
+- `docs/plans/M5_REMOVE_ACCESS_MODE_RUNTIME_CHECKLIST.md`
+- `DEVLOG.md`
+
+### 接口变化
+- 未修改 `packages/shared/types.ts`，`Task.accessMode` 字段继续保留以兼容已有 Planner schema、WebSocket 快照和前端类型。
+- 后端执行语义变化：`accessMode` 不再影响权限、workspace 隔离、并发或成功/失败判定。
+- 未新增依赖。
+
+### 验证
+- 新回归测试先红灯：目标测试组在旧逻辑下 `7 failed, 1 passed`，覆盖 scheduler、runtime workspace、no-change 失败、handoff metadata、OpenCode review fallback、preview/dev-server contract。
+- 受影响后端套件：`backend/.venv/bin/python -m pytest backend/tests/test_m3_scheduler.py backend/tests/test_m3_orchestrator_runtime.py backend/tests/test_m3_handoff_builder.py backend/tests/test_m3_websocket_runtime.py backend/tests/test_m3_cli_adapters.py` -> `57 passed`。
+- 完整后端测试：`backend/.venv/bin/python -m pytest backend/tests` -> `203 passed`。
+
+## [2026-06-06] Codex - 产物卡片列表折叠与预览优先排序
+
+### 问题判断
+- 复杂项目会产生大量文件产物，如果聊天流逐个展示会挤占对话空间。
+- 当前产物列表已有折叠能力，但默认展示 5 个；排序也会把普通代码文件排在 HTML/README 等更适合预览的内容前面。
+
+### 完成内容
+- 将消息内产物卡片默认展示数量从 5 个调整为 3 个，剩余产物通过“展开剩余 N 个产物”查看。
+- 新增稳定的产物优先级排序：网页/预览链接、HTML 文件、README/Markdown、其他文档/文件、普通代码、Diff。
+- 保留同优先级产物的原始到达顺序，避免列表在流式追加时出现不必要的重排。
+- `MessageBubble` 使用 artifact helper 返回的隐藏数量，避免组件重复计算折叠数量。
+- 扩展 artifact card 纯逻辑测试，覆盖三卡折叠、HTML/README 优先、Diff 后置和稳定排序。
+
+### 修改文件
+- `frontend/src/utils/artifactCard.ts`
+- `frontend/src/components/chat/MessageBubble.tsx`
+- `frontend/tests/artifactCard.test.mjs`
+- `docs/plans/M5_ARTIFACT_LIST_PRIORITIZATION_PLAN.md`
+- `docs/plans/M5_ARTIFACT_LIST_PRIORITIZATION_CHECKLIST.md`
+- `DEVLOG.md`
+
+### 接口变化
+- 未修改 `packages/shared/types.ts`。
+- 未修改 REST、WebSocket 或后端 artifact payload。
+- 未新增依赖。
+
+### 验证
+- RED 测试确认旧逻辑失败：`cd frontend && npm test` -> `4 failed`，覆盖网页优先、HTML/README 优先、默认 3 个和折叠后优先级展示。
+- 修改后前端测试：`cd frontend && npm test` -> `39 passed`。
+- 前端构建：`cd frontend && npm run build` -> 通过；Vite 保留既有 chunk size warning。
+- 补丁检查：`git diff --check` -> 通过。
+- 未单独运行浏览器手工 smoke；多产物折叠和排序已由 `frontend/tests/artifactCard.test.mjs` 覆盖。
+
+## [2026-06-06] Codex - Planner 语义分配改为 LLM 优先
+
+### 问题判断
+- 当前 Planner 归一化会先用关键词阶段识别覆盖合法 `agentId`，例如“电商页面需求分析与规划”被“页面”关键词误判为实现任务，导致产品架构师任务被改派给代码工匠。
+- `accessMode` 已不再控制运行时权限，继续用关键词把显式 `read` 强制改成 `write` 会制造不必要误判。
+
+### 完成内容
+- `_resolve_agent_id()` 现在先信任属于当前 participants 的合法 `agentId`，只有缺失或非法时才按 `agentName`、nested agent object、阶段/profile fallback 修复。
+- 阶段关键词逻辑降级为兜底，不再覆盖 LLM 的合法语义分配。
+- 显式 `accessMode` 只做大小写归一化，不再被 `_looks_like_write_task()` 或 `_stage_implies_write()` 强制从 `read` 改成 `write`。
+- 扩展 Planner 测试，覆盖电商页面四智能体、审查任务歧义文本、agentName 冲突、非法 id 修复、accessMode 保留和真实遗漏显式 @ agent。
+
+### 修改文件
+- `backend/app/services/orchestrator_planner.py`
+- `backend/tests/test_m3_planner.py`
+- `docs/API_SPEC.md`
+- `docs/plans/M5_LLM_FIRST_PLANNER_PLAN.md`
+- `docs/plans/M5_LLM_FIRST_PLANNER_CHECKLIST.md`
+- `DEVLOG.md`
+
+### 接口变化
+- 未修改 `packages/shared/types.ts`。
+- 未修改 REST、WebSocket 或前端 UI 协议。
+- Planner 行为变化：合法 participant `agentId` 由 LLM 输出主导，后端只做低侵入修复和结构校验。
+
+### 验证
+- 新增测试先红灯：`PYTHONPATH=backend backend/.venv/bin/python -m pytest backend/tests/test_m3_planner.py -q` -> `4 failed, 19 passed`。
+- 修改后目标测试：`PYTHONPATH=backend backend/.venv/bin/python -m pytest backend/tests/test_m3_planner.py -q` -> `23 passed`。
+- 编排 smoke：`backend/.venv/bin/python -m pytest backend/tests/test_m3_planner.py backend/tests/test_m3_websocket_interactions.py backend/tests/test_m3_websocket_runtime.py -q` -> `42 passed`。
+- 完整后端测试：`backend/.venv/bin/python -m pytest backend/tests` -> `208 passed, 1 warning`。
+- 补丁检查：`git diff --check` -> 通过。
+- 未重复浏览器手测电商页面；新增 planner 回归测试已覆盖同一类“页面 + 需求”导致产品架构师缺失的失败路径。

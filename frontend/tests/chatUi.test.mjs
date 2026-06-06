@@ -6,6 +6,7 @@ import {
   formatConversationListTime,
   getAvailableConversationAgentIds,
   mergeConversationAgentIds,
+  normalizeWorkspaceNameInput,
   parseBackendTimestamp,
 } from '../src/utils/chatUi.ts'
 
@@ -49,4 +50,11 @@ test('conversation agent updates merge selected agents without duplicates', () =
     'agent-b',
     'agent-c',
   ])
+})
+
+test('normalizes new conversation workspace names under workspaces', () => {
+  assert.equal(normalizeWorkspaceNameInput('todo-app'), 'workspaces/todo-app')
+  assert.equal(normalizeWorkspaceNameInput('  todo-app  '), 'workspaces/todo-app')
+  assert.equal(normalizeWorkspaceNameInput('workspaces/existing'), 'workspaces/existing')
+  assert.equal(normalizeWorkspaceNameInput(''), '')
 })

@@ -198,6 +198,51 @@ def test_create_conversation_creates_relative_workspace_directory(client):
         shutil.rmtree(work_dir, ignore_errors=True)
 
 
+def test_create_conversation_accepts_workspace_folder_name(client):
+    from pathlib import Path
+    from uuid import uuid4
+    import shutil
+
+    from app.schemas.conversation import WORKSPACE_ROOT
+
+    agent_id = client.get("/api/v1/agents").json()["data"][0]["id"]
+    workspace_name = f"pytest-bare-workspace-{uuid4()}"
+    work_dir = WORKSPACE_ROOT / workspace_name
+    try:
+        response = client.post(
+            "/api/v1/conversations",
+            json={
+                "title": "Bare Workspace Name",
+                "type": "single",
+                "workDir": workspace_name,
+                "participantIds": [agent_id],
+            },
+        )
+
+        assert response.status_code == 200
+        created = response.json()
+        assert created["data"]["workDir"] == f"workspaces/{workspace_name}"
+        assert Path(work_dir).is_dir()
+    finally:
+        shutil.rmtree(work_dir, ignore_errors=True)
+
+
+def test_create_conversation_rejects_workspace_name_that_escapes_root(client):
+    agent_id = client.get("/api/v1/agents").json()["data"][0]["id"]
+
+    response = client.post(
+        "/api/v1/conversations",
+        json={
+            "title": "Bad Workspace",
+            "type": "single",
+            "workDir": "../outside",
+            "participantIds": [agent_id],
+        },
+    )
+
+    assert response.status_code == 422
+
+
 def test_rest_message_fallback_persists_user_message_only(client):
     agent_id = client.get("/api/v1/agents").json()["data"][0]["id"]
     conversation = client.post(

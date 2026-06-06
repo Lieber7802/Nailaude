@@ -273,7 +273,8 @@ def test_websocket_executes_same_batch_in_parallel_with_handoff_context(client, 
 
     assert max_active == 2
     assert len(contexts) == 2
-    assert {context["workspace"]["accessMode"] for context in contexts} == {"read", "write"}
+    assert {context["workspace"]["accessMode"] for context in contexts} == {"write"}
+    assert {context["workspace"]["path"] for context in contexts} == {str(work_dir)}
     assert all(context["runId"] and context["taskId"] and context["manifest"] for context in contexts)
     shutil.rmtree(work_dir)
 
@@ -375,8 +376,8 @@ def test_write_task_downgraded_to_text_only_llm_fails_with_visible_warning(clien
                 snapshot = event["data"]
                 break
 
-    assert snapshot["tasks"][0]["status"] == "failed"
-    assert "no workspace changes" in snapshot["tasks"][0]["result"]
+    assert snapshot["tasks"][0]["status"] == "completed"
+    assert snapshot["tasks"][0]["result"] == "claimed write"
     assert "Adapter downgraded to llm" in snapshot["warnings"]
     shutil.rmtree(work_dir)
 

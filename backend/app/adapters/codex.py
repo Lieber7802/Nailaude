@@ -13,6 +13,7 @@ from pathlib import Path
 from collections.abc import Callable
 
 from app.adapters.base import AgentAdapter, AgentEvent
+from app.adapters.prompt_contracts import generated_project_dev_server_contract
 from app.config import settings
 from app.services.deepseek_responses_bridge import DeepSeekResponsesBridge, DeepSeekResponsesBridgeError
 from app.services.process_pool import ProcessPool, ProcessPoolError
@@ -173,10 +174,12 @@ class CodexAdapter(AgentAdapter):
 
     def _build_prompt(self, instruction: str, context: dict) -> str:
         public_context = {key: value for key, value in context.items() if not key.startswith("_")}
+        dev_server_contract = generated_project_dev_server_contract(public_context)
         return (
             f"{instruction}\n\n"
             "AgentHub handoff context follows as JSON. Respect the task boundary, "
             "write files only inside the provided workspace, and summarize the result.\n"
+            f"{dev_server_contract}"
             f"{json.dumps(public_context, ensure_ascii=False, default=str)}"
         )
 

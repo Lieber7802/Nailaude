@@ -140,10 +140,6 @@ class OrchestratorPlanner:
             )
             if isinstance(access_mode, str):
                 normalized_access_mode = access_mode.strip().lower()
-                if normalized_access_mode == "read" and (
-                    self._looks_like_write_task(task, context) or self._stage_implies_write(task)
-                ):
-                    normalized_access_mode = "write"
                 task["accessMode"] = normalized_access_mode
                 if "access_mode" in task:
                     task["access_mode"] = normalized_access_mode
@@ -269,14 +265,6 @@ class OrchestratorPlanner:
     def _resolve_agent_id(self, task: dict, context: dict) -> None:
         participants = context.get("participants") or []
         participant_ids = {p["id"] for p in participants if isinstance(p, dict) and "id" in p}
-        stage = self._task_stage(task)
-        preferred = self._preferred_agent_for_stage(stage, participants) if stage else None
-        if preferred:
-            task["agentId"] = preferred["id"]
-            if "agent_id" in task:
-                task["agent_id"] = preferred["id"]
-            task["agentName"] = preferred["name"]
-            return
         current_id = task.get("agentId") or task.get("agent_id") or ""
         if current_id in participant_ids:
             return
@@ -293,6 +281,14 @@ class OrchestratorPlanner:
             if "agent_id" in task:
                 task["agent_id"] = resolved_id
             task["agentName"] = agent_name
+            return
+        stage = self._task_stage(task)
+        preferred = self._preferred_agent_for_stage(stage, participants) if stage else None
+        if preferred:
+            task["agentId"] = preferred["id"]
+            if "agent_id" in task:
+                task["agent_id"] = preferred["id"]
+            task["agentName"] = preferred["name"]
             return
         inferred_id = self._infer_agent_id_from_task(task, participants)
         if inferred_id:

@@ -237,7 +237,7 @@ async def test_runtime_cancel_stops_blocked_executor_without_manual_release(tmp_
 
 
 @pytest.mark.asyncio
-async def test_runtime_rejects_successful_write_without_workspace_change(tmp_path):
+async def test_runtime_allows_success_without_workspace_change(tmp_path):
     async def executor(planned_task, workspace):
         return {"status": "success", "summary": "claimed success", "teamNotes": []}
 
@@ -250,9 +250,28 @@ async def test_runtime_rejects_successful_write_without_workspace_change(tmp_pat
     )
 
     write_task = snapshot["tasks"][0]
-    assert write_task["status"] == "failed"
-    assert "no workspace changes" in write_task["result"]
+    assert write_task["status"] == "completed"
+    assert write_task["result"] == "claimed success"
     assert write_task["audit"]["filesChanged"] == []
+
+
+@pytest.mark.asyncio
+async def test_runtime_uses_real_workspace_for_read_metadata_tasks(tmp_path):
+    paths = []
+
+    async def executor(planned_task, workspace):
+        paths.append(workspace.path)
+        return {"status": "success", "summary": "ok", "teamNotes": []}
+
+    await OrchestratorRuntime().execute(
+        run_id="run-1",
+        conversation_id="conversation",
+        work_dir=str(tmp_path),
+        tasks=[task("review", access_mode="read")],
+        executor=executor,
+    )
+
+    assert paths == [str(tmp_path)]
 
 
 @pytest.mark.asyncio

@@ -6,7 +6,7 @@ import WebPreviewCard from '../cards/WebPreviewCard'
 import type { Agent, Artifact, Message } from '../../services/api'
 import { useArtifactStore } from '../../stores/artifactStore'
 import { useUIStore } from '../../stores/uiStore'
-import { MESSAGE_ARTIFACT_COLLAPSE_LIMIT, getOrderedMessageArtifacts, getVisibleMessageArtifacts } from '../../utils/artifactCard'
+import { getOrderedMessageArtifacts, getVisibleMessageArtifacts } from '../../utils/artifactCard'
 import { formatChatTime } from '../../utils/chatUi'
 import MessageMarkdown from './MessageMarkdown'
 
@@ -39,7 +39,6 @@ const MessageBubble = ({ agent, isStreaming = false, message }: MessageBubblePro
     ...storedArtifacts.filter((artifact) => !message.artifacts.some((item) => item.id === artifact.id)),
   ])
   const visibleArtifacts = getVisibleMessageArtifacts(artifacts, artifactsExpanded)
-  const collapsedHiddenCount = Math.max(0, artifacts.length - MESSAGE_ARTIFACT_COLLAPSE_LIMIT)
 
   return (
     <article className={isUser ? 'message-bubble message-bubble--user' : 'message-bubble'}>
@@ -73,7 +72,7 @@ const MessageBubble = ({ agent, isStreaming = false, message }: MessageBubblePro
               type="button"
               onClick={() => setArtifactsExpanded((expanded) => !expanded)}
             >
-              {artifactsExpanded ? '收起产物列表' : `展开剩余 ${collapsedHiddenCount} 个产物`}
+              {artifactsExpanded ? '收起产物列表' : `展开剩余 ${visibleArtifacts.hiddenCount} 个产物`}
             </button>
           )}
         </div>

@@ -30,7 +30,7 @@ class HandoffBuilder:
             "runId": run_id,
             "taskId": task["id"],
             "batchId": batch_id,
-            "workspace": {"path": workspace_path, "accessMode": task["accessMode"], "snapshotId": snapshot_id},
+            "workspace": {"path": workspace_path, "accessMode": "write", "snapshotId": snapshot_id},
             "task": deepcopy(task),
             "collaboration": {
                 "projectSummary": project_summary,

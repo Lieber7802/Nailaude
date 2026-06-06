@@ -60,10 +60,12 @@
 {
   "title": "Todo App 开发",
   "type": "group",
-  "workDir": "/home/user/projects/todo-app",
+  "workDir": "todo-app",
   "participantIds": ["agent-uuid-1", "agent-uuid-2"]
 }
 ```
+
+`workDir` 可以留空自动生成唯一工作区；也可以传工作目录名称（如 `todo-app`），后端会规范化并保存到项目 `workspaces/todo-app`。兼容传入已带前缀的 `workspaces/todo-app`，但路径不能逃逸项目 `workspaces/` 目录。
 
 响应体：
 ```json
@@ -73,7 +75,7 @@
     "id": "conv-uuid-123",
     "title": "Todo App 开发",
     "type": "group",
-    "workDir": "/home/user/projects/todo-app",
+    "workDir": "workspaces/todo-app",
     "participantIds": ["agent-uuid-1", "agent-uuid-2"],
     "participants": [
       { "id": "agent-uuid-1", "name": "代码工匠", "avatar": "🛠️" },
@@ -106,7 +108,7 @@
         "id": "conv-uuid-123",
         "title": "Todo App 开发",
         "type": "group",
-        "workDir": "/home/user/projects/todo-app",
+        "workDir": "workspaces/todo-app",
         "participantIds": ["agent-uuid-1", "agent-uuid-2"],
         "participants": [...],
         "createdAt": "2026-05-21T10:30:00Z",
@@ -716,12 +718,16 @@ ws://localhost:8000/ws/{conversation_id}
 }
 ```
 
+Planner 对合法的当前参与者 `agentId` 以 LLM 输出为准；后端只在 `agentId` 缺失、非法或使用别名时做低侵入修复，并继续校验显式 @ 的多个智能体是否都获得任务。
+
+`accessMode` 为兼容保留的计划元数据；当前后端不再用它做真实读写权限、临时只读工作区隔离、并发限制或“无文件变更即失败”判定。所有 Agent 任务都在会话工作区内执行。
+
 `sequence` 在同一 Run 内单调递增。前端必须忽略旧快照。M3 额外支持：
 
 - `orchestrator_input_required`：Planner 需要澄清或推荐加入 Agent。
 - `orchestrator_input_response`：用户提交回答或确认加入 Agent。
-- `orchestrator_approval_required`：高风险写操作需要审批。
-- `orchestrator_approval_response`：用户批准或拒绝写操作。
+- `orchestrator_approval_required`：兼容保留；当前策略完全放开工作区内写操作，后端不再因删除/重命名、配置文件修改或预计修改文件数推送审批。
+- `orchestrator_approval_response`：兼容保留；当前正常流程不会要求用户提交审批。
 - `team_board_updated`：Team Board 版本刷新。
 - `project_state_updated`：Project State 版本刷新。
 

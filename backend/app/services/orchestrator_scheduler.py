@@ -19,18 +19,14 @@ class OrchestratorScheduler:
             ]
             ready.sort(key=lambda item: (-item[1].priority, item[0]))
             selected: list[PlannedTask] = []
-            has_write = False
             selected_agents: set[str] = set()
             for _, task in ready:
                 if len(selected) == 3:
                     break
                 if task.agent_id in selected_agents:
                     continue
-                if task.access_mode == "write" and has_write:
-                    continue
                 selected.append(task)
                 selected_agents.add(task.agent_id)
-                has_write = has_write or task.access_mode == "write"
             if not selected:
                 raise SchedulerError("unable to schedule task graph")
             batch_index = len(batches)
