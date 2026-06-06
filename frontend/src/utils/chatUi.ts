@@ -3,6 +3,11 @@ export interface AttachmentSummaryInput {
   size: number
 }
 
+export interface ConversationListTimeInput {
+  createdAt?: string
+  updatedAt?: string
+}
+
 const LOCAL_TIME_FORMATTER = new Intl.DateTimeFormat('zh-CN', {
   hour: '2-digit',
   minute: '2-digit',
@@ -21,6 +26,11 @@ export function parseBackendTimestamp(value: string): Date {
 export function formatChatTime(value: string | Date): string {
   const date = value instanceof Date ? value : parseBackendTimestamp(value)
   return LOCAL_TIME_FORMATTER.format(date)
+}
+
+export function formatConversationListTime(conversation: ConversationListTimeInput): string {
+  const timestamp = conversation.updatedAt || conversation.createdAt
+  return timestamp ? formatChatTime(timestamp) : '新建'
 }
 
 export function buildAttachmentSummary(files: AttachmentSummaryInput[]): string {

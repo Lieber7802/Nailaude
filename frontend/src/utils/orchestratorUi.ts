@@ -1,25 +1,47 @@
 import type { Agent, Task } from '../services/api'
 import type { OrchestratorRunStatus } from '../../../packages/shared/types'
 
+export type CollaborationAgentTone = 'done' | 'pending' | 'danger' | 'warning' | 'idle'
+
+export interface CollaborationTaskTiming {
+  startedAt: number
+  endedAt?: number
+}
+
+export interface VisibleCollaborationAgent {
+  durationMs?: number
+  id: string
+  name: string
+  status: string
+  tone: CollaborationAgentTone
+}
+
 export function visibleCollaborationAgents(
   participantAgents: Pick<Agent, 'id' | 'name'>[],
   tasks: Pick<Task, 'agentName' | 'status'>[],
-  thinkingAgents: string[]
-): Array<{ id: string; name: string; status: string }> {
+  thinkingAgents: string[],
+  taskTimings: Record<string, CollaborationTaskTiming> = {},
+  now = Date.now()
+): VisibleCollaborationAgent[] {
   const activeNames = new Set([...tasks.map((task) => task.agentName), ...thinkingAgents])
   const visibleAgents = participantAgents.filter((agent) => activeNames.has(agent.name))
 
   if (visibleAgents.length === 0 && activeNames.size === 0) {
-    return participantAgents.map((agent) => ({ id: agent.id, name: agent.name, status: '等待中' }))
+    return participantAgents.map((agent) => ({ id: agent.id, name: agent.name, status: '等待中', tone: 'idle' }))
   }
 
   return visibleAgents.map((agent) => {
     const task = tasks.find((item) => item.agentName === agent.name)
-    return {
+    const isThinking = thinkingAgents.includes(agent.name)
+    const durationMs = taskDurationMs(taskTimings[agent.name], now)
+    const visibleAgent: VisibleCollaborationAgent = {
       id: agent.id,
       name: agent.name,
-      status: thinkingAgents.includes(agent.name) ? '思考中' : taskStatusLabel(task?.status),
+      status: isThinking ? '思考中' : taskStatusLabel(task?.status),
+      tone: isThinking ? 'pending' : taskStatusTone(task?.status),
     }
+    if (durationMs !== undefined) visibleAgent.durationMs = durationMs
+    return visibleAgent
   })
 }
 
@@ -32,6 +54,28 @@ export function taskStatusLabel(status?: Task['status']): string {
   return '等待中'
 }
 
+export function taskStatusTone(status?: Task['status']): CollaborationAgentTone {
+  if (status === 'completed') return 'done'
+  if (status === 'running') return 'pending'
+  if (status === 'failed' || status === 'cancelled') return 'danger'
+  if (status === 'blocked') return 'warning'
+  return 'idle'
+}
+
+export function formatTaskDuration(durationMs?: number): string {
+  if (durationMs === undefined) return ''
+  const safeDuration = Math.max(0, durationMs)
+  const totalSeconds = Math.round(safeDuration / 1000)
+
+  if (totalSeconds < 60) {
+    return `${(safeDuration / 1000).toFixed(totalSeconds < 10 ? 1 : 0)}s`
+  }
+
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`
+}
+
 export function batchStatusLabel(status: string): string {
   if (status === 'completed') return '已完成'
   if (status === 'running') return '进行中'
@@ -39,6 +83,11 @@ export function batchStatusLabel(status: string): string {
   if (status === 'partial') return '部分完成'
   if (status === 'cancelled') return '已终止'
   return '等待中'
+}
+
+function taskDurationMs(timing: CollaborationTaskTiming | undefined, now: number): number | undefined {
+  if (!timing) return undefined
+  return Math.max(0, (timing.endedAt ?? now) - timing.startedAt)
 }
 
 export function orchestratorStatusLabel(status: OrchestratorRunStatus): string {

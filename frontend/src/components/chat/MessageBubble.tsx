@@ -1,11 +1,12 @@
 import { LoadingOutlined } from '@ant-design/icons'
+import { useState } from 'react'
 import CodeCard from '../cards/CodeCard'
 import DiffCard from '../cards/DiffCard'
 import WebPreviewCard from '../cards/WebPreviewCard'
 import type { Agent, Artifact, Message } from '../../services/api'
 import { useArtifactStore } from '../../stores/artifactStore'
 import { useUIStore } from '../../stores/uiStore'
-import { getOrderedMessageArtifacts } from '../../utils/artifactCard'
+import { MESSAGE_ARTIFACT_COLLAPSE_LIMIT, getOrderedMessageArtifacts, getVisibleMessageArtifacts } from '../../utils/artifactCard'
 import { formatChatTime } from '../../utils/chatUi'
 import MessageMarkdown from './MessageMarkdown'
 
@@ -26,6 +27,7 @@ const roleLabel: Record<Message['role'], string> = {
 }
 
 const MessageBubble = ({ agent, isStreaming = false, message }: MessageBubbleProps) => {
+  const [artifactsExpanded, setArtifactsExpanded] = useState(false)
   const storedArtifacts = useArtifactStore((state) => state.artifactsByMessage[message.id] || EMPTY_ARTIFACTS)
   const openArtifact = useArtifactStore((state) => state.openArtifact)
   const setPreviewVisible = useUIStore((state) => state.setPreviewVisible)
@@ -36,6 +38,8 @@ const MessageBubble = ({ agent, isStreaming = false, message }: MessageBubblePro
     ...message.artifacts,
     ...storedArtifacts.filter((artifact) => !message.artifacts.some((item) => item.id === artifact.id)),
   ])
+  const visibleArtifacts = getVisibleMessageArtifacts(artifacts, artifactsExpanded)
+  const collapsedHiddenCount = Math.max(0, artifacts.length - MESSAGE_ARTIFACT_COLLAPSE_LIMIT)
 
   return (
     <article className={isUser ? 'message-bubble message-bubble--user' : 'message-bubble'}>
@@ -53,7 +57,7 @@ const MessageBubble = ({ agent, isStreaming = false, message }: MessageBubblePro
       </div>
       {artifacts.length > 0 && (
         <div className="message-bubble__artifacts">
-          {artifacts.map((artifact) => (
+          {visibleArtifacts.visibleArtifacts.map((artifact) => (
             <ArtifactCard
               artifact={artifact}
               key={artifact.id}
@@ -63,6 +67,15 @@ const MessageBubble = ({ agent, isStreaming = false, message }: MessageBubblePro
               }}
             />
           ))}
+          {visibleArtifacts.canToggle && (
+            <button
+              className="artifact-list-toggle"
+              type="button"
+              onClick={() => setArtifactsExpanded((expanded) => !expanded)}
+            >
+              {artifactsExpanded ? '收起产物列表' : `展开剩余 ${collapsedHiddenCount} 个产物`}
+            </button>
+          )}
         </div>
       )}
     </article>

@@ -1,4 +1,10 @@
-import { CheckCircleFilled, CloseCircleFilled, LoadingOutlined, PauseCircleFilled } from '@ant-design/icons'
+import {
+  CheckCircleFilled,
+  CloseCircleFilled,
+  ExclamationCircleFilled,
+  LoadingOutlined,
+  PauseCircleFilled,
+} from '@ant-design/icons'
 import type { WSOrchestratorStatus } from '../../../../packages/shared/types'
 import {
   orchestratorMessageLabel,
@@ -51,6 +57,7 @@ const taskIcon = (status: string) => {
   if (status === 'running') return <LoadingOutlined />
   if (status === 'completed') return <CheckCircleFilled />
   if (status === 'failed' || status === 'cancelled') return <CloseCircleFilled />
+  if (status === 'blocked') return <ExclamationCircleFilled />
   return <PauseCircleFilled />
 }
 

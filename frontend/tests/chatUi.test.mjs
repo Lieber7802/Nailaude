@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 
 import {
   buildAttachmentSummary,
+  formatConversationListTime,
   getAvailableConversationAgentIds,
   mergeConversationAgentIds,
   parseBackendTimestamp,
@@ -14,6 +15,16 @@ test('treats backend ISO timestamps without timezone as UTC', () => {
 
 test('preserves explicit timezone offsets in timestamps', () => {
   assert.equal(parseBackendTimestamp('2026-06-04T15:00:00+08:00').toISOString(), '2026-06-04T07:00:00.000Z')
+})
+
+test('formats conversation list time from updatedAt instead of a hard-coded placeholder', () => {
+  assert.equal(
+    formatConversationListTime({
+      createdAt: '2026-06-04T01:00:00Z',
+      updatedAt: '2026-06-04T07:23:00Z',
+    }),
+    '15:23'
+  )
 })
 
 test('builds attachment summaries for selected files', () => {

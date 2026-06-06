@@ -1,6 +1,8 @@
 import type { Artifact } from '../services/api'
 import { isMarkdownFile } from './markdownPreview.ts'
 
+export const MESSAGE_ARTIFACT_COLLAPSE_LIMIT = 5
+
 export type ArtifactCardKind = 'code' | 'diff' | 'markdown' | 'webpage' | 'file'
 
 export interface ArtifactCardPresentation {
@@ -10,8 +12,25 @@ export interface ArtifactCardPresentation {
   title: string
 }
 
+export interface VisibleMessageArtifacts {
+  canToggle: boolean
+  hiddenCount: number
+  visibleArtifacts: Artifact[]
+}
+
 export function getOrderedMessageArtifacts(artifacts: Artifact[]): Artifact[] {
   return [...artifacts].sort((left, right) => artifactMessageOrder(left) - artifactMessageOrder(right))
+}
+
+export function getVisibleMessageArtifacts(artifacts: Artifact[], expanded: boolean): VisibleMessageArtifacts {
+  const canToggle = artifacts.length > MESSAGE_ARTIFACT_COLLAPSE_LIMIT
+  const visibleArtifacts = !canToggle || expanded ? artifacts : artifacts.slice(0, MESSAGE_ARTIFACT_COLLAPSE_LIMIT)
+
+  return {
+    canToggle,
+    hiddenCount: artifacts.length - visibleArtifacts.length,
+    visibleArtifacts,
+  }
 }
 
 export function getOutputArtifacts(artifacts: Artifact[]): Artifact[] {

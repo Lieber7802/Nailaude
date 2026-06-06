@@ -2,10 +2,12 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import {
+  MESSAGE_ARTIFACT_COLLAPSE_LIMIT,
   getArtifactCardPresentation,
   getChangeArtifacts,
   getOrderedMessageArtifacts,
   getOutputArtifacts,
+  getVisibleMessageArtifacts,
 } from '../src/utils/artifactCard.ts'
 
 const baseArtifact = {
@@ -105,4 +107,25 @@ test('right preview outputs exclude diffs while changes list only includes diff 
 
   assert.deepEqual(getOutputArtifacts([created, changed]).map((artifact) => artifact.id), ['created'])
   assert.deepEqual(getChangeArtifacts([created, changed]).map((artifact) => artifact.id), ['changed'])
+})
+
+test('message artifact lists default to the first five items before expansion', () => {
+  const artifacts = Array.from({ length: 7 }, (_, index) => ({
+    ...baseArtifact,
+    id: `artifact-${index + 1}`,
+    type: 'code',
+    title: `file-${index + 1}.ts`,
+  }))
+
+  const collapsed = getVisibleMessageArtifacts(artifacts, false)
+  const expanded = getVisibleMessageArtifacts(artifacts, true)
+
+  assert.equal(MESSAGE_ARTIFACT_COLLAPSE_LIMIT, 5)
+  assert.deepEqual(
+    collapsed.visibleArtifacts.map((artifact) => artifact.id),
+    ['artifact-1', 'artifact-2', 'artifact-3', 'artifact-4', 'artifact-5']
+  )
+  assert.equal(collapsed.hiddenCount, 2)
+  assert.deepEqual(expanded.visibleArtifacts.map((artifact) => artifact.id), artifacts.map((artifact) => artifact.id))
+  assert.equal(expanded.hiddenCount, 0)
 })

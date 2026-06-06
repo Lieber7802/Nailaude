@@ -757,40 +757,40 @@
 - 真实本地 Codex Adapter 烟测：`CodexAdapter.run_task()` 创建 `adapter_smoke.txt`，依次发出 `text_delta`、`file_created` 和 `done`。
 - 真实 DeepSeek Planner + Codex WebSocket 烟测：生成 `deepseek_codex_smoke.txt`，发出 `artifact`，最终状态为 `completed`。
 
-### Next Steps
-- For full product acceptance, run a browser/WebSocket conversation with a Codex-backed Agent selected in the database and confirm the chat artifact appears in the UI.
-- OpenCode remains a one-shot minimal adapter; session support is still out of scope for this pass.
+### 下一步
+- 完整产品验收时，在数据库中选中 Codex 支持的 Agent，运行一次浏览器/WebSocket 会话，确认聊天产物出现在 UI 中。
+- OpenCode 仍为一次性最小 Adapter；session 支持仍不在本轮范围内。
 
-## [2026-06-01] Codex - M3 OpenCode DeepSeek Integration
+## [2026-06-01] Codex - M3 OpenCode DeepSeek 集成
 
-### Completed
-- Installed OpenCode through Homebrew after npm registry download stalls; verified `/opt/homebrew/bin/opencode` version `1.15.13` and `opencode run --help`.
-- Updated `OpenCodeAdapter` to run the real one-shot CLI path:
+### 完成内容
+- npm registry 下载卡住后，改用 Homebrew 安装 OpenCode；已验证 `/opt/homebrew/bin/opencode` 版本为 `1.15.13`，并确认 `opencode run --help` 可用。
+- 更新 `OpenCodeAdapter`，接入真实一次性 CLI 路径：
   `opencode run --format json --model deepseek/deepseek-v4-flash --dir <workspace> --dangerously-skip-permissions <prompt>`.
-- Added JSONL text extraction and before/after workspace snapshots so OpenCode-created and OpenCode-modified text files emit standard `file_created` / `file_modified` events.
-- Recorded DeepSeek provider/model findings from OpenCode docs and Models.dev in `docs/CLI_AGENT_RESEARCH.md`.
+- 新增 JSONL 文本提取和执行前后 workspace 快照，使 OpenCode 创建/修改的文本文件能发出标准 `file_created` / `file_modified` 事件。
+- 将 OpenCode 文档和 Models.dev 中关于 DeepSeek provider/model 的调研结果记录到 `docs/CLI_AGENT_RESEARCH.md`。
 
-### Added/Modified Files
-- `backend/app/adapters/opencode.py` (modified)
-- `backend/app/config.py` (modified)
-- `backend/tests/test_m3_cli_adapters.py` (modified)
-- `docs/CLI_AGENT_RESEARCH.md` (modified)
-- `docs/plans/M3_2_CLI_ADAPTERS_CHECKLIST.md` (modified)
-- `DEVLOG.md` (modified)
+### 新增/修改文件
+- `backend/app/adapters/opencode.py` (修改)
+- `backend/app/config.py` (修改)
+- `backend/tests/test_m3_cli_adapters.py` (修改)
+- `docs/CLI_AGENT_RESEARCH.md` (修改)
+- `docs/plans/M3_2_CLI_ADAPTERS_CHECKLIST.md` (修改)
+- `DEVLOG.md` (修改)
 
-### Interface Changes
-- No shared type, REST, or WebSocket contract changes.
-- Added backend-only `OPENCODE_MODEL`, defaulting to `deepseek/deepseek-v4-flash`.
+### 接口变化
+- 无 shared type、REST 或 WebSocket 契约变更。
+- 新增仅后端使用的 `OPENCODE_MODEL`，默认值为 `deepseek/deepseek-v4-flash`。
 
-### Verification
+### 验证
 - `opencode --version` -> `1.15.13`
-- `opencode run --help` -> confirmed `--format`, `--model`, `--dir`, and `--dangerously-skip-permissions`.
+- `opencode run --help` -> 确认支持 `--format`、`--model`、`--dir` 和 `--dangerously-skip-permissions`。
 - `/tmp/agenthub-test-venv311/bin/python -m pytest backend/tests/test_m3_cli_adapters.py backend/tests/test_m3_process_pool.py backend/tests/test_m3_agent_manager.py` -> `15 passed`
-- `git diff --check` -> passed
+- `git diff --check` -> 通过
 
-### Next Steps
-- Configure `DEEPSEEK_API_KEY` in the runtime environment before a real OpenCode task smoke; no `.env` secrets were edited.
-- Session reuse remains out of scope; M3 uses one-shot `opencode run`.
+### 下一步
+- 真实 OpenCode 任务烟测前，请在运行环境配置 `DEEPSEEK_API_KEY`；本次未编辑任何 `.env` 凭据。
+- session 复用仍不在本轮范围内；M3 使用一次性 `opencode run`。
 
 ### 下一步
 - 完整产品验收时，在数据库中选中 Codex 支持的 Agent，运行一次浏览器/WebSocket 会话，确认聊天产物出现在 UI 中。
@@ -1190,7 +1190,7 @@
 - `cd frontend && npm test` -> `6 passed`
 - `cd frontend && npm run build` -> 通过。
 - `git diff --check` -> 通过。
-- Browser smoke：`http://127.0.0.1:5174/workspace` 页面可加载，前端控制台 error 数为 0；未启动后端时页面有 API 404 alert，属于环境缺失。
+- 浏览器烟测：`http://127.0.0.1:5174/workspace` 页面可加载，前端控制台 error 数为 0；未启动后端时页面有 API 404 alert，属于环境缺失。
 
 ## [2026-06-02] Codex - Markdown 表格渲染修复
 
@@ -1250,23 +1250,23 @@
 - `cd frontend && npm test` -> `9 passed`
 - `cd frontend && npm run build` -> 通过。
 - `git diff --check` -> 通过。
-- Browser smoke 未完成：本轮 in-app Browser 返回 `Browser is not available: iab`；Vite server 已启动后停止。
-## [2026-06-03] Codex - M3 Agent chain blockers fixed
+- 浏览器烟测未完成：本轮 in-app Browser 返回 `Browser is not available: iab`；Vite server 已启动后停止。
+## [2026-06-03] Codex - M3 Agent 链路阻塞修复
 
-### Problem judgment
-- WSL/macOS are now treated as the default real-agent runtime. Windows-specific CLI launch behavior is not the primary integration target.
-- OpenCode CLI `run --format json` can exit successfully while emitting only protocol events, which made frontend chat bubbles show synthetic fallback summaries instead of model text.
-- DeepSeek direct API was healthy, but `LLMClient.health_check()` used a 16-token JSON probe and returned false for `deepseek-v4-flash`.
-- Review tasks could return useful Codex text but be marked failed when planned with `accessMode=write` and no file changes.
+### 问题判断
+- WSL/macOS 现在作为默认真实 Agent 运行环境；Windows 专属 CLI 启动行为不再是主要集成目标。
+- OpenCode CLI `run --format json` 可能只输出协议事件但仍成功退出，导致前端聊天气泡展示合成兜底摘要，而不是模型文本。
+- DeepSeek 直连 API 健康，但 `LLMClient.health_check()` 使用 16-token JSON 探针，导致 `deepseek-v4-flash` 返回 false。
+- 审查任务可能返回有用的 Codex 文本，但如果计划为 `accessMode=write` 且没有文件变更，会被标记为失败。
 
-### Completed
-- Added `docs/plans/M3_AGENT_CHAIN_BLOCKERS_SPEC.md`, `docs/plans/M3_AGENT_CHAIN_BLOCKERS_PLAN.md`, and `docs/plans/M3_AGENT_CHAIN_BLOCKERS_CHECKLIST.md`.
-- `OpenCodeAdapter` now prefers a per-task `opencode serve` HTTP path for production/default execution and keeps the old CLI `run --format json` parser as a fallback/test helper.
-- Added server response text extraction that skips reasoning/tool payloads and preserves assistant text.
-- `LLMClient.health_check()` now requests a sufficient bounded JSON budget and requires semantic `{"ok": true}`.
-- `OrchestratorRuntime` still rejects build/write tasks with no workspace changes, but allows review/audit/validation tasks with a non-empty summary to complete without file changes.
+### 完成内容
+- 新增 `docs/plans/M3_AGENT_CHAIN_BLOCKERS_SPEC.md`、`docs/plans/M3_AGENT_CHAIN_BLOCKERS_PLAN.md` 和 `docs/plans/M3_AGENT_CHAIN_BLOCKERS_CHECKLIST.md`。
+- `OpenCodeAdapter` 在生产/默认执行路径优先使用逐任务 `opencode serve` HTTP 路径，同时保留旧 CLI `run --format json` 解析器作为 fallback/测试辅助。
+- 新增 server response 文本提取，跳过 reasoning/tool payload，保留 assistant 文本。
+- `LLMClient.health_check()` 现在请求足够但有界的 JSON token 预算，并要求语义上的 `{"ok": true}`。
+- `OrchestratorRuntime` 仍会拒绝无 workspace 变更的构建/写入任务，但允许带非空摘要的审查/审计/校验任务在无文件变更时完成。
 
-### Changed files
+### 修改文件
 - `backend/app/adapters/opencode.py`
 - `backend/app/services/llm_client.py`
 - `backend/app/services/orchestrator_runtime.py`
@@ -1278,96 +1278,96 @@
 - `docs/plans/M3_AGENT_CHAIN_BLOCKERS_CHECKLIST.md`
 - `DEVLOG.md`
 
-### Interface changes
-- No shared type, REST, or WebSocket contract changes.
-- No new dependencies.
-- MockAdapter remains unchanged.
+### 接口变化
+- 无 shared type、REST 或 WebSocket 契约变更。
+- 无新增依赖。
+- MockAdapter 保持不变。
 
-### Verification
-- RED: new tests initially failed for `max_tokens=16`, `ok:false` health acceptance, no-change review task failure, missing OpenCode server text extractor, and missing `server_runner` adapter path.
-- WSL targeted tests: `PYTHONPATH=. python -B -m pytest -q -p no:cacheprovider tests/test_m3_llm_client.py tests/test_m3_orchestrator_runtime.py tests/test_m3_cli_adapters.py` -> `42 passed`.
-- WSL broader M3 tests: `PYTHONPATH=. python -B -m pytest -q -p no:cacheprovider tests/test_m3_websocket_runtime.py tests/test_m3_e2e.py` -> `12 passed`.
-- WSL real adapter smoke: `llm_health True`; OpenCode returned `OPENCODE_ADAPTER_SERVER_WSL_OK`; Codex returned `CODEX_AFTER_FIX_WSL_OK`.
-- WSL real group smoke: OpenCode created `index.html` and emitted a webpage artifact; Codex review text streamed; final run `completed`; both task states completed; both batch states completed; no warnings.
+### 验证
+- RED：新增测试最初在 `max_tokens=16`、接受 `ok:false` 健康检查、无变更审查任务失败、缺少 OpenCode server 文本提取器、缺少 `server_runner` adapter 路径等场景失败。
+- WSL 定向测试：`PYTHONPATH=. python -B -m pytest -q -p no:cacheprovider tests/test_m3_llm_client.py tests/test_m3_orchestrator_runtime.py tests/test_m3_cli_adapters.py` -> `42 passed`。
+- WSL 更广 M3 测试：`PYTHONPATH=. python -B -m pytest -q -p no:cacheprovider tests/test_m3_websocket_runtime.py tests/test_m3_e2e.py` -> `12 passed`。
+- WSL 真实 Adapter 烟测：`llm_health True`；OpenCode 返回 `OPENCODE_ADAPTER_SERVER_WSL_OK`；Codex 返回 `CODEX_AFTER_FIX_WSL_OK`。
+- WSL 真实群聊烟测：OpenCode 创建 `index.html` 并发出 webpage artifact；Codex 审查文本流式输出；最终 run 为 `completed`；两个任务状态完成；两个批次状态完成；无 warning。
 
-### Teammate notes
-- If OpenCode server startup fails, the adapter falls back to the existing CLI path and existing fallback summaries.
-- A future optimization can reuse an OpenCode server process, but this fix intentionally uses a per-task lifecycle to keep resource ownership simple and testable.
+### 队友备注
+- 如果 OpenCode server 启动失败，adapter 会回退到既有 CLI 路径和既有兜底摘要。
+- 后续优化可以复用 OpenCode server 进程；本次修复有意使用逐任务生命周期，保持资源归属简单、可测试。
 
-## [2026-06-03] Codex - M3 Agent chain shared-state warning fix
+## [2026-06-03] Codex - M3 Agent 链路共享状态 warning 修复
 
-### Problem judgment
-- After the AGNT_CHAIN_BLOCKERS changes, a real run could finish with `Shared state refresh warning: 'taskId'`.
-- The UI warning came from `TeamProtocolService.merge_batch()` receiving a failed task result without `taskId`.
-- Root cause: `OrchestratorRuntime.run_task()` catches executor exceptions and creates a fallback failed result, but that fallback did not preserve task metadata required by Team Board and Project State refresh.
+### 问题判断
+- `AGNT_CHAIN_BLOCKERS` 改动后，真实 run 可能以 `Shared state refresh warning: 'taskId'` 结束。
+- UI warning 来自 `TeamProtocolService.merge_batch()` 收到缺少 `taskId` 的失败任务结果。
+- 根因：`OrchestratorRuntime.run_task()` 捕获 executor 异常后会创建兜底失败结果，但该兜底结果没有保留 Team Board 和 Project State 刷新所需的任务元数据。
 
-### Completed
-- Added a RED regression test for executor exceptions preserving `taskId`, `agentId`, and `batchId` in `refresh_shared_state()` batch results.
-- Normalized runtime task result metadata in place before audit/status post-processing, covering normal returns, early failed returns, and exception fallback results while preserving the WebSocket handler's `task_results` reference for downstream handoff audit.
+### 完成内容
+- 新增 RED 回归测试，覆盖 executor 异常时 `refresh_shared_state()` 批次结果保留 `taskId`、`agentId` 和 `batchId`。
+- 在 audit/status 后处理前原地规范化 runtime task result 元数据，覆盖正常返回、提前失败返回和异常兜底结果，同时保留 WebSocket handler 的 `task_results` 引用，供后续 handoff audit 使用。
 
-### Changed files
+### 修改文件
 - `backend/app/services/orchestrator_runtime.py`
 - `backend/tests/test_m3_orchestrator_runtime.py`
 - `docs/plans/M3_AGENT_CHAIN_BLOCKERS_PLAN.md`
 - `docs/plans/M3_AGENT_CHAIN_BLOCKERS_CHECKLIST.md`
 - `DEVLOG.md`
 
-### Interface changes
-- No shared type, REST, WebSocket, or frontend contract changes.
-- No new dependencies.
+### 接口变化
+- 无 shared type、REST、WebSocket 或前端契约变更。
+- 无新增依赖。
 
-### Verification
-- RED: `tests/test_m3_orchestrator_runtime.py::test_runtime_passes_task_metadata_to_shared_refresh_when_executor_raises` failed with `KeyError: 'taskId'` before the fix.
-- `cd backend; python -B -m pytest -q -p no:cacheprovider tests/test_m3_orchestrator_runtime.py::test_runtime_passes_task_metadata_to_shared_refresh_when_executor_raises` -> `1 passed`.
-- `cd backend; python -B -m pytest -q -p no:cacheprovider tests/test_m3_orchestrator_runtime.py tests/test_m3_team_protocol.py tests/test_m3_project_state.py` -> `31 passed`.
-- `cd backend; python -B -m pytest -q -p no:cacheprovider tests/test_m3_llm_client.py tests/test_m3_cli_adapters.py` -> `31 passed`.
-- `cd backend; python -B -m pytest -q -p no:cacheprovider tests/test_m3_websocket_runtime.py` -> `11 passed`.
+### 验证
+- RED：修复前 `tests/test_m3_orchestrator_runtime.py::test_runtime_passes_task_metadata_to_shared_refresh_when_executor_raises` 因 `KeyError: 'taskId'` 失败。
+- `cd backend; python -B -m pytest -q -p no:cacheprovider tests/test_m3_orchestrator_runtime.py::test_runtime_passes_task_metadata_to_shared_refresh_when_executor_raises` -> `1 passed`。
+- `cd backend; python -B -m pytest -q -p no:cacheprovider tests/test_m3_orchestrator_runtime.py tests/test_m3_team_protocol.py tests/test_m3_project_state.py` -> `31 passed`。
+- `cd backend; python -B -m pytest -q -p no:cacheprovider tests/test_m3_llm_client.py tests/test_m3_cli_adapters.py` -> `31 passed`。
+- `cd backend; python -B -m pytest -q -p no:cacheprovider tests/test_m3_websocket_runtime.py` -> `11 passed`。
 
-### Teammate notes
-- Local `backend/agenthub.db` in this Windows workspace is still an older schema without M3 run snapshot tables, so the screenshot-specific persisted run could not be queried from that DB.
-- The visible `'taskId'` warning is now covered by an automated regression test at the runtime/shared-state boundary.
+### 队友备注
+- 此 Windows workspace 中的本地 `backend/agenthub.db` 仍是旧 schema，没有 M3 run snapshot 表，因此无法从该 DB 查询截图对应的持久化 run。
+- 可见的 `'taskId'` warning 已在 runtime/shared-state 边界通过自动回归测试覆盖。
 
-## [2026-06-04] Codex - M3 planner validation regression tests fixed
+## [2026-06-04] Codex - M3 Planner 校验回归测试修复
 
-### Problem judgment
-- The branch test suite had two stale regression expectations after planner catalog validation was added.
-- `test_validator_rejects_nonexistent_agent_id` expected a rejection while using an agent id that was present in `available_agent_ids`.
-- `test_non_mock_job_uses_deepseek_planner_wrapper` patched `OrchestratorPlanner.plan()` with the old two-argument signature, while production now passes `available_agent_ids`.
+### 问题判断
+- Planner catalog 校验加入后，分支测试套件里有两个过期的回归预期。
+- `test_validator_rejects_nonexistent_agent_id` 期望被拒绝，但使用的 agent id 实际存在于 `available_agent_ids`。
+- `test_non_mock_job_uses_deepseek_planner_wrapper` 仍按旧的双参数签名 patch `OrchestratorPlanner.plan()`，而生产代码现在会传入 `available_agent_ids`。
 
-### Completed
-- Corrected the validator test fixture so the planned task references an agent missing from the available catalog while still being a conversation participant.
-- Updated the WebSocket planner wrapper fake to accept and assert `available_agent_ids`.
+### 完成内容
+- 修正 validator 测试 fixture，使计划任务引用一个不在可用 catalog 中、但仍是会话参与者的 agent。
+- 更新 WebSocket planner wrapper fake，使其接收并断言 `available_agent_ids`。
 
-### Changed files
+### 修改文件
 - `backend/tests/test_m3_validator.py`
 - `backend/tests/test_m3_websocket_interactions.py`
 - `docs/plans/M3_AGENT_CHAIN_BLOCKERS_CHECKLIST.md`
 - `DEVLOG.md`
 
-### Interface changes
-- No shared type, REST, WebSocket, or frontend contract changes.
-- No production code changes.
+### 接口变化
+- 无 shared type、REST、WebSocket 或前端契约变更。
+- 无生产代码变更。
 
-### Verification
-- `cd backend && ../.venv/bin/python -m pytest tests/test_m3_validator.py::test_validator_rejects_nonexistent_agent_id tests/test_m3_websocket_interactions.py::test_non_mock_job_uses_deepseek_planner_wrapper` -> `2 passed`.
-- `cd backend && ../.venv/bin/python -m pytest tests/test_m3_validator.py tests/test_m3_websocket_interactions.py` -> `15 passed`.
-- `cd backend && ../.venv/bin/python -m pytest` -> `174 passed`, `1 warning` from Starlette/httpx testclient deprecation.
+### 验证
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m3_validator.py::test_validator_rejects_nonexistent_agent_id tests/test_m3_websocket_interactions.py::test_non_mock_job_uses_deepseek_planner_wrapper` -> `2 passed`。
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m3_validator.py tests/test_m3_websocket_interactions.py` -> `15 passed`。
+- `cd backend && ../.venv/bin/python -m pytest` -> `174 passed`，有 `1 warning` 来自 Starlette/httpx testclient deprecation。
 
-## [2026-06-04] Codex - Custom agent creation UI
+## [2026-06-04] Codex - 自定义智能体创建 UI
 
-### Problem judgment
-- Backend `/agents` CRUD and `/platforms` already existed, but the workspace had no usable custom Agent creation entry.
-- The chat top-bar `+ 添加代理` chip was static, and the left sidebar could only display existing agents.
+### 问题判断
+- 后端已有 `/agents` CRUD 和 `/platforms`，但 workspace 中没有可用的自定义 Agent 创建入口。
+- 聊天顶部 `+ 添加代理` chip 是静态的，左侧栏也只能展示已有 agents。
 
-### Completed
-- Added a custom Agent creation modal with name, avatar marker, role/function description, capability tags, backend platform selection, and optional role instruction.
-- Wired both the left sidebar add-agent action and chat top-bar add-agent action to the same creation flow.
-- Added frontend API helpers for `POST /agents` and `GET /platforms`.
-- Created agents are appended to the Zustand agent store so the left sidebar updates immediately.
-- Added backend regression coverage for creating and listing a custom Agent.
-- Updated API docs and M3 custom-agent plan/checklist.
+### 完成内容
+- 新增自定义 Agent 创建弹窗，包含名称、头像标记、角色/功能描述、能力标签、后端平台选择和可选角色指令。
+- 将左侧栏新增 Agent 操作和聊天顶部新增 Agent 操作都接到同一个创建流程。
+- 新增前端 `POST /agents` 和 `GET /platforms` API helper。
+- 创建完成的 Agent 会追加到 Zustand agent store，使左侧栏立即更新。
+- 补充创建和列出自定义 Agent 的后端回归测试。
+- 更新 API 文档和 M3 custom-agent plan/checklist。
 
-### Changed files
+### 修改文件
 - `backend/tests/test_m1_1_api.py`
 - `frontend/src/components/chat/AgentCreateModal.tsx`
 - `frontend/src/components/chat/ChatArea.tsx`
@@ -1380,35 +1380,35 @@
 - `docs/plans/M3_CUSTOM_AGENT_CHECKLIST.md`
 - `DEVLOG.md`
 
-### Interface changes
-- No shared type changes.
-- Existing `POST /api/v1/agents` and `GET /api/v1/platforms` contracts are now used by the workspace UI.
-- No new dependencies.
+### 接口变化
+- 无 shared type 变更。
+- workspace UI 现在使用既有 `POST /api/v1/agents` 和 `GET /api/v1/platforms` 契约。
+- 无新增依赖。
 
-### Verification
-- `cd backend && ../.venv/bin/python -m pytest tests/test_m1_1_api.py::test_create_custom_agent_persists_and_lists` -> `1 passed`.
-- `cd backend && ../.venv/bin/python -m pytest tests/test_m1_1_api.py` -> `8 passed`.
-- `cd frontend && npm test` -> `9 passed`.
-- `cd frontend && npm run build` -> passed.
-- `cd frontend && npm run lint` -> passed.
-- In-app browser smoke at `http://localhost:5173/workspace`: opened the add-agent modal, confirmed platform loading, submitted a custom Agent, and verified it appeared in the left sidebar immediately.
+### 验证
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m1_1_api.py::test_create_custom_agent_persists_and_lists` -> `1 passed`。
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m1_1_api.py` -> `8 passed`。
+- `cd frontend && npm test` -> `9 passed`。
+- `cd frontend && npm run build` -> 通过。
+- `cd frontend && npm run lint` -> 通过。
+- in-app browser 烟测 `http://localhost:5173/workspace`：打开新增 Agent 弹窗，确认平台加载，提交自定义 Agent，并确认其立即出现在左侧栏。
 
-### Teammate notes
-- Creating a custom Agent does not automatically add it to the active conversation; users can select it when creating a new conversation. Adding agents into an existing conversation remains a separate flow.
+### 队友备注
+- 创建自定义 Agent 不会自动加入当前会话；用户可在新建会话时选择它。将 Agent 加入既有会话仍是独立流程。
 
-## [2026-06-04] Codex - User-facing platform status cleanup
+## [2026-06-04] Codex - 用户可见平台状态清理
 
-### Problem judgment
-- Codex and OpenCode showed `not_installed` in the custom Agent modal because platform status came from seed data instead of runtime checks.
-- Mock is still required as an internal fallback/test adapter, but it should not be offered as a user-facing backend platform when creating custom Agents.
+### 问题判断
+- 自定义 Agent 弹窗中 Codex 和 OpenCode 显示 `not_installed`，原因是平台状态来自 seed 数据，而不是运行时检查。
+- Mock 仍需要作为内部 fallback/测试 Adapter，但创建自定义 Agent 时不应作为用户可见的后端平台选项。
 
-### Completed
-- Added a backend platform status service that refreshes platform rows before returning `/platforms`, `/platforms/{id}`, and `/platforms/{id}/healthcheck`.
-- CLI platforms now check binary presence before adapter health and map results to `available`, `not_installed`, or `error`.
-- The custom Agent modal filters out `mock` and defaults to the first available real platform.
-- Added backend regression coverage for Codex/OpenCode platform status refresh.
+### 完成内容
+- 新增后端平台状态服务，在返回 `/platforms`、`/platforms/{id}` 和 `/platforms/{id}/healthcheck` 前刷新 platform rows。
+- CLI 平台现在会先检查二进制文件是否存在，再检查 adapter health，并将结果映射为 `available`、`not_installed` 或 `error`。
+- 自定义 Agent 弹窗过滤 `mock`，并默认选中第一个可用真实平台。
+- 补充 Codex/OpenCode 平台状态刷新的后端回归测试。
 
-### Changed files
+### 修改文件
 - `backend/app/api/platforms.py`
 - `backend/app/services/platform_status.py`
 - `backend/tests/test_m1_1_api.py`
@@ -1417,36 +1417,36 @@
 - `docs/plans/M3_CUSTOM_AGENT_CHECKLIST.md`
 - `DEVLOG.md`
 
-### Interface changes
-- No shared type changes.
-- `/api/v1/platforms` now returns refreshed runtime status instead of static seed status.
-- MockAdapter remains available internally and in backend contracts, but is hidden from the custom Agent creation modal.
+### 接口变化
+- 无 shared type 变更。
+- `/api/v1/platforms` 现在返回刷新后的运行时状态，而不是静态 seed 状态。
+- MockAdapter 仍在内部和后端契约中可用，但会从自定义 Agent 创建弹窗中隐藏。
 
-### Verification
-- `cd backend && ../.venv/bin/python -m pytest tests/test_m1_1_api.py` -> `9 passed`.
-- `cd frontend && npm test` -> `9 passed`.
-- `cd frontend && npm run lint` -> passed.
-- `cd frontend && npm run build` -> passed.
-- `curl http://localhost:8000/api/v1/platforms` -> Codex, OpenCode, LLM, and Mock returned `available` on this machine.
-- In-app browser smoke at `http://localhost:5173/workspace`: custom Agent platform dropdown showed `Codex CLI · available`, `LLM Provider (DeepSeek) · available`, and `OpenCode CLI · available`; `Mock Agent` was not present.
+### 验证
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m1_1_api.py` -> `9 passed`。
+- `cd frontend && npm test` -> `9 passed`。
+- `cd frontend && npm run lint` -> 通过。
+- `cd frontend && npm run build` -> 通过。
+- `curl http://localhost:8000/api/v1/platforms` -> 本机 Codex、OpenCode、LLM 和 Mock 均返回 `available`。
+- in-app browser 烟测 `http://localhost:5173/workspace`：自定义 Agent 平台下拉框显示 `Codex CLI · available`、`LLM Provider (DeepSeek) · available` 和 `OpenCode CLI · available`；未出现 `Mock Agent`。
 
-## [2026-06-04] Codex - M4 chat and preview UI optimization
+## [2026-06-04] Codex - M4 聊天与预览 UI 优化
 
-### Problem judgment
-- M4 artifact cards were too heavy in the chat stream because code, diff, Markdown, and iframe previews appeared inline instead of only in the right preview panel.
-- Active agent runs had an existing backend `stop_generation` contract, but the workspace UI did not expose a stop control.
-- The three-pane workspace layout had fixed side panes and could not collapse to a chat-only view.
-- Agent replies were rendered as plain text, so Markdown syntax showed through in chat messages.
+### 问题判断
+- M4 产物卡片在聊天流中过重：代码、diff、Markdown 和 iframe 预览都内联展示，而不是只放在右侧预览面板中。
+- 活跃 Agent run 已有后端 `stop_generation` 契约，但 workspace UI 没有暴露停止控制。
+- 三栏 workspace 布局的侧栏宽度固定，无法折叠为纯聊天视图。
+- Agent 回复按纯文本渲染，导致 Markdown 语法直接显示在聊天消息中。
 
-### Completed
-- Converted code/file, diff, and webpage artifact cards into compact summary cards with copy/open actions only; opening a card restores the right preview pane and selects the artifact.
-- Added a stop button to the message input when the current conversation has an active run; it sends the existing WebSocket `stop_generation` message.
-- Added resizable left and right pane widths plus collapse/restore controls backed by Zustand UI state.
-- Hid the `Shared context` / TeamBoard panel from the chat stream.
-- Added Markdown rendering for chat replies, including headings, lists, tables, fenced code blocks, inline code, and bold text.
-- Added focused frontend tests for artifact-card presentation and chat Markdown parsing.
+### 完成内容
+- 将 code/file、diff、webpage 产物卡片改为紧凑摘要卡，只保留复制/打开操作；打开卡片会恢复右侧预览栏并选中对应产物。
+- 当前会话存在活跃 run 时，消息输入框新增停止按钮，发送既有 WebSocket `stop_generation` 消息。
+- 新增左右栏可调整宽度，以及由 Zustand UI 状态驱动的折叠/恢复控制。
+- 从聊天流中隐藏 `Shared context` / TeamBoard 面板。
+- 新增聊天回复 Markdown 渲染，支持标题、列表、表格、fenced code block、行内代码和加粗。
+- 补充产物卡片展示和聊天 Markdown 解析的前端定向测试。
 
-### Changed files
+### 修改文件
 - `frontend/src/components/cards/CodeCard.tsx`
 - `frontend/src/components/cards/DiffCard.tsx`
 - `frontend/src/components/cards/WebPreviewCard.tsx`
@@ -1465,38 +1465,38 @@
 - `docs/plans/M4_UI_OPTIMIZATION_CHECKLIST.md`
 - `DEVLOG.md`
 
-### Interface changes
-- No shared type changes.
-- No REST API changes.
-- Existing WebSocket `stop_generation` is now used by the frontend.
-- No new dependencies.
+### 接口变化
+- 无 shared type 变更。
+- 无 REST API 变更。
+- 前端现在使用既有 WebSocket `stop_generation`。
+- 无新增依赖。
 
-### Verification
-- `cd frontend && npm test` -> `12 passed`.
-- `cd frontend && npm run build` -> passed; Vite kept the existing chunk-size warning for the workspace bundle.
-- In-app browser smoke at `http://127.0.0.1:5173/workspace`: shell, chat area, two resize handles, and left/right collapse controls rendered; `Shared context` was absent; no console errors were reported. API toast errors appeared because only the frontend dev server was running, not the backend.
+### 验证
+- `cd frontend && npm test` -> `12 passed`。
+- `cd frontend && npm run build` -> 通过；Vite 保留 workspace bundle 既有 chunk-size warning。
+- in-app browser 烟测 `http://127.0.0.1:5173/workspace`：shell、聊天区、两个 resize handle、左右折叠控制均渲染；未出现 `Shared context`；控制台无错误。由于只运行前端 dev server、未启动后端，因此出现 API toast 错误。
 
-### Teammate notes
-- Pane widths are clamped in `uiStore` to keep the center chat usable.
-- The browser smoke did not exercise a live backend conversation; use the normal full-stack startup for end-to-end stop-generation behavior.
+### 队友备注
+- 面板宽度在 `uiStore` 中做了 clamp，确保中间聊天区仍可用。
+- 浏览器烟测未覆盖真实后端会话；端到端 stop-generation 行为请使用正常全栈启动验证。
 
-## [2026-06-04] Codex - M4 UI follow-up fixes
+## [2026-06-04] Codex - M4 UI 后续修复
 
-### Problem judgment
-- The collapse controls were visible but sat too much in the middle of the content area; they needed to move to a divider-control position.
-- Chat Markdown handled common headings/lists/tables, but code blocks could still fall back to plain paragraphs for `~~~` fences or indented code.
-- Backend timestamps are serialized from naive UTC datetimes, which browsers can interpret as local time unless the frontend normalizes them.
-- `@代理` and `附件` existed as visual buttons but did not trigger real input actions.
+### 问题判断
+- 折叠控制虽然可见，但位置过于靠近内容区域中部，需要移动到分隔控制位。
+- 聊天 Markdown 已支持常见标题/列表/表格，但 `~~~` fence 或缩进代码块仍可能回退成普通段落。
+- 后端时间戳由 naive UTC datetime 序列化，浏览器若前端不归一化，可能按本地时间解释。
+- `@代理` 和 `附件` 是视觉按钮，但没有触发真实输入动作。
 
-### Completed
-- Moved pane collapse controls to the top divider-control area, centered over the left/right separators.
-- Extended Markdown parsing to support `~~~` fenced code blocks and indented code blocks.
-- Added `chatUi` formatting helpers so backend ISO timestamps without timezone are treated as UTC, while explicit offsets remain respected.
-- Wired `@代理` to open the existing mention selector and insert selected Agent mentions at the cursor.
-- Wired `附件` to a hidden multi-file picker, renders selected attachment chips, supports removal, and appends file name/size summaries to the outgoing message text.
-- Added regression tests for timestamp normalization, attachment summaries, tilde code fences, and indented code blocks.
+### 完成内容
+- 将面板折叠控制移动到顶部 divider-control 区域，并居中对齐左右分隔线。
+- 扩展 Markdown 解析，支持 `~~~` fenced code blocks 和缩进代码块。
+- 新增 `chatUi` 格式化 helper，使无时区后端 ISO 时间戳按 UTC 处理，同时保留显式 offset 语义。
+- 将 `@代理` 接到既有 mention selector，并在光标位置插入选中的 Agent mention。
+- 将 `附件` 接到隐藏的多文件选择器，展示已选附件 chip，支持移除，并在发送消息文本中追加文件名/大小摘要。
+- 补充时间戳归一化、附件摘要、tilde code fence 和缩进代码块的回归测试。
 
-### Changed files
+### 修改文件
 - `frontend/src/components/chat/ChatArea.tsx`
 - `frontend/src/components/chat/MessageBubble.tsx`
 - `frontend/src/components/chat/MessageInput.tsx`
@@ -1509,109 +1509,109 @@
 - `docs/plans/M4_UI_OPTIMIZATION_CHECKLIST.md`
 - `DEVLOG.md`
 
-### Interface changes
-- No shared type changes.
-- No REST or WebSocket contract changes.
-- No new dependencies.
-- Attachment support is frontend-only for MVP: selected file metadata is included in message text; file upload/storage remains out of scope.
+### 接口变化
+- 无 shared type 变更。
+- 无 REST 或 WebSocket 契约变更。
+- 无新增依赖。
+- 附件支持在 MVP 中仅限前端：选中文件的元数据会写入消息文本；文件上传/存储仍不在范围内。
 
-### Verification
-- `cd frontend && npm test` -> `17 passed`.
-- `cd frontend && npm run build` -> passed; Vite kept the existing workspace chunk-size warning.
-- Full-stack browser smoke at `http://127.0.0.1:5173/workspace`: shell loaded with no console errors, collapse controls appeared on the divider-control area, `@代理` opened the Agent selector, hidden file input supported `multiple`, and `Shared context` remained absent.
+### 验证
+- `cd frontend && npm test` -> `17 passed`。
+- `cd frontend && npm run build` -> 通过；Vite 保留既有 workspace chunk-size warning。
+- 全栈浏览器烟测 `http://127.0.0.1:5173/workspace`：shell 加载且控制台无错误；折叠控制出现在 divider-control 区域；`@代理` 打开 Agent selector；隐藏文件输入支持 `multiple`；`Shared context` 仍未出现。
 
-### Teammate notes
-- If later product scope requires real binary/file upload, add a backend attachment contract instead of overloading message text.
+### 队友备注
+- 若后续产品范围需要真实二进制/文件上传，请新增后端附件契约，不要继续复用消息文本。
 
-## [2026-06-04] Codex - M4 annotated UI corrections
+## [2026-06-04] Codex - M4 标注 UI 修正
 
-### Problem judgment
-- The annotated screenshot showed the collapse controls should live in the upper bar area of the left conversation pane and right preview pane, not lower in the scroll/content area.
-- The highlighted Markdown issue was nested inline code such as `**\`index.html\`**`: the previous renderer matched the strong token first, kept literal backticks, and colored the whole token as strong text.
+### 问题判断
+- 标注截图显示折叠控制应位于左侧对话栏和右侧预览栏的顶部栏区域，而不是滚动/内容区域下方。
+- 高亮的 Markdown 问题是 `**\`index.html\`**` 这类嵌套行内代码：旧渲染器先匹配 strong token，保留了字面反引号，并把整个 token 都渲染成 strong 文本。
 
-### Completed
-- Moved pane collapse controls to the top bar height (`top: 28px`) while keeping them centered on the left/right pane separator.
-- Added a pure inline Markdown parser that supports nested strong/code tokens.
-- Updated chat Markdown rendering so `**\`index.html\`**` becomes strong text containing a real `<code>` node, without visible backticks.
-- Added regression coverage for nested strong inline code.
+### 完成内容
+- 将面板折叠控制移动到顶部栏高度（`top: 28px`），并保持居中于左右栏分隔线。
+- 新增纯行内 Markdown parser，支持嵌套 strong/code token。
+- 更新聊天 Markdown 渲染，使 `**\`index.html\`**` 变为包含真实 `<code>` 节点的 strong 文本，不再显示反引号。
+- 补充嵌套 strong 行内代码的回归测试。
 
-### Changed files
+### 修改文件
 - `frontend/src/components/chat/MessageMarkdown.tsx`
 - `frontend/src/index.css`
 - `frontend/src/utils/markdownPreview.ts`
 - `frontend/tests/markdownPreview.test.mjs`
 - `DEVLOG.md`
 
-### Verification
-- `cd frontend && npm test` -> `18 passed`.
-- `cd frontend && npm run build` -> passed; Vite kept the existing workspace chunk-size warning.
-- Browser smoke at `http://127.0.0.1:5173/workspace`: collapse controls rendered at top-bar height (`y=28`) with no frontend console errors. API toast errors appeared because only the frontend dev server was running for this visual check.
+### 验证
+- `cd frontend && npm test` -> `18 passed`。
+- `cd frontend && npm run build` -> 通过；Vite 保留既有 workspace chunk-size warning。
+- 浏览器烟测 `http://127.0.0.1:5173/workspace`：折叠控制渲染在顶部栏高度（`y=28`），前端控制台无错误。由于本次视觉检查只运行前端 dev server，出现 API toast 错误。
 
-## [2026-06-04] Codex - M4 pane header button placement
+## [2026-06-04] Codex - M4 面板顶部按钮位置调整
 
-### Problem judgment
-- The desired collapse button placement is inside each pane's top toolbar, not floating on the divider between panes.
-- The left button should align with the AgentHub logo row at the right edge of the left conversation pane.
-- The right button should sit in the preview toolbar immediately to the right of the fullscreen button.
+### 问题判断
+- 期望的折叠按钮位置是在各面板顶部工具栏内部，而不是漂浮在面板分隔线上。
+- 左侧按钮应与 AgentHub logo 行对齐，并位于左侧对话栏右边缘。
+- 右侧按钮应位于预览工具栏中，紧跟全屏按钮右侧。
 
-### Completed
-- Moved the visible left collapse control into `ConversationList`'s `sidebar__header`.
-- Moved the visible right collapse control into `PreviewPanel`'s `preview-toolbar` after the fullscreen action.
-- Kept small restore controls in `Layout` only for the hidden-pane state, so collapsed panes can still be reopened.
-- Removed the visible-state global divider controls.
+### 完成内容
+- 将可见状态的左侧折叠控制移入 `ConversationList` 的 `sidebar__header`。
+- 将可见状态的右侧折叠控制移入 `PreviewPanel` 的 `preview-toolbar`，位于全屏操作之后。
+- `Layout` 中只保留隐藏面板状态的小型恢复控制，确保已折叠面板仍可重新打开。
+- 移除可见状态下的全局分隔线控制。
 
-### Changed files
+### 修改文件
 - `frontend/src/components/chat/ConversationList.tsx`
 - `frontend/src/components/common/Layout.tsx`
 - `frontend/src/components/preview/PreviewPanel.tsx`
 - `frontend/src/index.css`
 - `DEVLOG.md`
 
-### Verification
-- `cd frontend && npm test` -> `18 passed`.
-- `cd frontend && npm run build` -> passed; Vite kept the existing workspace chunk-size warning.
-- Browser smoke at `http://127.0.0.1:5173/workspace`: left toggle rendered inside the sidebar header (`right=277`, matching the header right edge), right toggle rendered as the last preview toolbar button after `全屏预览`, with no frontend console errors.
+### 验证
+- `cd frontend && npm test` -> `18 passed`。
+- `cd frontend && npm run build` -> 通过；Vite 保留既有 workspace chunk-size warning。
+- 浏览器烟测 `http://127.0.0.1:5173/workspace`：左侧 toggle 渲染在 sidebar header 内（`right=277`，与 header 右边缘匹配）；右侧 toggle 渲染为 `全屏预览` 后的最后一个 preview toolbar 按钮；前端控制台无错误。
 
-## [2026-06-04] Codex - M4 restore button reveal behavior
+## [2026-06-04] Codex - M4 恢复按钮显隐行为
 
-### Problem judgment
-- When both side panes were collapsed, always-visible restore buttons could overlap the chat header text.
-- Restore affordances still need to be discoverable when the cursor approaches the left or right top edge.
+### 问题判断
+- 两侧面板同时折叠时，始终可见的恢复按钮可能覆盖聊天标题文字。
+- 当光标靠近左右顶部边缘时，恢复入口仍需要可发现。
 
-### Completed
-- Wrapped collapsed-pane restore buttons in small edge hot zones (`64px x 88px`) near the top corners.
-- Made restore buttons fully transparent by default and non-clickable while hidden.
-- Revealed restore buttons with partial opacity when the cursor enters the nearby hot zone; direct button hover increases opacity further.
-- Preserved keyboard focus visibility through `:focus-visible`.
+### 完成内容
+- 在顶部角落附近为折叠面板恢复按钮包裹小型边缘热区（`64px x 88px`）。
+- 恢复按钮默认完全透明，隐藏时不可点击。
+- 光标进入附近热区时以部分透明度显示恢复按钮；直接 hover 按钮时进一步提高透明度。
+- 通过 `:focus-visible` 保留键盘焦点可见性。
 
-### Changed files
+### 修改文件
 - `frontend/src/components/common/Layout.tsx`
 - `frontend/src/index.css`
 - `DEVLOG.md`
 
-### Verification
-- `cd frontend && npm test` -> `18 passed`.
-- `cd frontend && npm run build` -> passed; Vite kept the existing workspace chunk-size warning.
-- Browser smoke at `http://127.0.0.1:5173/workspace`: collapsed restore buttons had `opacity: 0` and `pointer-events: none` by default, with a bounded `64 x 88` edge hot zone.
+### 验证
+- `cd frontend && npm test` -> `18 passed`。
+- `cd frontend && npm run build` -> 通过；Vite 保留既有 workspace chunk-size warning。
+- 浏览器烟测 `http://127.0.0.1:5173/workspace`：折叠恢复按钮默认 `opacity: 0` 且 `pointer-events: none`，并具有受限的 `64 x 88` 边缘热区。
 
-## [2026-06-04] Codex - M4 Markdown and changes panel follow-up
+## [2026-06-04] Codex - M4 Markdown 与变更面板后续优化
 
-### Problem judgment
-- The hand-written Markdown renderer only covered a small subset of Markdown, so right-side previews missed GFM features such as heading anchors for table-of-contents links, blockquotes, task lists, strikethrough, and broader inline syntax.
-- Diff artifacts were mixed into the right-side Outputs list, making file changes look like generated outputs.
-- The Changes tab depended on the active artifact instead of all current diff artifacts, so changed files did not feel real-time.
-- Chat artifact cards needed a stable Codex-like order: newly created files first, edited/changed files last.
+### 问题判断
+- 手写 Markdown 渲染器只覆盖了 Markdown 的小子集，右侧预览缺少 GFM 特性，例如 TOC 链接所需 heading anchor、blockquote、task list、strikethrough 和更完整的行内语法。
+- Diff artifacts 混在右侧 Outputs 列表中，使文件变更看起来像生成产物。
+- Changes tab 依赖当前 active artifact，而不是全部当前 diff artifacts，因此变更文件缺少实时感。
+- 聊天产物卡片需要稳定的类 Codex 顺序：新建文件优先，编辑/变更文件靠后。
 
-### Completed
-- Added direct `marked` and `DOMPurify` frontend dependencies for GFM parsing plus sanitized HTML rendering.
-- Replaced right-side Markdown preview and chat Markdown rendering with the shared sanitized GFM renderer.
-- Added heading IDs to rendered Markdown so generated TOC links can jump to headings.
-- Added a right-side `ChangesList` that aggregates all diff artifacts, lists changed files, and keeps each diff collapsed until opened.
-- Filtered diff artifacts out of the right-side Outputs tab.
-- Sorted chat artifact cards so created files/web outputs appear before diff/change cards.
-- Updated M4 plan/checklist and added regression tests for Markdown rendering and artifact grouping.
+### 完成内容
+- 新增前端直接依赖 `marked` 和 `DOMPurify`，用于 GFM 解析和安全 HTML 渲染。
+- 将右侧 Markdown 预览和聊天 Markdown 渲染替换为共享的安全 GFM renderer。
+- 为渲染后的 Markdown heading 添加 ID，使生成的 TOC 链接可以跳转到 heading。
+- 新增右侧 `ChangesList`，聚合所有 diff artifacts，列出变更文件，并在用户打开前保持每个 diff 折叠。
+- 从右侧 Outputs tab 中过滤 diff artifacts。
+- 对聊天产物卡片排序，使 created files/web outputs 出现在 diff/change cards 之前。
+- 更新 M4 plan/checklist，并补充 Markdown 渲染和 artifact 分组的回归测试。
 
-### Changed files
+### 修改文件
 - `docs/plans/M4_UI_OPTIMIZATION_PLAN.md`
 - `docs/plans/M4_UI_OPTIMIZATION_CHECKLIST.md`
 - `frontend/package.json`
@@ -1628,32 +1628,32 @@
 - `frontend/tests/markdownPreview.test.mjs`
 - `DEVLOG.md`
 
-### Verification
-- `cd frontend && npm test` -> `22 passed`.
-- `cd frontend && npm run build` -> passed; Vite kept the existing workspace chunk-size warning.
-- `cd frontend && npm install --package-lock-only --ignore-scripts` -> lockfile is up to date.
-- Browser smoke at `http://127.0.0.1:5173/workspace`: workspace rendered with Outputs/Preview/Code/Changes tabs and no visible app crash.
+### 验证
+- `cd frontend && npm test` -> `22 passed`。
+- `cd frontend && npm run build` -> 通过；Vite 保留既有 workspace chunk-size warning。
+- `cd frontend && npm install --package-lock-only --ignore-scripts` -> lockfile 已是最新。
+- 浏览器烟测 `http://127.0.0.1:5173/workspace`：workspace 渲染 Outputs/Preview/Code/Changes tabs，未见应用崩溃。
 
-### Teammate notes
-- Markdown HTML is sanitized before insertion. If future features need custom embedded widgets, add a narrow DOMPurify allowlist rather than bypassing sanitization.
+### 队友备注
+- Markdown HTML 插入前会经过 sanitize。若未来功能需要自定义嵌入 widget，请添加严格的 DOMPurify allowlist，而不是绕过 sanitize。
 
-## [2026-06-04] Codex - M4 artifact card and cancellation follow-up
+## [2026-06-04] Codex - M4 产物卡片与取消后续优化
 
-### Problem judgment
-- Chat artifact cards still looked too busy: they showed status labels plus copy/new-tab actions even though the requested Codex-like flow only needs a file row and right-side preview/open action.
-- `stop_generation` only worked after `OrchestratorRuntime.execute()` had created a cancel event. A stop click during queued/planning timing could be lost, allowing the same chat run to later start agent work.
-- User-facing product copy used "代理" in several places, while the requested wording is "智能体".
+### 问题判断
+- 聊天产物卡片仍显得过于繁重：展示了状态标签和复制/新标签页操作，但期望的类 Codex 流程只需要文件行和右侧预览/打开操作。
+- `stop_generation` 只有在 `OrchestratorRuntime.execute()` 创建 cancel event 后才生效。queued/planning 阶段点击停止可能丢失，导致同一聊天 run 后续仍启动 Agent 工作。
+- 用户可见产品文案多处使用“代理”，而期望用词是“智能体”。
 
-### Completed
-- Removed chat artifact card status badges such as "新创建的文件"/"文件更改".
-- Removed code copy and webpage new-tab buttons from chat cards; cards now keep only the right-side preview/open action.
-- Replaced visible frontend "代理"/"Agent" copy with "智能体" where it is product UI text.
-- Added queued-run cancellation to `OrchestratorQueue`.
-- Added pre-execution cancellation memory to `OrchestratorRuntime`, so stop requests made before runtime execution starts are honored.
-- Updated WebSocket `stop_generation` handling to cancel queued runs and publish a cancelled snapshot when possible.
-- Updated API spec, M4 plan/checklist, and backend tests for cancellation semantics.
+### 完成内容
+- 移除聊天产物卡片中的“新创建的文件”/“文件更改”等状态 badge。
+- 从聊天卡片移除代码复制和网页新标签页按钮；卡片现在只保留右侧预览/打开操作。
+- 将前端可见产品 UI 文案中的“代理”/“Agent”替换为“智能体”。
+- 为 `OrchestratorQueue` 新增 queued-run 取消能力。
+- 为 `OrchestratorRuntime` 新增执行前取消记忆，使 runtime 开始前发出的停止请求也能被遵守。
+- 更新 WebSocket `stop_generation` 处理，尽可能取消 queued runs 并发布 cancelled snapshot。
+- 更新 API spec、M4 plan/checklist 和后端测试，覆盖取消语义。
 
-### Changed files
+### 修改文件
 - `docs/API_SPEC.md`
 - `docs/plans/M4_UI_OPTIMIZATION_PLAN.md`
 - `docs/plans/M4_UI_OPTIMIZATION_CHECKLIST.md`
@@ -1679,33 +1679,33 @@
 - `backend/tests/test_m3_websocket_runtime.py`
 - `DEVLOG.md`
 
-### Verification
-- `cd frontend && npm test` -> `22 passed`.
-- `cd frontend && npm run build` -> passed.
-- `cd backend && .venv/bin/python -m pytest tests/test_m3_websocket_runtime.py -k "stop_generation"` -> `1 passed`.
-- `cd backend && .venv/bin/python -m pytest tests/test_m3_orchestrator_runtime.py -k "cancel"` -> `4 passed`.
+### 验证
+- `cd frontend && npm test` -> `22 passed`。
+- `cd frontend && npm run build` -> 通过。
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_websocket_runtime.py -k "stop_generation"` -> `1 passed`。
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_orchestrator_runtime.py -k "cancel"` -> `4 passed`。
 
-### Teammate notes
-- Planning LLM calls are not force-killed mid-request; the cancellation is now recorded and prevents later agent execution for that same run.
+### 队友备注
+- Planning LLM 调用不会在请求中途被强制 kill；取消现在会被记录，并阻止同一 run 后续进入 Agent 执行。
 
-## [2026-06-04] Codex - M4 collaboration status polish
+## [2026-06-04] Codex - M4 协作状态打磨
 
-### Problem judgment
-- The collaboration panel rendered every participant as "等待中" while separately showing the active thinking agent, so a one-agent run looked like all agents were static and stale.
-- The Orchestrator status card still used English labels and rendered tasks as `agent: title status`, which read like log output rather than a task checklist.
-- DeepSeek summarizer failures were stored as project/team warnings and then surfaced in the main status card, distracting from the actual task result.
+### 问题判断
+- 协作面板会把每个参与者都渲染成“等待中”，同时单独展示活跃 thinking agent，因此单 Agent run 看起来像所有 Agent 都是静止且过期的。
+- Orchestrator 状态卡仍使用英文标签，并将任务渲染成 `agent: title status`，读起来像日志输出而不是任务清单。
+- DeepSeek summarizer 失败会存储成 project/team warning，然后出现在主状态卡里，干扰用户理解真实任务结果。
 
-### Completed
-- Added frontend UI helpers for collaboration-agent selection, status localization, message localization, and summary-warning filtering.
-- Updated the collaboration panel to show only intelligent agents participating in the current run once tasks/thinking state exists.
-- Changed "思考中" indicators to a loading spinner.
-- Localized the Orchestrator card to "主智能体" and Chinese status/message labels.
-- Rendered Orchestrator tasks as a checklist with spinner/check/error icons and Chinese status labels.
-- Changed project-state summarizer failures to keep the previous summary or use a deterministic local fallback without adding user-facing warnings.
-- Changed team-board summarizer failures to preserve deterministic board state without adding user-facing warnings.
-- Updated M4 plan/checklist and regression tests.
+### 完成内容
+- 新增前端 UI helper，用于协作 Agent 选择、状态本地化、消息本地化和 summary warning 过滤。
+- 当存在 tasks/thinking 状态后，协作面板只展示参与当前 run 的智能体。
+- 将“思考中”指示改为 loading spinner。
+- 将 Orchestrator 卡片本地化为“主智能体”和中文状态/消息标签。
+- 将 Orchestrator 任务渲染为 checklist，使用 spinner/check/error 图标和中文状态标签。
+- Project State summarizer 失败时改为保留旧摘要或使用确定性本地 fallback，不再新增用户可见 warning。
+- Team Board summarizer 失败时保留确定性 board 状态，不再新增用户可见 warning。
+- 更新 M4 plan/checklist 和回归测试。
 
-### Changed files
+### 修改文件
 - `docs/plans/M4_UI_OPTIMIZATION_PLAN.md`
 - `docs/plans/M4_UI_OPTIMIZATION_CHECKLIST.md`
 - `frontend/src/components/chat/ChatArea.tsx`
@@ -1719,29 +1719,29 @@
 - `backend/tests/test_m3_team_protocol.py`
 - `DEVLOG.md`
 
-### Verification
-- `cd frontend && npm test` -> `25 passed`.
-- `cd frontend && npm run build` -> passed; Vite kept the existing workspace chunk-size warning.
-- `cd backend && .venv/bin/python -m pytest tests/test_m3_project_state.py -k "summarizer"` -> `2 passed`.
-- `cd backend && .venv/bin/python -m pytest tests/test_m3_team_protocol.py -k "summary_patch"` -> `1 passed`.
+### 验证
+- `cd frontend && npm test` -> `25 passed`。
+- `cd frontend && npm run build` -> 通过；Vite 保留既有 workspace chunk-size warning。
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_project_state.py -k "summarizer"` -> `2 passed`。
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_team_protocol.py -k "summary_patch"` -> `1 passed`。
 
-### Teammate notes
-- Existing persisted project warnings with the old DeepSeek failure text are filtered in the frontend status card; new refreshes no longer write those warnings.
+### 队友备注
+- 旧 DeepSeek failure 文本对应的已持久化 project warnings 会在前端状态卡中过滤；新的 refresh 不再写入这些 warnings。
 
-## [2026-06-04] Codex - M4 HTML preview fullscreen scaling
+## [2026-06-04] Codex - M4 HTML 预览全屏缩放
 
-### Problem judgment
-- HTML preview used a fixed `500px` iframe minimum height, so fullscreen mode could leave unused blank space below the page preview.
-- The preview zoom controls only supported a narrow 75% / 100% / 125% range, making it impossible to freely enlarge the internal preview viewport.
+### 问题判断
+- HTML 预览使用固定 `500px` iframe 最小高度，全屏模式下页面预览下方可能留下未使用空白。
+- 预览缩放控件只支持较窄的 75% / 100% / 125% 范围，无法自由放大内部预览 viewport。
 
-### Completed
-- Added shared preview zoom constants and clamping for a 25% to 300% range.
-- Replaced coarse zoom-only buttons with fine step buttons plus a range slider.
-- Made the preview tab body a height-filling flex surface.
-- Changed browser preview viewport sizing to account for transform scale so the scaled iframe visually fills the available stage height.
-- Updated fullscreen preview padding so the internal preview has more usable room.
+### 完成内容
+- 新增共享预览缩放常量，并将范围 clamp 到 25% 到 300%。
+- 将粗粒度缩放按钮替换为精细步进按钮加 range slider。
+- 将预览 tab body 改为填充高度的 flex surface。
+- 调整浏览器预览 viewport 尺寸计算，纳入 transform scale，使缩放后的 iframe 在视觉上填满可用 stage 高度。
+- 更新全屏预览 padding，让内部预览拥有更多可用空间。
 
-### Changed files
+### 修改文件
 - `docs/plans/M4_UI_OPTIMIZATION_PLAN.md`
 - `docs/plans/M4_UI_OPTIMIZATION_CHECKLIST.md`
 - `frontend/src/components/preview/IframePreview.tsx`
@@ -1751,34 +1751,34 @@
 - `frontend/tests/previewControls.test.mjs`
 - `DEVLOG.md`
 
-### Verification
-- `cd frontend && npm test` -> `26 passed`.
-- `cd frontend && npm run build` -> passed; Vite kept the existing workspace chunk-size warning.
+### 验证
+- `cd frontend && npm test` -> `26 passed`。
+- `cd frontend && npm run build` -> 通过；Vite 保留既有 workspace chunk-size warning。
 
-### Teammate notes
-- The zoom implementation keeps viewport dimensions inversely proportional to scale before applying CSS transform, so visual width/height remain stable while the internal preview content gets larger or smaller.
+### 队友备注
+- 缩放实现会在应用 CSS transform 前让 viewport 尺寸与 scale 成反比，因此视觉宽高保持稳定，而内部预览内容变大或变小。
 
-## [2026-06-04] Codex - WSL real Agent chain Codex bridge and planner coverage fixes
+## [2026-06-04] Codex - WSL 真实 Agent 链路 Codex 桥接与 Planner 覆盖修复
 
-### Problem judgment
-- The Windows-side manual fix removed the visible `Shared state refresh warning: 'taskId'`, but WSL real runs still failed later in the Codex review handoff.
-- Root causes were layered:
-  - The running WSL service had to load `/mnt/d/AgentHub/backend`, not the stale Linux clone.
-  - Codex isolated `CODEX_HOME` under `/tmp` is rejected by the Codex CLI helper-bin setup.
-  - Passing large prompts as argv and closing stdin implicitly made Codex process behavior brittle.
-  - DeepSeek Responses bridge lost critical protocol details: large tool output was forwarded unbounded, DeepSeek 400 bodies were hidden, `reasoning_content` from thinking mode was not replayed, and consecutive Responses `function_call` items were translated into invalid Chat Completions message order.
-  - The planner prompt/validation allowed an explicitly three-Agent classroom check-in request to collapse into a two-task generic index/README plan.
+### 问题判断
+- Windows 侧手动修复移除了可见的 `Shared state refresh warning: 'taskId'`，但 WSL 真实 run 仍会在 Codex review handoff 阶段失败。
+- 根因是多层叠加：
+- 运行中的 WSL 服务必须加载 `/mnt/d/AgentHub/backend`，而不是过期的 Linux clone。
+- Codex 隔离 `CODEX_HOME` 放在 `/tmp` 下会被 Codex CLI helper-bin setup 拒绝。
+- 将大 prompt 作为 argv 传入并隐式关闭 stdin，会让 Codex 进程行为变得脆弱。
+- DeepSeek Responses bridge 丢失了关键协议细节：大型 tool output 无界转发、DeepSeek 400 body 被隐藏、thinking mode 的 `reasoning_content` 未回放、连续 Responses `function_call` items 被转换成非法 Chat Completions 消息顺序。
+- Planner prompt/validation 允许明确三 Agent 的课堂签到请求坍缩成两个 generic index/README 任务。
 
-### Completed
-- `CodexAdapter` now creates isolated homes under `~/.cache/agenthub/codex` or `AGENTHUB_CODEX_HOME_ROOT`, and sends the prompt through stdin with `codex exec -`.
-- `ProcessPool` now supports explicit stdin text, closes stdin for non-interactive children, and reports stdout when stderr is empty.
-- `DeepSeekResponsesBridge` now truncates oversized tool outputs, includes DeepSeek error response bodies, stores/replays `reasoning_content` per tool call, and groups consecutive function calls before tool outputs.
-- `OrchestratorPlanner` now performs contextual coverage validation and replans when explicit mentions or requested requirements/implementation/review/documentation stages are missing.
-- `planner_prompt` now explicitly preserves multi-Agent staged workflows.
-- `ws/handlers.py` now materializes participant/catalog scalar results once before reuse, preserving available-agent validation.
-- `start_services.sh` starts the backend from `/mnt/d/AgentHub/backend` and the frontend from the Linux dependency tree with `VITE_BACKEND_TARGET=http://localhost:8026`.
+### 完成内容
+- `CodexAdapter` 现在在 `~/.cache/agenthub/codex` 或 `AGENTHUB_CODEX_HOME_ROOT` 下创建隔离 home，并通过 stdin 使用 `codex exec -` 发送 prompt。
+- `ProcessPool` 现在支持显式 stdin 文本，为非交互子进程关闭 stdin，并在 stderr 为空时报告 stdout。
+- `DeepSeekResponsesBridge` 现在会截断超大 tool output，包含 DeepSeek error response body，按 tool call 存储/回放 `reasoning_content`，并在 tool output 前合并连续 function calls。
+- `OrchestratorPlanner` 现在执行上下文覆盖校验，当显式 mentions 或请求的需求/实现/审查/文档阶段缺失时会重规划。
+- `planner_prompt` 现在明确要求保留多 Agent 分阶段工作流。
+- `ws/handlers.py` 现在在复用前一次性 materialize participant/catalog scalar results，保留 available-agent 校验。
+- `start_services.sh` 从 `/mnt/d/AgentHub/backend` 启动后端，并从 Linux dependency tree 启动前端，使用 `VITE_BACKEND_TARGET=http://localhost:8026`。
 
-### Changed files
+### 修改文件
 - `backend/app/adapters/codex.py`
 - `backend/app/services/deepseek_responses_bridge.py`
 - `backend/app/services/orchestrator_planner.py`
@@ -1795,44 +1795,44 @@
 - `docs/plans/M3_AGENT_CHAIN_BLOCKERS_CHECKLIST.md`
 - `DEVLOG.md`
 
-### Interface changes
-- No shared type, REST, WebSocket, or frontend contract changes.
-- No new dependencies.
-- MockAdapter remains unchanged.
+### 接口变化
+- 无 shared type、REST、WebSocket 或前端契约变更。
+- 无新增依赖。
+- MockAdapter 保持不变。
 
-### Verification
-- RED tests were added first for Codex stdin/home behavior, ProcessPool stdin/stdout errors, bridge truncation/error body/reasoning/tool-call grouping, planner mention/stage coverage, validator nonexistent-agent handling, and WebSocket planner catalog reuse.
-- WSL changed-area tests: `PYTHONPATH=. /home/lieber/src/AgentHub/backend/.venv/bin/python -B -m pytest -q -p no:cacheprovider tests/test_m3_planner.py tests/test_m3_validator.py tests/test_m3_websocket_interactions.py::test_non_mock_job_uses_deepseek_planner_wrapper tests/test_m3_deepseek_responses_bridge.py tests/test_m3_process_pool.py tests/test_m3_cli_adapters.py::test_codex_adapter_uses_isolated_home_and_loopback_bridge tests/test_m3_cli_adapters.py::test_codex_adapter_emits_file_events_for_workspace_changes` -> `41 passed`.
-- WSL direct Codex handoff repro for the previous task-3 review blocker completed with `text_delta` and no `error`.
-- WSL services restarted via `start_services.sh`; backend, frontend, and Vite API proxy health checks all returned `200`.
-- WSL real three-Agent chain using an ASCII prompt completed four tasks: requirements, preview implementation, code review, and README; final status `completed`; warnings `[]`; artifacts included `index.html` webpage and README.
-- WSL Chinese planner smoke using escaped Unicode returned a ready four-stage plan for requirements, implementation, review, and README.
-- Backend full test attempt `pytest tests` timed out after 304 seconds before a complete result; changed-area tests above were rerun successfully.
+### 验证
+- 先写 RED 测试，覆盖 Codex stdin/home 行为、ProcessPool stdin/stdout 错误、bridge 截断/error body/reasoning/tool-call 分组、planner mention/stage 覆盖、validator 不存在 agent 处理、WebSocket planner catalog 复用。
+- WSL 变更区域测试：`PYTHONPATH=. /home/lieber/src/AgentHub/backend/.venv/bin/python -B -m pytest -q -p no:cacheprovider tests/test_m3_planner.py tests/test_m3_validator.py tests/test_m3_websocket_interactions.py::test_non_mock_job_uses_deepseek_planner_wrapper tests/test_m3_deepseek_responses_bridge.py tests/test_m3_process_pool.py tests/test_m3_cli_adapters.py::test_codex_adapter_uses_isolated_home_and_loopback_bridge tests/test_m3_cli_adapters.py::test_codex_adapter_emits_file_events_for_workspace_changes` -> `41 passed`。
+- WSL 直接 Codex handoff 复现前一个 task-3 review blocker：完成并输出 `text_delta`，无 `error`。
+- 通过 `start_services.sh` 重启 WSL 服务；后端、前端、Vite API proxy 健康检查均返回 `200`。
+- WSL 真实三 Agent 链路使用 ASCII prompt 完成四个任务：需求、预览实现、代码审查和 README；最终状态 `completed`；warnings `[]`；artifacts 包含 `index.html` webpage 和 README。
+- WSL 中文 planner 烟测使用 escaped Unicode，返回需求、实现、审查、README 四阶段 ready plan。
+- 后端全量测试尝试 `pytest tests` 在 304 秒后超时，未得到完整结果；上面的变更区域测试已重新运行并通过。
 
-### Teammate notes
-- The failed Chinese full-chain script was caused by PowerShell-to-WSL pipe encoding turning Chinese into `????`. Browser-originated UTF-8 input should not hit that path; the escaped-Unicode planner smoke verifies backend Chinese planning.
-- The in-app Browser tool was not available in this session, so browser UI inspection was substituted with live HTTP/WS/API/artifact evidence.
+### 队友备注
+- 中文全链路脚本失败是 PowerShell-to-WSL pipe 编码把中文变成 `????` 导致；浏览器来源的 UTF-8 输入不应走到该路径，escaped-Unicode planner 烟测已验证后端中文规划。
+- 本会话 in-app Browser tool 不可用，因此用实时 HTTP/WS/API/artifact 证据替代浏览器 UI 检查。
 
-## [2026-06-04] Codex - Planner strict JSON and Pomodoro stability fix
+## [2026-06-04] Codex - Planner 严格 JSON 与番茄钟稳定性修复
 
-### Problem judgment
-- The Pomodoro app manual test failed before any agent execution with `DeepSeek returned invalid JSON content` and `Planner failed`.
-- Re-running the same persisted planner input showed nondeterministic DeepSeek planner output: one attempt passed, one copied a participant UUID incorrectly, and one returned content that the strict `json.loads()` path could not parse.
-- The failure was not a Windows/WSL execution difference and not a frontend rendering problem; it was a planner-output contract and normalization stability issue.
+### 问题判断
+- 番茄钟应用手测在任何 Agent 执行前失败，报错为 `DeepSeek returned invalid JSON content` 和 `Planner failed`。
+- 复跑同一持久化 planner 输入时，DeepSeek planner 输出不确定：一次通过，一次错误复制 participant UUID，一次返回严格 `json.loads()` 路径无法解析的内容。
+- 该失败不是 Windows/WSL 执行差异，也不是前端渲染问题；本质是 planner 输出契约和 normalization 稳定性问题。
 
-### Completed
-- Strengthened the planner prompt with exact allowed JSON shapes, exact field names, hard JSON-only output, exact participant `agentId` copy rules, and staged app workflow guidance.
-- `LLMClient.request_json()` now accepts Markdown-wrapped or embedded JSON objects and includes a bounded raw-content preview when parsing still fails.
-- `OrchestratorPlanner` now normalizes common DeepSeek planner variants before schema validation:
-  - `taskId` / `task_id` / `taskID` -> `id`
-  - `assignedAgentId` / related aliases -> `agentId`
-  - `dependencies` top-level tables -> per-task `dependsOn`
-  - `readAccess` / `writeAccess` / `read` / `write` / `access` -> `accessMode`
-  - copied-invalid agent ids can be repaired from task stage and participant capability context when there is a clear match
-- Common app workflow dependencies are enforced deterministically as requirements -> implementation -> review -> README.
-- Document-producing stages such as requirements, implementation, README, and documentation are normalized to write access even if the model labels them read.
+### 完成内容
+- 强化 planner prompt，明确允许的 JSON 形状、精确字段名、强制 JSON-only 输出、精确 participant `agentId` 复制规则，以及分阶段应用工作流指导。
+- `LLMClient.request_json()` 现在接受 Markdown 包裹或内嵌 JSON 对象；解析仍失败时，会包含有界 raw-content preview。
+- `OrchestratorPlanner` 现在会在 schema validation 前规范化常见 DeepSeek planner 变体：
+- `taskId` / `task_id` / `taskID` -> `id`
+- `assignedAgentId` / 相关 alias -> `agentId`
+- 顶层 `dependencies` 表 -> 每个 task 的 `dependsOn`
+- `readAccess` / `writeAccess` / `read` / `write` / `access` -> `accessMode`
+- 当任务阶段和参与者能力上下文能明确匹配时，可修复复制错误的 invalid agent ids
+- 常见应用工作流依赖会被确定性强制为 requirements -> implementation -> review -> README。
+- 需求、实现、README、documentation 等会产出文档的阶段，即使模型标为 read，也会规范化为 write access。
 
-### Changed files
+### 修改文件
 - `backend/app/services/llm_client.py`
 - `backend/app/services/orchestrator_planner.py`
 - `backend/app/services/planner_prompt.py`
@@ -1842,41 +1842,41 @@
 - `docs/plans/M3_AGENT_CHAIN_BLOCKERS_CHECKLIST.md`
 - `DEVLOG.md`
 
-### Interface changes
-- No shared type, REST, WebSocket, or frontend contract changes.
-- No new dependencies.
-- MockAdapter remains unchanged.
+### 接口变化
+- 无 shared type、REST、WebSocket 或前端契约变更。
+- 无新增依赖。
+- MockAdapter 保持不变。
 
-### Verification
-- RED tests were added first for Markdown-wrapped JSON parsing, invalid JSON diagnostics, loose planner aliases, copied-invalid agent id repair, document-stage write access, and staged app DAG enforcement.
-- WSL targeted tests: `PYTHONPATH=. /home/lieber/src/AgentHub/backend/.venv/bin/python -B -m pytest -q -p no:cacheprovider tests/test_m3_llm_client.py tests/test_m3_planner.py` -> `26 passed`.
-- WSL broader checks:
-  - `tests/test_m3_websocket_interactions.py` -> `7 passed`.
-  - `tests/test_m3_orchestrator_runtime.py` -> `12 passed`.
-  - `tests/test_m3_websocket_runtime.py` -> `11 passed` in 129.72s.
-- WSL real Pomodoro planner-only stability check using the persisted failed run input passed 10/10 attempts: `failures: []`, `badDag: []`.
+### 验证
+- 先写 RED 测试，覆盖 Markdown 包裹 JSON 解析、invalid JSON 诊断、宽松 planner alias、复制错误 agent id 修复、文档阶段 write access、分阶段 app DAG 强制。
+- WSL 定向测试：`PYTHONPATH=. /home/lieber/src/AgentHub/backend/.venv/bin/python -B -m pytest -q -p no:cacheprovider tests/test_m3_llm_client.py tests/test_m3_planner.py` -> `26 passed`。
+- WSL 更广检查：
+- `tests/test_m3_websocket_interactions.py` -> `7 passed`。
+- `tests/test_m3_orchestrator_runtime.py` -> `12 passed`。
+- `tests/test_m3_websocket_runtime.py` -> `11 passed`，耗时 129.72s。
+- WSL 真实番茄钟 planner-only 稳定性检查使用已持久化的失败 run 输入，10/10 次通过：`failures: []`，`badDag: []`。
 
-### Teammate notes
-- Some planner variance remains semantically harmless, such as review being `read` or `write` depending on whether the model plans a written review report. The runtime already accepts review/audit tasks with no file changes when they provide a summary.
-- If a future planner failure appears, the frontend/backend error should now include a bounded preview of the raw DeepSeek content instead of only the generic invalid JSON message.
+### 队友备注
+- 部分 planner 差异语义上仍无害，例如 review 可能根据模型是否计划写审查报告而为 `read` 或 `write`。runtime 已允许带摘要的 review/audit 任务在无文件变更时完成。
+- 若未来再次出现 planner failure，前端/后端错误现在应包含有界 DeepSeek raw 内容预览，而不是只有 generic invalid JSON 消息。
 
-## [2026-06-04] Codex - Default Agent role prompts and product architect flow
+## [2026-06-04] Codex - 默认 Agent 角色提示词与产品架构师流程
 
-### Problem judgment
-- The three built-in Agent role prompts were too terse to reliably shape execution behavior.
-- The single 文档专家 role mixed requirements/PRD/SPEC/checklist work with final README writing, which made planner assignment ambiguous.
-- OpenCode preview-contract detection could misclassify document tasks containing words like 系统、页面、应用 or `index.html`, causing requirements/documentation tasks to create HTML preview files.
+### 问题判断
+- 三个内置 Agent 角色提示词过于简短，难以稳定塑造执行行为。
+- 单一“文档专家”角色混合了承接需求/PRD/SPEC/checklist 和最终 README 写作，导致 planner 分配模糊。
+- OpenCode preview-contract 检测可能把包含“系统、页面、应用”或 `index.html` 等词的文档任务误判，导致需求/文档任务创建 HTML 预览文件。
 
-### Completed
-- Added a built-in 产品架构师 Agent for requirements analysis, PRD, project SPEC, checklist, plans, and acceptance criteria.
-- Enriched built-in prompts for 产品架构师、代码工匠、审查大师、文档专家 with role boundaries, output requirements, and Markdown/HTML constraints.
-- Updated seed behavior so existing built-in Agents refresh avatar, description, capabilities, system prompt, and platform binding on seed.
-- Updated planner prompt for the four-role workflow: requirements -> implementation -> review -> readme.
-- Added deterministic planner role correction so requirements/PRD/SPEC/checklist tasks go to 产品架构师 when available, while README/usage/setup tasks go to 文档专家.
-- Updated OpenCode preview gating so planning/document tasks do not trigger the mandatory `index.html` preview contract, while implementation tasks still do.
-- Made one WebSocket runtime warning assertion environment-independent when workspace snapshot warnings include local oversized files.
+### 完成内容
+- 新增内置“产品架构师”Agent，负责需求分析、PRD、项目 SPEC、checklist、计划和验收标准。
+- 丰富“产品架构师、代码工匠、审查大师、文档专家”的内置提示词，补充角色边界、输出要求和 Markdown/HTML 约束。
+- 更新 seed 行为，使已有内置 Agents 在 seed 时刷新 avatar、description、capabilities、system prompt 和平台绑定。
+- 更新 planner prompt，支持四角色工作流：requirements -> implementation -> review -> readme。
+- 新增确定性 planner 角色修正：requirements/PRD/SPEC/checklist 任务在可用时分给产品架构师，而 README/usage/setup 任务分给文档专家。
+- 更新 OpenCode preview gating，使 planning/document 任务不触发强制 `index.html` 预览契约，而 implementation 任务仍会触发。
+- 当 workspace snapshot warnings 包含本地超大文件时，使一个 WebSocket runtime warning 断言与环境无关。
 
-### Changed files
+### 修改文件
 - `backend/app/services/seed.py`
 - `backend/app/services/planner_prompt.py`
 - `backend/app/services/orchestrator_planner.py`
@@ -1890,38 +1890,38 @@
 - `docs/plans/DEFAULT_AGENT_ROLES_CHECKLIST.md`
 - `DEVLOG.md`
 
-### Interface changes
-- No shared type, REST, or WebSocket payload shape changes.
-- `GET /api/v1/agents` now seeds four built-in Agents instead of three.
-- Existing built-in Agent rows are refreshed with updated prompt metadata during seed.
-- No new dependencies.
-- MockAdapter remains unchanged.
+### 接口变化
+- 无 shared type、REST 或 WebSocket payload 形状变更。
+- `GET /api/v1/agents` 现在 seed 四个内置 Agents，而不是三个。
+- 已存在的内置 Agent 行会在 seed 时刷新为更新后的 prompt 元数据。
+- 无新增依赖。
+- MockAdapter 保持不变。
 
-### Verification
-- RED focused test run failed first with missing 产品架构师, stale prompt refresh behavior, incorrect planner role assignment, and document tasks triggering preview.
-- Focused backend tests after implementation: `cd backend && .venv/bin/python -m pytest tests/test_m1_1_api.py tests/test_m3_planner.py tests/test_m3_cli_adapters.py::test_opencode_prompt_does_not_require_preview_for_document_tasks tests/test_m3_cli_adapters.py::test_opencode_prompt_requires_preview_entry_for_system_implementation_requests tests/test_m3_cli_adapters.py::test_opencode_prompt_requires_preview_entry_for_app_generation` -> `32 passed`.
-- Regression test for environment-independent fallback warning: `cd backend && .venv/bin/python -m pytest tests/test_m3_websocket_runtime.py::test_read_task_retries_safe_execution_fallback_and_surfaces_warning` -> `1 passed`.
-- Backend full suite: `cd backend && .venv/bin/python -m pytest` -> `197 passed`, `1 warning` from Starlette/httpx testclient deprecation.
-- Frontend tests: `cd frontend && npm test` -> `26 passed`.
-- Frontend build: `cd frontend && npm run build` -> passed; Vite kept the existing chunk-size warning.
+### 验证
+- RED 定向测试先因缺少产品架构师、prompt 刷新行为过期、planner 角色分配错误、文档任务触发预览而失败。
+- 实现后定向后端测试：`cd backend && .venv/bin/python -m pytest tests/test_m1_1_api.py tests/test_m3_planner.py tests/test_m3_cli_adapters.py::test_opencode_prompt_does_not_require_preview_for_document_tasks tests/test_m3_cli_adapters.py::test_opencode_prompt_requires_preview_entry_for_system_implementation_requests tests/test_m3_cli_adapters.py::test_opencode_prompt_requires_preview_entry_for_app_generation` -> `32 passed`。
+- 环境无关 fallback warning 回归测试：`cd backend && .venv/bin/python -m pytest tests/test_m3_websocket_runtime.py::test_read_task_retries_safe_execution_fallback_and_surfaces_warning` -> `1 passed`。
+- 后端全量套件：`cd backend && .venv/bin/python -m pytest` -> `197 passed`，有 `1 warning` 来自 Starlette/httpx testclient deprecation。
+- 前端测试：`cd frontend && npm test` -> `26 passed`。
+- 前端构建：`cd frontend && npm run build` -> 通过；Vite 保留既有 chunk-size warning。
 
-### Teammate notes
-- Existing local databases will pick up refreshed built-in prompts the next time seed runs, such as through `/api/v1/agents`.
-- 产品架构师 owns PRD/SPEC/checklist planning documents; 文档专家 is intentionally narrowed to final README/usage/setup handoff docs.
+### 队友备注
+- 已有本地数据库会在下次 seed 运行时（例如通过 `/api/v1/agents`）获得刷新后的内置 prompt。
+- 产品架构师负责 PRD/SPEC/checklist 等规划文档；文档专家有意收窄到最终 README/usage/setup 交接文档。
 
-## [2026-06-05] Codex - Conversation agent add flow split
+## [2026-06-05] Codex - 会话添加智能体流程拆分
 
-### Problem judgment
-- The sidebar agent plus and chat header "add agent" action both opened custom Agent creation.
-- The intended UX is different: sidebar creates new custom Agents, while chat header adds an existing Agent to the current conversation.
+### 问题判断
+- 侧边栏 Agent 加号和聊天头部“添加智能体”操作都打开了自定义 Agent 创建。
+- 预期 UX 不同：侧边栏用于创建新的自定义 Agent，聊天头部用于将已有 Agent 添加到当前会话。
 
-### Completed
-- Added an existing-Agent picker modal for the current conversation.
-- Wired chat header "+ 添加智能体" to update the active conversation `participantIds`.
-- Kept the sidebar "常用智能体" plus wired to custom Agent creation.
-- Added frontend helpers to filter already-participating Agents and merge participant IDs without duplicates.
+### 完成内容
+- 为当前会话新增已有 Agent 选择弹窗。
+- 将聊天头部“+ 添加智能体”接到当前会话 `participantIds` 更新流程。
+- 保持侧边栏“常用智能体”加号接到自定义 Agent 创建流程。
+- 新增前端 helper，用于过滤已参与会话的 Agents，并无重复合并 participant IDs。
 
-### Changed files
+### 修改文件
 - `frontend/src/components/chat/AddConversationAgentsModal.tsx`
 - `frontend/src/components/chat/ChatArea.tsx`
 - `frontend/src/pages/Workspace.tsx`
@@ -1933,15 +1933,62 @@
 - `docs/plans/M4_CONVERSATION_AGENT_PICKER_CHECKLIST.md`
 - `DEVLOG.md`
 
-### Interface changes
-- No shared type, backend, or WebSocket contract changes.
-- Frontend now uses existing `PATCH /api/v1/conversations/{id}` for participant updates.
-- No new dependencies.
+### 接口变化
+- 无 shared type、后端或 WebSocket 契约变更。
+- 前端现在使用既有 `PATCH /api/v1/conversations/{id}` 更新参与者。
+- 无新增依赖。
 
-### Verification
-- Frontend tests: `cd frontend && npm test` -> `28 passed`.
-- Frontend build: `cd frontend && npm run build` -> passed; Vite kept the existing chunk-size warning.
-- Browser smoke check: sidebar plus opens "新增自定义智能体"; chat header "+ 添加智能体" opens "添加已有智能体" for the selected conversation.
+### 验证
+- 前端测试：`cd frontend && npm test` -> `28 passed`。
+- 前端构建：`cd frontend && npm run build` -> 通过；Vite 保留既有 chunk-size warning。
+- 浏览器烟测：侧边栏加号打开“新增自定义智能体”；聊天头部“+ 添加智能体”为选中会话打开“添加已有智能体”。
 
-### Teammate notes
-- This change only adds Agents to conversations. Removing participants remains out of scope.
+### 队友备注
+- 本次只支持向会话添加 Agents。移除参与者仍不在范围内。
+
+## [2026-06-06] Codex - 侧边栏、产物列表与协作状态修复
+
+### 问题判断
+- 左侧对话列表时间使用了硬编码 `15:50`，没有读取会话真实时间戳。
+- 自定义智能体创建入口放在“常用智能体”标题栏右侧，和“新建对话”主操作在视觉层级上不一致。
+- 单条消息产物较多时会把全部产物卡片直接铺开，聊天流被产物列表淹没。
+- 协作状态里 `失败` / `已阻塞` 和 `已完成` 使用相近样式，且没有展示各智能体耗时。
+
+### 已完成
+- 左侧对话时间改为格式化 `updatedAt`，缺失时回退 `createdAt` 或 `新建`。
+- 将“创建智能体”移动到“新建对话”下方，使用同高度侧边栏操作按钮，并移除标题栏小加号。
+- 消息产物列表默认展示前 5 个，剩余产物支持展开 / 收起。
+- 前端运行态新增智能体任务计时，覆盖 thinking、running、completed、failed、blocked、cancelled 等状态，并在协作状态中展示 `耗时`。
+- 协作状态新增 done / pending / danger / warning / idle 语义样式，失败为红色，阻塞为琥珀色。
+- 补充了会话时间、产物折叠、协作状态 tone 与耗时的前端测试。
+
+### 修改文件
+- `frontend/src/components/chat/ConversationList.tsx`
+- `frontend/src/components/chat/MessageBubble.tsx`
+- `frontend/src/components/chat/ChatArea.tsx`
+- `frontend/src/components/cards/OrchestratorStatus.tsx`
+- `frontend/src/stores/uiStore.ts`
+- `frontend/src/utils/chatUi.ts`
+- `frontend/src/utils/artifactCard.ts`
+- `frontend/src/utils/orchestratorUi.ts`
+- `frontend/src/index.css`
+- `frontend/tests/chatUi.test.mjs`
+- `frontend/tests/artifactCard.test.mjs`
+- `frontend/tests/orchestratorUi.test.mjs`
+- `docs/plans/M5_UI_BUGFIX_PLAN.md`
+- `docs/plans/M5_UI_BUGFIX_CHECKLIST.md`
+- `DEVLOG.md`
+
+### 接口变化
+- 未修改 shared type、REST、WebSocket 或后端契约。
+- 未新增依赖。
+
+### 验证
+- 交互式 zsh 下确认 Node/npm 可用：`node` 位于 `/home/yangyu/.nvm/versions/node/v24.16.0/bin/node`，`npm` 位于 `/home/yangyu/.nvm/versions/node/v24.16.0/bin/npm`。
+- 前端测试：`cd frontend && zsh -lic 'npm test'` -> `31 passed`。
+- 前端构建：`cd frontend && zsh -lic 'npm run build'` -> 通过；Vite 保留既有的 chunk size warning。
+- 补丁检查：`git diff --check` -> 通过。
+
+### 队友备注
+- 智能体耗时目前由前端运行态推导，因为现有 `Task` 契约没有权威耗时字段。
+- 如果后端后续推送精确任务耗时，可以替换或补齐 `runtime.taskTimings`，无需调整展示组件结构。
