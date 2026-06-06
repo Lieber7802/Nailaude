@@ -11,6 +11,7 @@
 - [x] Custom Agent button moved below new conversation button with matching size
 - [x] Message artifacts default to first 5 with expand/collapse
 - [x] Collaboration status shows duration and error/blocked styling
+- [x] Narrow preview viewport buttons hide labels and keep icons
 
 ## Verification
 - [x] Targeted frontend tests pass

@@ -1,7 +1,13 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { clampPreviewZoom, FULLSCREEN_ACTIONS, PREVIEW_ZOOM, VIEWPORT_OPTIONS } from '../src/utils/previewControls.ts'
+import {
+  clampPreviewZoom,
+  FULLSCREEN_ACTIONS,
+  PREVIEW_VIEWPORT_LABEL_HIDE_WIDTH,
+  PREVIEW_ZOOM,
+  VIEWPORT_OPTIONS,
+} from '../src/utils/previewControls.ts'
 
 test('preview viewport controls expose clear labels', () => {
   assert.deepEqual(
@@ -12,6 +18,10 @@ test('preview viewport controls expose clear labels', () => {
       { label: '手机', viewport: 'mobile' },
     ]
   )
+})
+
+test('preview viewport labels hide before narrow panes force vertical text', () => {
+  assert.equal(PREVIEW_VIEWPORT_LABEL_HIDE_WIDTH, 430)
 })
 
 test('fullscreen action labels include enter and exit states', () => {

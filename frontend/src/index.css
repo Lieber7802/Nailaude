@@ -1877,6 +1877,7 @@ button {
 }
 
 .preview-device-bar {
+  container: preview-device-bar / inline-size;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1910,12 +1911,14 @@ button {
   align-items: center;
   justify-content: center;
   gap: 5px;
+  flex: 0 0 auto;
   min-width: 34px;
   height: 26px;
   padding: 0 8px;
   border-radius: 7px;
   color: #6f6256;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .viewport-switcher button.is-active {
@@ -1925,6 +1928,23 @@ button {
 
 .viewport-switcher button span {
   font-size: 12px;
+  white-space: nowrap;
+}
+
+@container preview-device-bar (max-width: 430px) {
+  .viewport-switcher {
+    gap: 3px;
+  }
+
+  .viewport-switcher button {
+    width: 30px;
+    min-width: 30px;
+    padding: 0;
+  }
+
+  .viewport-switcher button span {
+    display: none;
+  }
 }
 
 .zoom-switcher strong {

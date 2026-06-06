@@ -12,6 +12,8 @@ export const VIEWPORT_OPTIONS: ViewportOption[] = [
   { ariaLabel: '切换到手机预览', label: '手机', viewport: 'mobile' },
 ]
 
+export const PREVIEW_VIEWPORT_LABEL_HIDE_WIDTH = 430
+
 export const FULLSCREEN_ACTIONS = {
   enter: { ariaLabel: '全屏预览', label: '全屏预览' },
   exit: { ariaLabel: '退出全屏预览', label: '退出全屏' },

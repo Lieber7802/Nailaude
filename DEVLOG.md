@@ -1992,3 +1992,32 @@
 ### 队友备注
 - 智能体耗时目前由前端运行态推导，因为现有 `Task` 契约没有权威耗时字段。
 - 如果后端后续推送精确任务耗时，可以替换或补齐 `runtime.taskTimings`，无需调整展示组件结构。
+
+## [2026-06-06] Codex - 右侧预览尺寸按钮窄宽修复
+
+### 问题判断
+- 右侧预览面板宽度较窄时，底部“桌面 / 平板 / 手机”切换按钮的中文标签会被挤压换行，形成逐字竖排的视觉问题。
+- 该问题属于前端响应式样式问题，不涉及后端、shared types 或 WebSocket 契约。
+
+### 完成内容
+- 为预览底部控制条启用 CSS container query。
+- viewport 切换按钮默认禁止文字换行，避免标签在边界宽度下被拆字。
+- 当控制条宽度小于 `430px` 时自动隐藏“桌面 / 平板 / 手机”文字，仅保留图标按钮。
+- 补充 `PREVIEW_VIEWPORT_LABEL_HIDE_WIDTH` 配置与前端测试，锁定图标-only 断点。
+
+### 修改文件
+- `frontend/src/index.css`
+- `frontend/src/utils/previewControls.ts`
+- `frontend/tests/previewControls.test.mjs`
+- `docs/plans/M5_UI_BUGFIX_PLAN.md`
+- `docs/plans/M5_UI_BUGFIX_CHECKLIST.md`
+- `DEVLOG.md`
+
+### 接口变化
+- 未修改 shared type、REST、WebSocket 或后端契约。
+- 未新增依赖。
+
+### 验证
+- 前端测试：`cd frontend && zsh -lic 'npm test'` -> `32 passed`。
+- 前端构建：`cd frontend && zsh -lic 'npm run build'` -> 通过；Vite 保留既有 chunk size warning。
+- 补丁检查：`git diff --check` -> 通过。
