@@ -2023,3 +2023,32 @@
 - 前端测试：`cd frontend && zsh -lic 'npm test'` -> `33 passed`。
 - 前端构建：`cd frontend && zsh -lic 'npm run build'` -> 通过；Vite 保留既有 chunk size warning。
 - 补丁检查：`git diff --check` -> 通过。
+
+## [2026-06-06] Codex - 右侧预览缩放条窄宽修复
+
+### 问题判断
+- 右侧预览面板宽度较窄时，底部缩放控件的 range slider 没有根据窗格宽度收缩，导致右侧内容被裁切。
+- 原因是 slider 使用 `clamp(120px, 18vw, 240px)`，该宽度基于浏览器 viewport，而不是右侧预览窗格/控制条自身宽度。
+
+### 完成内容
+- 将 `zoom-switcher` 改为可收缩 flex 项，按预览底部控制条剩余空间布局。
+- 将 range slider 改为 `flex: 1 1 56px`，宽度使用 `100%` 和 `max-width: 180px`，不再依赖 `vw`。
+- 在窄控制条下压缩缩放按钮和百分比文本宽度，保证 `- / 百分比 / slider / +` 尽量完整显示。
+- 补充 `PREVIEW_ZOOM_SLIDER_MIN_WIDTH` 配置与测试，锁定窄宽最小 slider 宽度。
+
+### 修改文件
+- `frontend/src/index.css`
+- `frontend/src/utils/previewControls.ts`
+- `frontend/tests/previewControls.test.mjs`
+- `docs/plans/M5_UI_BUGFIX_PLAN.md`
+- `docs/plans/M5_UI_BUGFIX_CHECKLIST.md`
+- `DEVLOG.md`
+
+### 接口变化
+- 未修改 shared type、REST、WebSocket 或后端契约。
+- 未新增依赖。
+
+### 验证
+- 前端测试：`cd frontend && zsh -lic 'npm test'` -> `34 passed`。
+- 前端构建：`cd frontend && zsh -lic 'npm run build'` -> 通过；Vite 保留既有 chunk size warning。
+- 补丁检查：`git diff --check` -> 通过。

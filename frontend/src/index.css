@@ -1892,6 +1892,7 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
   min-height: 32px;
   max-width: 100%;
   padding: 3px;
@@ -1899,6 +1900,15 @@ button {
   border-radius: 9px;
   background: #fff;
   color: #6f6256;
+}
+
+.viewport-switcher {
+  flex: 0 0 auto;
+}
+
+.zoom-switcher {
+  flex: 1 1 0;
+  justify-content: flex-start;
 }
 
 .preview-device-bar button {
@@ -1948,13 +1958,32 @@ button {
 }
 
 .zoom-switcher strong {
+  flex: 0 0 auto;
   min-width: 56px;
   text-align: center;
 }
 
 .zoom-switcher input[type="range"] {
-  width: clamp(120px, 18vw, 240px);
+  flex: 1 1 56px;
+  width: 100%;
+  min-width: 56px;
+  max-width: 180px;
   accent-color: var(--brand);
+}
+
+@container preview-device-bar (max-width: 430px) {
+  .zoom-switcher {
+    gap: 3px;
+  }
+
+  .zoom-switcher button {
+    min-width: 28px;
+    padding: 0 6px;
+  }
+
+  .zoom-switcher strong {
+    min-width: 48px;
+  }
 }
 
 .zoom-switcher button:disabled {

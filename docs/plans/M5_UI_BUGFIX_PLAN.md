@@ -10,6 +10,7 @@
 - 聊天消息内产物卡片默认展示前 5 个，其余折叠并支持展开/收起。
 - 协作状态卡片按智能体任务状态展示不同 tone，并显示本地运行态耗时。
 - 右侧预览底部 viewport 切换按钮在窄面板下自动隐藏文字标签，避免中文标签被挤成竖排。
+- 右侧预览底部缩放条根据窗格宽度自动收缩，避免 range slider 在窄面板下被裁切。
 - 相关纯逻辑测试、样式与 DEVLOG。
 
 ## Contract Notes
@@ -27,6 +28,7 @@
 4. 扩展 `uiStore` 运行态，记录智能体 thinking/task 执行耗时。
 5. 调整 `RuntimeBanner` 与 CSS，区分 pending/done/danger/warning/idle 状态样式并显示耗时。
 6. 调整预览 viewport 切换按钮响应式样式，窄宽时隐藏文字，仅保留图标。
+7. 调整预览缩放控件 flex 行为，使用容器剩余空间而非 viewport 宽度计算 slider。
 
 ## Tests
 
@@ -34,6 +36,7 @@
 - `frontend/tests/artifactCard.test.mjs` 覆盖产物默认 5 个折叠与展开。
 - `frontend/tests/orchestratorUi.test.mjs` 覆盖失败/阻塞 tone 和耗时展示。
 - `frontend/tests/previewControls.test.mjs` 覆盖 viewport 标签隐藏断点配置。
+- `frontend/tests/previewControls.test.mjs` 覆盖缩放 slider 窄宽最小宽度配置。
 - 运行 `cd frontend && npm test` 和 `cd frontend && npm run build`。
 
 ## Out of Scope
