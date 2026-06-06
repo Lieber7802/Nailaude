@@ -2260,3 +2260,73 @@
 - 完整后端测试：`backend/.venv/bin/python -m pytest backend/tests` -> `208 passed, 1 warning`。
 - 补丁检查：`git diff --check` -> 通过。
 - 未重复浏览器手测电商页面；新增 planner 回归测试已覆盖同一类“页面 + 需求”导致产品架构师缺失的失败路径。
+
+## [2026-06-06] Codex - Stop generation cancels paused single chat runs
+
+### Problem judgment
+- The terminate button could fail for a current single chat run paused at clarification or approval.
+- Backend `stop_generation` only cancelled active runtime execution or queued jobs; paused jobs stayed in `paused_jobs` and never emitted a `cancelled` snapshot.
+
+### Completed
+- Added a WebSocket cancellation helper that covers active runs, queued runs, and paused runs.
+- Handled the active/paused race where a run has emitted `awaiting_input` but the queue worker has not yet completed the active slot.
+- Added a regression test proving a paused single chat run is cancelled and cannot be resumed afterward.
+- Updated the API spec note for `stop_generation` paused-run semantics.
+
+### Changed files
+- `backend/app/ws/handlers.py`
+- `backend/tests/test_m3_websocket_runtime.py`
+- `docs/API_SPEC.md`
+- `docs/plans/M4_STOP_GENERATION_PAUSED_RUN_PLAN.md`
+- `docs/plans/M4_STOP_GENERATION_PAUSED_RUN_CHECKLIST.md`
+- `DEVLOG.md`
+
+### Interface changes
+- No WebSocket payload shape or shared type changes.
+- `stop_generation` now also cancels runs paused in `awaiting_input` / `awaiting_approval`.
+- No new dependencies.
+
+### Verification
+- RED regression first hung waiting for `cancelled`, matching the reported bug.
+- Focused tests: `cd backend && ../.venv/bin/python -m pytest -vv tests/test_m3_websocket_runtime.py::test_stop_generation_cancels_paused_input_run tests/test_m3_websocket_runtime.py::test_stop_generation_cancels_active_run` -> `2 passed`, `1 warning`.
+- WebSocket runtime smoke: `cd backend && ../.venv/bin/python -m pytest tests/test_m3_websocket_runtime.py` -> `12 passed`, `1 warning`.
+
+### Teammate notes
+- The existing frontend button wiring is unchanged; it benefits from the broader backend cancellation semantics.
+
+## [2026-06-06] Codex - Vite HTML preview renders built assets
+
+### Problem judgment
+- Generated Vite projects can produce `dist/index.html` with root-relative asset URLs like `/assets/app.js`.
+- The right preview previously preferred iframe `srcDoc` for HTML artifacts, so those assets resolved against the AgentHub frontend origin instead of the conversation preview route.
+- Even when opening `/preview/{conversation}/dist/index.html`, backend HTML responses returned root-relative Vite asset URLs unchanged.
+
+### Completed
+- Frontend HTML artifacts with `previewUrl` now load through iframe `src`, preserving the preview route as the document URL.
+- Backend preview HTML responses rewrite root-relative `src` / `href` asset URLs into the current preview directory, e.g. `/assets/app.js` -> `/preview/{conversation}/dist/assets/app.js`.
+- Added focused frontend and backend regressions for Vite-style built HTML previews.
+- Updated Preview API docs for the asset rewrite behavior.
+
+### Changed files
+- `backend/app/services/preview_service.py`
+- `backend/tests/test_m1_1_api.py`
+- `frontend/src/components/preview/IframePreview.tsx`
+- `frontend/src/utils/markdownPreview.ts`
+- `frontend/tests/markdownPreview.test.mjs`
+- `docs/API_SPEC.md`
+- `docs/plans/M5_VITE_HTML_PREVIEW_FIX_PLAN.md`
+- `docs/plans/M5_VITE_HTML_PREVIEW_FIX_CHECKLIST.md`
+- `DEVLOG.md`
+
+### Interface changes
+- No shared type, REST payload, or WebSocket payload shape changes.
+- Existing `/preview/{conversation_id}/{file_path}` route now rewrites HTML asset URLs for preview correctness.
+- No new dependencies.
+
+### Verification
+- RED tests first failed with missing frontend helper and unchanged `/assets/*` backend HTML.
+- Frontend targeted/all tests: `cd frontend && npm test` -> `40 passed`.
+- Backend targeted preview/API tests: `cd backend && ../.venv/bin/python -m pytest tests/test_m1_1_api.py tests/test_m3_websocket_runtime.py::test_group_opencode_preview_request_emits_webpage_artifact` -> `14 passed`, `1 warning`.
+
+### Teammate notes
+- This fix serves built static Vite output. It does not start generated Vite dev servers.

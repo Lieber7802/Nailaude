@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 
 import {
   getArtifactPreviewMode,
+  getIframePreviewSource,
   isMarkdownFile,
   parseInlineMarkdown,
   parseMarkdownBlocks,
@@ -23,6 +24,17 @@ test('selects markdown preview mode without requiring previewUrl', () => {
   }
 
   assert.equal(getArtifactPreviewMode(artifact), 'markdown')
+})
+
+test('html artifacts with preview urls use iframe src instead of srcDoc', () => {
+  const artifact = {
+    files: [{ name: 'dist/index.html', language: 'html', content: '<script src="/assets/app.js"></script>' }],
+    previewUrl: '/preview/conv/dist/index.html',
+  }
+
+  assert.deepEqual(getIframePreviewSource(artifact), {
+    previewUrl: '/preview/conv/dist/index.html',
+  })
 })
 
 test('parses markdown headings, lists, and fenced code for rendered preview', () => {

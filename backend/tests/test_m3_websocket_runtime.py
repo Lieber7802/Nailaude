@@ -310,6 +310,57 @@ def test_stop_generation_cancels_active_run(client, monkeypatch, create_agent):
     assert event["data"]["status"] == "cancelled"
 
 
+def test_stop_generation_cancels_paused_input_run(client, monkeypatch, create_agent):
+    async def fake_plan_job(job, db):
+        return {
+            "status": "needs_clarification",
+            "questions": [
+                {
+                    "id": "scope",
+                    "question": "Which scope?",
+                    "reason": "Need a target before execution",
+                    "options": [{"id": "small", "label": "Small", "recommended": True}],
+                    "allowCustomInput": True,
+                }
+            ],
+        }
+
+    monkeypatch.setattr(ws_handlers, "plan_job", fake_plan_job)
+    agent = create_agent()
+    conversation = client.post(
+        "/api/v1/conversations",
+        json={"type": "single", "workDir": "", "participantIds": [agent["id"]]},
+    ).json()["data"]
+
+    with client.websocket_connect(f"/ws/{conversation['id']}") as websocket:
+        websocket.send_json({"type": "send_message", "data": {"content": "needs input", "mentions": []}})
+        run_id = None
+        while True:
+            event = websocket.receive_json()
+            if event["type"] == "orchestrator_status" and event["data"]["status"] == "awaiting_input":
+                run_id = event["data"]["runId"]
+                websocket.send_json({"type": "stop_generation", "data": {"messageId": "unused"}})
+                break
+
+        while True:
+            event = websocket.receive_json()
+            if event["type"] == "orchestrator_status" and event["data"]["status"] == "cancelled":
+                break
+
+        websocket.send_json(
+            {
+                "type": "orchestrator_input_response",
+                "data": {"runId": run_id, "answers": {"scope": "small"}},
+            }
+        )
+        error = websocket.receive_json()
+
+    assert event["data"]["runId"] == run_id
+    assert event["data"]["status"] == "cancelled"
+    assert error["type"] == "error"
+    assert error["data"]["error"] == "Paused orchestrator run not found"
+
+
 def test_write_task_downgraded_to_text_only_llm_fails_with_visible_warning(client, monkeypatch):
     work_dir = WORKSPACE_ROOT / f"pytest-write-downgrade-{uuid.uuid4()}"
     work_dir.mkdir(parents=True)

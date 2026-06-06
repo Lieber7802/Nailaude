@@ -77,17 +77,9 @@ async def websocket_endpoint(
             elif message.get("type") == "orchestrator_approval_response":
                 await handle_approval_response(websocket, conversation_id, message.get("data") or {}, db)
             elif message.get("type") == "stop_generation":
-                active_run_id = orchestrator_queue.active(conversation_id)
-                if active_run_id:
-                    runtime.cancel(active_run_id)
-                else:
-                    queued_run_id = orchestrator_queue.cancel_queued(conversation_id)
-                    if queued_run_id:
-                        queued_job = pending_jobs.pop(queued_run_id, None)
-                        if queued_job:
-                            await publish_job_snapshot(db, conversation_id, queued_job, "cancelled", "Run cancelled")
-                    else:
-                        await send_error(websocket, "No active run to cancel", recoverable=True)
+                cancelled = await stop_generation(conversation_id, db)
+                if not cancelled:
+                    await send_error(websocket, "No active run to cancel", recoverable=True)
             else:
                 await send_error(websocket, "Unsupported WebSocket message type", recoverable=True)
     except WebSocketDisconnect:
@@ -99,6 +91,40 @@ async def websocket_endpoint(
             pass
     finally:
         manager.disconnect(websocket, conversation_id)
+
+
+async def stop_generation(conversation_id: str, db: AsyncSession) -> bool:
+    active_run_id = orchestrator_queue.active(conversation_id)
+    paused_item = next(
+        ((key, job) for key, job in paused_jobs.items() if key[0] == conversation_id and key[1] == active_run_id),
+        None,
+    )
+    if paused_item:
+        key, job = paused_item
+        paused_jobs.pop(key, None)
+        runtime.cancel(active_run_id)
+        await publish_job_snapshot(db, conversation_id, job, "cancelled", "Run cancelled")
+        return True
+
+    if active_run_id:
+        runtime.cancel(active_run_id)
+        return True
+
+    queued_run_id = orchestrator_queue.cancel_queued(conversation_id)
+    if queued_run_id:
+        queued_job = pending_jobs.pop(queued_run_id, None)
+        if queued_job:
+            await publish_job_snapshot(db, conversation_id, queued_job, "cancelled", "Run cancelled")
+        return True
+
+    paused_items = [(key, job) for key, job in paused_jobs.items() if key[0] == conversation_id]
+    if not paused_items:
+        return False
+
+    key, job = min(paused_items, key=lambda item: int(item[1].get("sequence") or 0))
+    paused_jobs.pop(key, None)
+    await publish_job_snapshot(db, conversation_id, job, "cancelled", "Run cancelled")
+    return True
 
 
 async def handle_send_message(websocket: WebSocket, conversation_id: str, payload: dict, db: AsyncSession) -> None:

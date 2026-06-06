@@ -243,6 +243,50 @@ def test_create_conversation_rejects_workspace_name_that_escapes_root(client):
     assert response.status_code == 422
 
 
+def test_preview_rewrites_vite_root_assets_under_nested_html(client):
+    import shutil
+    from pathlib import Path
+    from uuid import uuid4
+
+    from app.schemas.conversation import WORKSPACE_ROOT
+
+    agent_id = client.get("/api/v1/agents").json()["data"][0]["id"]
+    workspace_name = f"pytest-vite-preview-{uuid4()}"
+    work_dir = WORKSPACE_ROOT / workspace_name
+    try:
+        conversation = client.post(
+            "/api/v1/conversations",
+            json={
+                "title": "Vite Preview",
+                "type": "single",
+                "workDir": workspace_name,
+                "participantIds": [agent_id],
+            },
+        ).json()["data"]
+        dist_dir = Path(work_dir, "dist")
+        assets_dir = Path(dist_dir, "assets")
+        assets_dir.mkdir(parents=True)
+        Path(assets_dir, "app.js").write_text("window.__VITE_PREVIEW__ = true", encoding="utf-8")
+        Path(assets_dir, "app.css").write_text("body { color: red; }", encoding="utf-8")
+        Path(dist_dir, "index.html").write_text(
+            '<!doctype html><div id="root"></div><script type="module" src="/assets/app.js"></script>'
+            '<link rel="stylesheet" href="/assets/app.css">',
+            encoding="utf-8",
+        )
+
+        response = client.get(f"/preview/{conversation['id']}/dist/index.html")
+
+        assert response.status_code == 200
+        assert 'src="/preview/' in response.text
+        assert f'src="/preview/{conversation["id"]}/dist/assets/app.js"' in response.text
+        assert f'href="/preview/{conversation["id"]}/dist/assets/app.css"' in response.text
+        asset_response = client.get(f"/preview/{conversation['id']}/dist/assets/app.js")
+        assert asset_response.status_code == 200
+        assert "window.__VITE_PREVIEW__" in asset_response.text
+    finally:
+        shutil.rmtree(work_dir, ignore_errors=True)
+
+
 def test_rest_message_fallback_persists_user_message_only(client):
     agent_id = client.get("/api/v1/agents").json()["data"][0]["id"]
     conversation = client.post(

@@ -1,7 +1,7 @@
 import { DesktopOutlined, MobileOutlined, TabletOutlined } from '@ant-design/icons'
 import type { CSSProperties } from 'react'
 import type { Artifact } from '../../services/api'
-import { isHtmlFile } from '../../utils/markdownPreview'
+import { getIframePreviewSource } from '../../utils/markdownPreview'
 import {
   PREVIEW_VIEWPORT_LABEL_CLASS,
   PREVIEW_ZOOM,
@@ -18,8 +18,7 @@ interface IframePreviewProps {
 }
 
 const IframePreview = ({ artifact, onViewportChange, onZoomChange, viewport, zoom }: IframePreviewProps) => {
-  const html = artifact?.files.find((file) => isHtmlFile(file))?.content
-  const previewUrl = html ? undefined : artifact?.previewUrl || undefined
+  const { html, previewUrl } = getIframePreviewSource(artifact)
 
   if (!html && !previewUrl) {
     return <div className="preview-empty">当前产出物暂不支持网页预览</div>

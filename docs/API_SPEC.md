@@ -549,11 +549,13 @@
 - 直接返回静态文件内容（HTML/CSS/JS/图片）
 - 响应 Header 包含 `Content-Type` 和 CSP 安全头
 - 支持相对路径资源引用
+- HTML 响应会将 Vite 构建产物常见的根相对资源（如 `/assets/app.js`）改写到当前文件所在的 Preview 目录，避免 iframe 请求落到 AgentHub 应用根路径
 - 不返回 `ApiResponse` 包装，直接返回文件原始内容
 
 示例：
 ```
 GET /preview/conv-uuid-123/index.html  → 返回 HTML 文件（text/html）
+GET /preview/conv-uuid-123/dist/index.html → 返回 HTML，并将 `/assets/*` 映射为 `/preview/conv-uuid-123/dist/assets/*`
 GET /preview/conv-uuid-123/styles.css  → 返回 CSS 文件（text/css）
 GET /preview/conv-uuid-123/app.js      → 返回 JS 文件（application/javascript）
 ```
@@ -625,7 +627,7 @@ ws://localhost:8000/ws/{conversation_id}
 
 #### 停止生成
 
-请求当前会话的单次 Orchestrator run 停止继续执行。服务端会取消当前 active run；如果 run 仍在队列中则直接标记为 `cancelled`；如果取消请求发生在 planning/validating 之后、真正执行智能体任务之前，服务端会保留该取消意图，进入执行阶段后立即终止，不再启动智能体任务。
+请求当前会话的单次 Orchestrator run 停止继续执行。服务端会取消当前 active run；如果 run 仍在队列中则直接标记为 `cancelled`；如果 run 暂停在等待用户澄清或高风险写入审批阶段，也会移出暂停队列并标记为 `cancelled`；如果取消请求发生在 planning/validating 之后、真正执行智能体任务之前，服务端会保留该取消意图，进入执行阶段后立即终止，不再启动智能体任务。
 
 ```json
 {

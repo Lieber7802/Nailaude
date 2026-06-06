@@ -13,6 +13,11 @@ export interface ArtifactPreviewInput<TFile extends FilePreviewInput = FilePrevi
   previewUrl?: string | null
 }
 
+export interface IframePreviewSource {
+  html?: string
+  previewUrl?: string
+}
+
 export type MarkdownBlock =
   | { type: 'heading'; level: number; text: string }
   | { type: 'paragraph'; text: string }
@@ -58,6 +63,13 @@ export function getArtifactPreviewMode(artifact?: ArtifactPreviewInput): Artifac
   if (artifact.files?.some((file) => isMarkdownFile(file))) return 'markdown'
   if (artifact.previewUrl) return 'remote'
   return 'unsupported'
+}
+
+export function getIframePreviewSource(artifact?: ArtifactPreviewInput): IframePreviewSource {
+  if (!artifact) return {}
+  if (artifact.previewUrl) return { previewUrl: artifact.previewUrl }
+  const html = artifact.files?.find((file) => isHtmlFile(file))?.content
+  return html ? { html } : {}
 }
 
 export function renderMarkdownToHtml(content: string): string {

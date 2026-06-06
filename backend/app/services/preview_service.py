@@ -2,10 +2,11 @@
 Preview Service - Static file hosting for iframe previews.
 """
 import mimetypes
+import re
 from pathlib import Path
 
 from fastapi import HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.conversation import Conversation
@@ -30,7 +31,7 @@ class PreviewService:
         path = self._resolve_preview_path(work_dir, file_path)
         return path.read_bytes()
 
-    async def file_response(self, db: AsyncSession, conversation_id: str, file_path: str) -> FileResponse:
+    async def file_response(self, db: AsyncSession, conversation_id: str, file_path: str) -> FileResponse | Response:
         """Return a raw static file response for the preview route."""
         conversation = await db.get(Conversation, conversation_id)
         if conversation is None:
@@ -40,13 +41,22 @@ class PreviewService:
             raise HTTPException(status_code=404, detail="Preview file not found")
 
         media_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+        headers = {
+            "Content-Security-Policy": PREVIEW_CSP,
+            "X-Content-Type-Options": "nosniff",
+        }
+        if media_type == "text/html":
+            html = path.read_text(encoding="utf-8", errors="replace")
+            return Response(
+                self._rewrite_html_asset_urls(html, conversation_id, file_path),
+                media_type=media_type,
+                headers=headers,
+            )
+
         return FileResponse(
             path,
             media_type=media_type,
-            headers={
-                "Content-Security-Policy": PREVIEW_CSP,
-                "X-Content-Type-Options": "nosniff",
-            },
+            headers=headers,
         )
 
     def _resolve_preview_path(self, work_dir: str, file_path: str) -> Path:
@@ -55,3 +65,24 @@ class PreviewService:
         if not requested.is_relative_to(root):
             raise HTTPException(status_code=403, detail="Preview path escapes the workspace")
         return requested
+
+    def _rewrite_html_asset_urls(self, html: str, conversation_id: str, file_path: str) -> str:
+        safe_file_path = file_path.replace("\\", "/").lstrip("/")
+        preview_dir = str(Path(safe_file_path).parent).replace("\\", "/")
+        preview_prefix = f"/preview/{conversation_id}"
+        if preview_dir and preview_dir != ".":
+            preview_prefix = f"{preview_prefix}/{preview_dir}"
+
+        def replace(match: re.Match[str]) -> str:
+            attr = match.group("attr")
+            quote = match.group("quote")
+            url = match.group("url")
+            if url.startswith("/preview/"):
+                return match.group(0)
+            return f"{attr}{quote}{preview_prefix}{url}{quote}"
+
+        return re.sub(
+            r"(?P<attr>\b(?:src|href)=)(?P<quote>['\"])(?P<url>/(?!/)[^'\"]+)(?P=quote)",
+            replace,
+            html,
+        )
