@@ -13,6 +13,7 @@ export const VIEWPORT_OPTIONS: ViewportOption[] = [
 ]
 
 export const PREVIEW_VIEWPORT_LABEL_HIDE_WIDTH = 430
+export const PREVIEW_VIEWPORT_LABEL_CLASS = 'viewport-switcher__label'
 
 export const FULLSCREEN_ACTIONS = {
   enter: { ariaLabel: '全屏预览', label: '全屏预览' },

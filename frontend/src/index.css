@@ -1926,7 +1926,7 @@ button {
   background: var(--brand);
 }
 
-.viewport-switcher button span {
+.viewport-switcher__label {
   font-size: 12px;
   white-space: nowrap;
 }
@@ -1942,7 +1942,7 @@ button {
     padding: 0;
   }
 
-  .viewport-switcher button span {
+  .viewport-switcher__label {
     display: none;
   }
 }

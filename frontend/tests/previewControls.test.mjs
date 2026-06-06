@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import {
   clampPreviewZoom,
   FULLSCREEN_ACTIONS,
+  PREVIEW_VIEWPORT_LABEL_CLASS,
   PREVIEW_VIEWPORT_LABEL_HIDE_WIDTH,
   PREVIEW_ZOOM,
   VIEWPORT_OPTIONS,
@@ -22,6 +23,10 @@ test('preview viewport controls expose clear labels', () => {
 
 test('preview viewport labels hide before narrow panes force vertical text', () => {
   assert.equal(PREVIEW_VIEWPORT_LABEL_HIDE_WIDTH, 430)
+})
+
+test('preview viewport hidden label class is scoped to text only', () => {
+  assert.equal(PREVIEW_VIEWPORT_LABEL_CLASS, 'viewport-switcher__label')
 })
 
 test('fullscreen action labels include enter and exit states', () => {

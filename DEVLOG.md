@@ -2003,9 +2003,11 @@
 - 为预览底部控制条启用 CSS container query。
 - viewport 切换按钮默认禁止文字换行，避免标签在边界宽度下被拆字。
 - 当控制条宽度小于 `430px` 时自动隐藏“桌面 / 平板 / 手机”文字，仅保留图标按钮。
-- 补充 `PREVIEW_VIEWPORT_LABEL_HIDE_WIDTH` 配置与前端测试，锁定图标-only 断点。
+- 将文字 span 改为专用 `viewport-switcher__label`，避免误隐藏 Ant Design 图标的 `.anticon` span。
+- 补充 `PREVIEW_VIEWPORT_LABEL_HIDE_WIDTH` 和 `PREVIEW_VIEWPORT_LABEL_CLASS` 配置与前端测试，锁定图标-only 断点和 label 作用域。
 
 ### 修改文件
+- `frontend/src/components/preview/IframePreview.tsx`
 - `frontend/src/index.css`
 - `frontend/src/utils/previewControls.ts`
 - `frontend/tests/previewControls.test.mjs`
@@ -2018,6 +2020,6 @@
 - 未新增依赖。
 
 ### 验证
-- 前端测试：`cd frontend && zsh -lic 'npm test'` -> `32 passed`。
+- 前端测试：`cd frontend && zsh -lic 'npm test'` -> `33 passed`。
 - 前端构建：`cd frontend && zsh -lic 'npm run build'` -> 通过；Vite 保留既有 chunk size warning。
 - 补丁检查：`git diff --check` -> 通过。

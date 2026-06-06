@@ -2,7 +2,12 @@ import { DesktopOutlined, MobileOutlined, TabletOutlined } from '@ant-design/ico
 import type { CSSProperties } from 'react'
 import type { Artifact } from '../../services/api'
 import { isHtmlFile } from '../../utils/markdownPreview'
-import { PREVIEW_ZOOM, VIEWPORT_OPTIONS, type PreviewViewport } from '../../utils/previewControls'
+import {
+  PREVIEW_VIEWPORT_LABEL_CLASS,
+  PREVIEW_ZOOM,
+  VIEWPORT_OPTIONS,
+  type PreviewViewport,
+} from '../../utils/previewControls'
 
 interface IframePreviewProps {
   artifact?: Artifact
@@ -48,7 +53,7 @@ const IframePreview = ({ artifact, onViewportChange, onZoomChange, viewport, zoo
               onClick={() => onViewportChange(option.viewport)}
             >
               {iconForViewport(option.viewport)}
-              <span>{option.label}</span>
+              <span className={PREVIEW_VIEWPORT_LABEL_CLASS}>{option.label}</span>
             </button>
           ))}
         </div>
