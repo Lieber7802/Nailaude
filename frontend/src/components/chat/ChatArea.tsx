@@ -92,7 +92,7 @@ const ChatArea = ({
 
       <div className="chat-area__body chat-area__body--messages">
         {messages.length === 0 ? (
-          <div className="empty-state">发送第一条消息，Mock 智能体会返回流式产物</div>
+          <div className="empty-state">发送第一条消息，和智能体一起推进当前任务</div>
         ) : (
           messages.map((message) => (
             <MessageBubble

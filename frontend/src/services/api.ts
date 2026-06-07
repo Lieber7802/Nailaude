@@ -27,6 +27,7 @@ export type {
 } from '../../../packages/shared/types'
 
 export type CreateAgentInput = CreateAgentDTO
+export type UpdateAgentInput = Partial<CreateAgentDTO>
 export type CreateConversationInput = CreateConversationDTO
 export type UpdateConversationInput = Partial<Pick<CreateConversationDTO, 'title' | 'workDir' | 'participantIds'>>
 export type Message = Omit<SharedMessage, 'metadata'> & {
@@ -64,6 +65,9 @@ export const agentApi = {
   list: () => fetchJSON<Agent[]>('/agents'),
   create: (data: CreateAgentInput) => fetchJSON<Agent>('/agents', { method: 'POST', body: JSON.stringify(data) }),
   get: (id: string) => fetchJSON<Agent>(`/agents/${id}`),
+  update: (id: string, data: UpdateAgentInput) =>
+    fetchJSON<Agent>(`/agents/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  delete: (id: string) => fetchJSON<{ id: string }>(`/agents/${id}`, { method: 'DELETE' }),
 }
 
 export const platformApi = {

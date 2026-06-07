@@ -12,6 +12,11 @@
 - 右侧预览底部 viewport 切换按钮在窄面板下自动隐藏文字标签，避免中文标签被挤成竖排。
 - 右侧预览底部缩放条根据窗格宽度自动收缩，避免 range slider 在窄面板下被裁切。
 - 右侧预览底部缩放控件在宽面板下保持紧凑宽度，避免无意义空白。
+- 左侧栏对话列表在内容超过可视高度时保持独立纵向滚动，避免被外层裁切。
+- 工作台空状态和右侧空预览不暴露 Mock / unsupported 这类实现细节。
+- 右侧全屏 Markdown 预览铺满可用空间。
+- 刷新后的终态任务不重新生成本地耗时计时。
+- 自定义智能体管理页支持查看、创建和删除自定义智能体。
 - 相关纯逻辑测试、样式与 DEVLOG。
 
 ## Contract Notes
@@ -31,6 +36,11 @@
 6. 调整预览 viewport 切换按钮响应式样式，窄宽时隐藏文字，仅保留图标。
 7. 调整预览缩放控件 flex 行为，使用容器剩余空间而非 viewport 宽度计算 slider。
 8. 限制预览缩放控件最大宽度，防止宽窗格下被拉伸出空白区域。
+9. 修复左侧栏对话列表的 flex 高度约束，让滚动容器占满剩余空间并产生内部滚动。
+10. 调整工作台和预览空状态文案，避免暴露实现细节。
+11. 调整 Markdown 预览全屏样式，让正文容器铺满预览面板。
+12. 调整 runtime 计时逻辑，终态任务只有已有开始时间时才落结束时间。
+13. 实现自定义智能体管理页，复用创建弹窗并接入删除 API。
 
 ## Tests
 
@@ -40,6 +50,9 @@
 - `frontend/tests/previewControls.test.mjs` 覆盖 viewport 标签隐藏断点配置。
 - `frontend/tests/previewControls.test.mjs` 覆盖缩放 slider 窄宽最小宽度配置。
 - `frontend/tests/previewControls.test.mjs` 覆盖缩放控件宽窗格最大紧凑宽度配置。
+- `frontend/tests/sidebarLayout.test.mjs` 覆盖左侧栏对话列表滚动容器的 flex 高度约束。
+- `frontend/tests/experiencePolish.test.mjs` 覆盖空状态文案、Markdown 全屏样式和自定义智能体管理页能力。
+- `frontend/tests/runtimeStore.test.mjs` 覆盖刷新后终态任务不凭空生成耗时。
 - 运行 `cd frontend && npm test` 和 `cd frontend && npm run build`。
 
 ## Out of Scope

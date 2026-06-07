@@ -2354,3 +2354,80 @@
 ### 给其他成员的提醒
 - @小马：本次只改前端样式，不影响 Adapter、API 或 WebSocket 契约。
 - @组长：预览面板、代码/Markdown/diff 容器已换成 warm token；后续新增预览控件请优先复用 `frontend/src/index.css` 的 design tokens。
+
+## [2026-06-07] Codex - Left sidebar scroll bugfix
+
+### Problem judgment
+- The left pane clipped long content because the conversation list did not reliably occupy the remaining flex height.
+- A long built-in/custom agent list could consume the sidebar vertical space and shrink the conversation list to 0 height, leaving conversations unreachable.
+
+### Completed
+- Added explicit scroll containment for the sidebar.
+- Capped the common agent list height and made it independently scrollable.
+- Made the conversation list flex into remaining space and keep its own vertical scrolling.
+- Added a CSS regression test covering the sidebar/list scroll constraints.
+
+### Changed files
+- `frontend/src/index.css`
+- `frontend/tests/sidebarLayout.test.mjs`
+- `docs/plans/M5_UI_BUGFIX_PLAN.md`
+- `docs/plans/M5_UI_BUGFIX_CHECKLIST.md`
+- `DEVLOG.md`
+
+### Interface changes
+- No API, WebSocket, shared type, or dependency changes.
+
+### Verification
+- RED regression first failed on missing `.conversation-list` flex sizing.
+- `cd frontend && npm test` -> `44 passed`.
+- `cd frontend && npm run build` -> passed, with the existing Vite chunk-size warning.
+- Browser smoke at `http://127.0.0.1:5174/workspace`: with 20 conversation rows, `.conversation-list` had `overflow-y: auto`, positive height, and wheel scroll changed `scrollTop` from `0` to `620`.
+
+### Teammate notes
+- The fix is CSS-only and scoped to the left sidebar layout. It should not affect chat, preview, backend, or Adapter behavior.
+
+## [2026-06-07] Codex - Workspace polish and custom agent management
+
+### Problem judgment
+- The workspace empty state exposed Mock implementation copy, and the right preview showed an unsupported-webpage message when no output existed.
+- Markdown preview kept card-like spacing in fullscreen instead of using the available panel area.
+- Runtime durations were derived from frontend-local timestamps, so refresh-triggered snapshots could create misleading fresh timers.
+- `/agents` was still a placeholder page despite backend support for custom Agent CRUD.
+
+### Completed
+- Replaced workspace and preview empty-state copy with product-facing text.
+- Defaulted the right panel to the output list when no artifact is active.
+- Added fullscreen Markdown CSS so Markdown preview fills the preview body.
+- Adjusted runtime timing so status snapshots without a local start event do not create fake durations after refresh.
+- Implemented `/agents` with custom/builtin sections, create modal reuse, custom Agent delete flow, and a workspace sidebar entry.
+- Added frontend regression tests for copy, Markdown fullscreen styling, agent management capability, and refresh timing.
+
+### Changed files
+- `frontend/src/components/chat/ChatArea.tsx`
+- `frontend/src/components/chat/ConversationList.tsx`
+- `frontend/src/components/preview/IframePreview.tsx`
+- `frontend/src/components/preview/PreviewPanel.tsx`
+- `frontend/src/pages/AgentManage.tsx`
+- `frontend/src/services/api.ts`
+- `frontend/src/stores/agentStore.ts`
+- `frontend/src/stores/uiStore.ts`
+- `frontend/src/index.css`
+- `frontend/tests/experiencePolish.test.mjs`
+- `frontend/tests/runtimeStore.test.mjs`
+- `docs/plans/M5_UI_BUGFIX_PLAN.md`
+- `docs/plans/M5_UI_BUGFIX_CHECKLIST.md`
+- `DEVLOG.md`
+
+### Interface changes
+- No REST/WebSocket/shared-type contract changes.
+- Frontend API client now exposes existing `PATCH /agents/{id}` and `DELETE /agents/{id}` helpers.
+- No new dependencies.
+
+### Verification
+- RED regressions first failed on old empty-state copy, missing fullscreen Markdown CSS, placeholder Agent page, and refresh-created fake durations.
+- `cd frontend && npm test` -> `48 passed`.
+- `cd frontend && npm run build` -> passed.
+- Browser smoke at `http://127.0.0.1:5174/workspace` and `/agents`: old copy absent, output empty state visible, Agent management page reachable, custom/builtin sections rendered, and custom delete buttons present.
+
+### Teammate notes
+- Builtin Agents remain non-deletable in the UI and backend, preserving seed roles and Mock-first workflows.

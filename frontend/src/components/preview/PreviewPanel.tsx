@@ -184,7 +184,7 @@ const OutputsTab = ({
   onSelect: (id: string | null) => void
 }) => {
   if (artifacts.length === 0) {
-    return <div className="preview-empty">点击聊天中的新文件产物卡片，在此预览</div>
+    return <div className="preview-empty">点击聊天中的产物卡片，在此预览</div>
   }
 
   return (
@@ -219,6 +219,7 @@ const iconForArtifact = (artifact: Artifact) => {
 }
 
 const tabForArtifact = (artifact?: Artifact): PreviewTab => {
+  if (!artifact) return 'outputs'
   if (artifact?.type === 'diff') return 'changes'
   if (getArtifactPreviewMode(artifact) === 'markdown') return 'preview'
   if (artifact?.type === 'code') return 'code'
