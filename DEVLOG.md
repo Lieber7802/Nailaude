@@ -2431,3 +2431,138 @@
 
 ### Teammate notes
 - Builtin Agents remain non-deletable in the UI and backend, preserving seed roles and Mock-first workflows.
+
+## [2026-06-08] Codex - Vite preview, runtime timing, and sidebar cleanup
+
+### Problem judgment
+- Vite source projects cannot be previewed by serving `index.html` as static HTML because `/src/*.tsx`, Vite transforms, and dev-only module URLs require `npm run dev`.
+- Agent duration display still depended on frontend-local timing for active runs, so refreshes could lose or skew elapsed time.
+- The left sidebar search box was malfunctioning and not required for the current MVP.
+- Conversation rows and the left pane default width were too roomy for repeated scanning.
+
+### Completed
+- Added backend Vite workspace detection, on-demand `npm run dev` startup, `/preview/{conversation_id}/*` proxying, absolute URL rewriting, and lifespan cleanup for spawned dev servers.
+- Added backend authoritative task `startedAt` / `endedAt` timestamps in Orchestrator runtime snapshots.
+- Updated shared `Task` and `API_SPEC.md` to document the timing fields.
+- Changed frontend runtime duration display to use backend task timestamps only.
+- Removed sidebar search UI/state/request wiring.
+- Compacted the left pane default width, drag clamp, and conversation row spacing.
+
+### Changed files
+- `backend/app/main.py`
+- `backend/app/services/preview_service.py`
+- `backend/app/services/orchestrator_runtime.py`
+- `backend/tests/test_m3_orchestrator_runtime.py`
+- `backend/tests/test_m4_artifact_preview.py`
+- `frontend/src/components/chat/ConversationList.tsx`
+- `frontend/src/pages/Workspace.tsx`
+- `frontend/src/stores/uiStore.ts`
+- `frontend/src/index.css`
+- `frontend/tests/runtimeStore.test.mjs`
+- `frontend/tests/sidebarLayout.test.mjs`
+- `packages/shared/types.ts`
+- `docs/API_SPEC.md`
+- `docs/plans/M5_VITE_HTML_PREVIEW_FIX_PLAN.md`
+- `docs/plans/M5_VITE_HTML_PREVIEW_FIX_CHECKLIST.md`
+- `docs/plans/M5_UI_BUGFIX_PLAN.md`
+- `docs/plans/M5_UI_BUGFIX_CHECKLIST.md`
+- `DEVLOG.md`
+
+### Interface changes
+- `Task` now allows optional `startedAt` and `endedAt` ISO timestamps.
+- Existing `/preview/{conversation_id}/{file_path}` URLs remain unchanged; Vite dev-server proxying is internal.
+- No new npm or pip dependencies.
+
+### Verification
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_orchestrator_runtime.py tests/test_m4_artifact_preview.py` -> `19 passed`, with the existing `httpx` deprecation warning from Starlette TestClient.
+- `cd frontend && npm test -- runtimeStore.test.mjs sidebarLayout.test.mjs` -> `51 passed`.
+- `cd frontend && npm run build` -> passed.
+
+### Teammate notes
+- Vite previews require the generated workspace to have runnable npm dependencies available, matching the user's local `npm run dev` expectation.
+- Backend `GET /conversations?...&search=` compatibility remains; only the broken left-side search entry point was removed from the frontend.
+
+## [2026-06-08] Codex - Roll back sidebar compacting
+
+### Problem judgment
+- The previous sidebar compacting change for issue 4 was not the desired direction.
+- The Vite preview, backend timing, and search removal fixes should remain in place.
+
+### Completed
+- Restored left pane default width from `260px` back to `300px`.
+- Restored left pane drag clamp from `220-360px` back to `240-440px`.
+- Restored sidebar padding/gap and conversation row height/padding to the prior layout.
+- Adjusted the sidebar regression test to keep only the search-removal assertion.
+- Updated the M5 UI bugfix plan/checklist to remove the compact-row scope.
+
+### Changed files
+- `frontend/src/stores/uiStore.ts`
+- `frontend/src/index.css`
+- `frontend/tests/sidebarLayout.test.mjs`
+- `docs/plans/M5_UI_BUGFIX_PLAN.md`
+- `docs/plans/M5_UI_BUGFIX_CHECKLIST.md`
+- `DEVLOG.md`
+
+### Interface changes
+- No API, WebSocket, shared type, or dependency changes.
+
+### Verification
+- `cd frontend && npm test -- sidebarLayout.test.mjs runtimeStore.test.mjs` -> `51 passed`.
+- `cd frontend && npm run build` -> passed.
+- `git diff --check` -> passed.
+
+## [2026-06-08] Codex - Fix stretched conversation rows
+
+### Problem judgment
+- The red-boxed conversation rows were becoming oversized because `.conversation-list` fills the remaining sidebar height as a CSS grid.
+- With only a few conversations, grid auto rows could stretch to consume extra vertical space.
+
+### Completed
+- Added `align-content: start` to `.conversation-list` so extra height stays below the rows.
+- Added `grid-auto-rows: max-content` so each conversation row keeps content-sized height.
+- Added a sidebar regression test for the stretched-row case.
+
+### Changed files
+- `frontend/src/index.css`
+- `frontend/tests/sidebarLayout.test.mjs`
+- `docs/plans/M5_UI_BUGFIX_PLAN.md`
+- `docs/plans/M5_UI_BUGFIX_CHECKLIST.md`
+- `DEVLOG.md`
+
+### Interface changes
+- No API, WebSocket, shared type, or dependency changes.
+
+### Verification
+- `cd frontend && npm test -- sidebarLayout.test.mjs` -> `52 passed`.
+- `cd frontend && npm run build` -> passed.
+- `git diff --check` -> passed.
+
+## [2026-06-08] Codex - Fix CDN static preview CSP
+
+### Problem judgment
+- The user's tested `index.html` was a generated static page, not a Vite source project.
+- It loaded React, ReactDOM, Babel standalone, Google Fonts, and images from HTTPS CDNs.
+- The preview CSP only allowed self-hosted scripts plus inline scripts, so CDN runtime scripts were blocked and the React root stayed blank.
+
+### Completed
+- Expanded Preview CSP to allow HTTPS scripts/styles/fonts/images/connects inside the iframe.
+- Added `unsafe-eval` for Babel standalone generated pages that run `type="text/babel"` in-browser.
+- Kept `frame-ancestors 'self'` and the existing iframe sandbox boundary.
+- Added a backend regression test for CDN/Babel static preview pages.
+- Updated Preview API docs and the Vite preview plan/checklist.
+
+### Changed files
+- `backend/app/services/preview_service.py`
+- `backend/tests/test_m4_artifact_preview.py`
+- `docs/API_SPEC.md`
+- `docs/plans/M5_VITE_HTML_PREVIEW_FIX_PLAN.md`
+- `docs/plans/M5_VITE_HTML_PREVIEW_FIX_CHECKLIST.md`
+- `DEVLOG.md`
+
+### Interface changes
+- No route, payload, shared type, or dependency changes.
+- Preview response CSP is intentionally less restrictive for iframe-rendered generated pages.
+
+### Verification
+- `cd backend && .venv/bin/python -m pytest tests/test_m4_artifact_preview.py` -> `4 passed`, with the existing Starlette/httpx deprecation warning.
+- `curl -s -D - http://127.0.0.1:8000/preview/4a5690e1-ea91-4abe-80db-1690dd431002/index.html -o /tmp/agenthub-preview.html` returned `200 OK` and the updated CSP containing `script-src 'self' 'unsafe-inline' 'unsafe-eval' https:`.

@@ -252,24 +252,6 @@ button {
   color: var(--near-black);
 }
 
-.conversation-search {
-  height: 42px;
-  border-color: var(--line);
-  border-radius: 12px;
-  background: var(--ivory);
-}
-
-.search-shortcut {
-  display: inline-flex;
-  align-items: center;
-  height: 22px;
-  padding: 0 6px;
-  border-radius: 6px;
-  color: var(--stone-gray);
-  background: var(--warm-sand);
-  font-size: 12px;
-}
-
 .sidebar__section {
   display: grid;
   gap: 10px;
@@ -308,7 +290,9 @@ button {
 }
 
 .conversation-list {
+  align-content: start;
   flex: 1;
+  grid-auto-rows: max-content;
   min-height: 0;
   overflow-y: auto;
   padding-right: 2px;

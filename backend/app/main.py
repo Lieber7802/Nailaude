@@ -24,7 +24,10 @@ async def lifespan(app: FastAPI):
             await conn.run_sync(Base.metadata.create_all)
     async with async_session() as session:
         await seed_builtin_data(session)
-    yield
+    try:
+        yield
+    finally:
+        await PreviewService.shutdown_dev_servers()
 
 
 app = FastAPI(

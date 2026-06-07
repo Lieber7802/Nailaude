@@ -40,3 +40,19 @@ test('running task snapshots do not restart duration after refresh without a loc
 
   assert.deepEqual(useUIStore.getState().runtimeByConversation['conv-refresh-running'].taskTimings, {})
 })
+
+test('task snapshots use backend timing fields after refresh', () => {
+  useUIStore.setState({ runtimeByConversation: {} })
+
+  useUIStore.getState().setOrchestratorStatus('conv-authoritative', 'completed', [
+    {
+      ...completedTask,
+      startedAt: '2026-06-08T10:00:00.000Z',
+      endedAt: '2026-06-08T10:00:03.250Z',
+    },
+  ])
+
+  assert.deepEqual(useUIStore.getState().runtimeByConversation['conv-authoritative'].taskTimings, {
+    代码工匠: { startedAt: 1_780_912_800_000, endedAt: 1_780_912_803_250 },
+  })
+})

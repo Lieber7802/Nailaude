@@ -19,10 +19,15 @@
 - [x] Empty right preview hides unsupported-webpage copy
 - [x] Fullscreen Markdown preview fills the preview panel
 - [x] Completed task snapshots do not restart duration after refresh
+- [x] Backend runtime emits authoritative task `startedAt` / `endedAt`
+- [x] Frontend runtime duration uses backend task timestamps
+- [x] Left search conversation/message UI removed
+- [x] Conversation rows keep content height when the list has extra space
 - [x] Custom Agent management supports list/create/delete
 
 ## Verification
 - [x] Targeted frontend tests pass
+- [x] Targeted backend tests pass
 - [x] Frontend build passes
 - [x] DEVLOG updated
 - [x] Sidebar scroll regression test passes

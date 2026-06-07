@@ -1,4 +1,5 @@
 import asyncio
+from copy import deepcopy
 
 import pytest
 
@@ -43,6 +44,52 @@ def test_orchestrator_queue_can_cancel_next_queued_run():
 
     assert queue.cancel_queued("conversation") == "run-1"
     assert queue.activate_next("conversation") == "run-2"
+
+
+@pytest.mark.asyncio
+async def test_runtime_records_authoritative_task_timing(tmp_path):
+    snapshots = []
+    release = asyncio.Event()
+
+    async def executor(planned_task, workspace):
+        await release.wait()
+        return {"status": "success", "summary": "ok", "teamNotes": []}
+
+    async def emit(snapshot):
+        snapshots.append(deepcopy(snapshot))
+        running = next(
+            (
+                item
+                for item in snapshot["tasks"]
+                if item["id"] == "write" and item["status"] == "running"
+            ),
+            None,
+        )
+        if running:
+            release.set()
+
+    snapshot = await OrchestratorRuntime().execute(
+        run_id="run-1",
+        conversation_id="conversation",
+        work_dir=str(tmp_path),
+        tasks=[task("write", access_mode="write")],
+        executor=executor,
+        emit=emit,
+    )
+
+    running_snapshot = next(
+        item
+        for item in snapshots
+        if item["tasks"][0]["status"] == "running"
+    )
+    running_task = running_snapshot["tasks"][0]
+    completed_task = snapshot["tasks"][0]
+
+    assert running_task["startedAt"]
+    assert running_task["endedAt"] is None
+    assert completed_task["startedAt"] == running_task["startedAt"]
+    assert completed_task["endedAt"]
+    assert completed_task["endedAt"] >= completed_task["startedAt"]
 
 
 @pytest.mark.asyncio

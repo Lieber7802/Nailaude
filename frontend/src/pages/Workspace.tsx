@@ -32,7 +32,6 @@ const EMPTY_MESSAGES: Message[] = []
 const PreviewPanel = lazy(() => import('../components/preview/PreviewPanel'))
 
 const Workspace = () => {
-  const [search, setSearch] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
   const [creating, setCreating] = useState(false)
   const [agentCreateOpen, setAgentCreateOpen] = useState(false)
@@ -82,17 +81,14 @@ const Workspace = () => {
   }, [setAgentError, setAgents])
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void conversationApi
-        .list(1, 20, search)
-        .then((page) => setConversations(page.items))
-        .catch((error: Error) => {
-          setConversationError(error.message)
-          void antdMessage.error(error.message)
-        })
-    }, 180)
-    return () => window.clearTimeout(timer)
-  }, [search, setConversationError, setConversations])
+    void conversationApi
+      .list(1, 20)
+      .then((page) => setConversations(page.items))
+      .catch((error: Error) => {
+        setConversationError(error.message)
+        void antdMessage.error(error.message)
+      })
+  }, [setConversationError, setConversations])
 
   useEffect(() => {
     if (!activeId) return
@@ -259,11 +255,9 @@ const Workspace = () => {
             activeId={activeId}
             agents={agents}
             conversations={conversations}
-            search={search}
             onCreate={() => setCreateOpen(true)}
             onCreateAgent={openAgentCreateModal}
             onDelete={(id) => void handleDeleteConversation(id)}
-            onSearch={setSearch}
             onSelect={setActive}
           />
         }

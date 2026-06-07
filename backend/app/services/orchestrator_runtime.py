@@ -93,6 +93,8 @@ class OrchestratorRuntime:
                         task["status"] = "blocked"
                     else:
                         task["status"] = "running"
+                        task["startedAt"] = task.get("startedAt") or utc_timestamp()
+                        task["endedAt"] = None
                         runnable.append(task)
                 batch["status"] = "running"
                 latest = await send("executing", f"Executing batch {batch_index + 1} / {len(batches)}", batch_index)
@@ -137,16 +139,20 @@ class OrchestratorRuntime:
                     warnings.extend(str(item) for item in result.get("warnings") or [])
                     if cancel_event.is_set():
                         task["status"] = "cancelled"
+                        task["endedAt"] = task.get("endedAt") or utc_timestamp()
                     elif result.get("status") == "success":
                         task["status"] = "completed"
                         task["result"] = result.get("summary", "")
+                        task["endedAt"] = task.get("endedAt") or utc_timestamp()
                     else:
                         failures += 1
                         task["status"] = "failed"
                         task["result"] = result.get("error") or result.get("summary", "")
+                        task["endedAt"] = task.get("endedAt") or utc_timestamp()
                 if cancel_event.is_set():
                     for task in runnable:
                         task["status"] = "cancelled"
+                        task["endedAt"] = task.get("endedAt") or utc_timestamp()
                     batch["status"] = "cancelled"
                     break
                 batch["status"] = "failed" if failures == len(runnable) else "partial" if failures else "completed"

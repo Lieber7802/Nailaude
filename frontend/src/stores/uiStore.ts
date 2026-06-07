@@ -64,19 +64,12 @@ export const useUIStore = create<UIState>((set) => ({
   setThinkingAgent: (conversationId, agentName) =>
     set((state) => {
       const current = state.runtimeByConversation[conversationId] || emptyRuntime()
-      const currentTiming = current.taskTimings[agentName]
-      const nextTiming =
-        currentTiming && !currentTiming.endedAt ? currentTiming : { startedAt: Date.now() }
 
       return {
         runtimeByConversation: {
           ...state.runtimeByConversation,
           [conversationId]: {
             ...current,
-            taskTimings: {
-              ...current.taskTimings,
-              [agentName]: nextTiming,
-            },
             thinkingAgents: current.thinkingAgents.includes(agentName)
               ? current.thinkingAgents
               : [...current.thinkingAgents, agentName],
@@ -87,23 +80,12 @@ export const useUIStore = create<UIState>((set) => ({
   clearThinkingAgent: (conversationId, agentName) =>
     set((state) => {
       const current = state.runtimeByConversation[conversationId] || emptyRuntime()
-      const currentTiming = current.taskTimings[agentName]
-      const taskTimings = currentTiming
-        ? {
-            ...current.taskTimings,
-            [agentName]: {
-              ...currentTiming,
-              endedAt: currentTiming.endedAt ?? Date.now(),
-            },
-          }
-        : current.taskTimings
 
       return {
         runtimeByConversation: {
           ...state.runtimeByConversation,
           [conversationId]: {
             ...current,
-            taskTimings,
             thinkingAgents: current.thinkingAgents.filter((name) => name !== agentName),
           },
         },
@@ -112,23 +94,11 @@ export const useUIStore = create<UIState>((set) => ({
   clearThinkingAgents: (conversationId) =>
     set((state) => {
       const current = state.runtimeByConversation[conversationId] || emptyRuntime()
-      const now = Date.now()
-      const taskTimings = { ...current.taskTimings }
-
-      for (const agentName of current.thinkingAgents) {
-        const currentTiming = taskTimings[agentName]
-        if (currentTiming) {
-          taskTimings[agentName] = {
-            ...currentTiming,
-            endedAt: currentTiming.endedAt ?? now,
-          }
-        }
-      }
 
       return {
         runtimeByConversation: {
           ...state.runtimeByConversation,
-          [conversationId]: { ...current, taskTimings, thinkingAgents: [] },
+          [conversationId]: { ...current, thinkingAgents: [] },
         },
       }
     }),
@@ -177,26 +147,22 @@ function updateTaskTimings(
   currentTimings: Record<string, CollaborationTaskTiming>,
   tasks: Task[]
 ): Record<string, CollaborationTaskTiming> {
-  const now = Date.now()
   const taskTimings = { ...currentTimings }
 
   for (const task of tasks) {
-    const currentTiming = taskTimings[task.agentName]
-
-    if (task.status === 'running') {
-      if (!currentTiming) continue
-      taskTimings[task.agentName] = currentTiming.endedAt ? { startedAt: now } : currentTiming
-      continue
-    }
-
-    if (TERMINAL_TASK_STATUSES.has(task.status)) {
-      if (!currentTiming) continue
-      taskTimings[task.agentName] = {
-        startedAt: currentTiming.startedAt,
-        endedAt: currentTiming?.endedAt ?? now,
-      }
-    }
+    const startedAt = parseTaskTimestamp(task.startedAt)
+    if (startedAt === undefined) continue
+    const endedAt = parseTaskTimestamp(task.endedAt)
+    taskTimings[task.agentName] = TERMINAL_TASK_STATUSES.has(task.status)
+      ? { startedAt, endedAt: endedAt ?? startedAt }
+      : { startedAt, ...(endedAt === undefined ? {} : { endedAt }) }
   }
 
   return taskTimings
+}
+
+function parseTaskTimestamp(value: string | null | undefined): number | undefined {
+  if (!value) return undefined
+  const parsed = Date.parse(value)
+  return Number.isFinite(parsed) ? parsed : undefined
 }
