@@ -206,6 +206,8 @@ export interface Task {
   priority: number;
   riskHints: RiskHints;
   result?: string;        // 完成后的结果摘要
+  startedAt?: Timestamp | null; // 后端权威任务开始时间
+  endedAt?: Timestamp | null;   // 后端权威任务结束时间
 }
 
 export interface DispatchPlan {

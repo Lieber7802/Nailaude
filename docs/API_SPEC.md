@@ -47,6 +47,10 @@
 
 > 前端正常流程**优先走 WebSocket 发送消息**。REST 接口作为降级和调试入口保留。
 
+### 协作任务计时
+
+`orchestrator_status.tasks[]` 中的任务可包含 `startedAt` / `endedAt`（ISO 8601）。这两个字段由后端运行时写入，是前端展示智能体耗时的权威来源；页面刷新后前端不得用本地刷新时间重新计算已运行任务的开始时间。
+
 ---
 
 ## 二、Conversation API
@@ -547,9 +551,10 @@
 
 - 路径格式：`http://localhost:8000/preview/{conversation_id}/{filepath}`
 - 直接返回静态文件内容（HTML/CSS/JS/图片）
-- 响应 Header 包含 `Content-Type` 和 CSP 安全头
+- 响应 Header 包含 `Content-Type` 和 CSP 安全头；为支持 Agent 生成的 CDN 静态页，Preview CSP 允许 `https:` 资源、inline script/style，以及 Babel standalone 等运行时转换依赖的 `unsafe-eval`
 - 支持相对路径资源引用
 - HTML 响应会将 Vite 构建产物常见的根相对资源（如 `/assets/app.js`）改写到当前文件所在的 Preview 目录，避免 iframe 请求落到 AgentHub 应用根路径
+- Vite 源码项目可在同一路径下由后端代理 `npm run dev` 结果，前端 previewUrl 契约不变
 - 不返回 `ApiResponse` 包装，直接返回文件原始内容
 
 示例：

@@ -4,10 +4,9 @@ import {
   HomeFilled,
   MenuFoldOutlined,
   PlusOutlined,
-  SearchOutlined,
   SettingOutlined,
 } from '@ant-design/icons'
-import { Button, Empty, Input, Popconfirm } from 'antd'
+import { Button, Empty, Popconfirm } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import type { Agent, Conversation } from '../../services/api'
 import { useUIStore } from '../../stores/uiStore'
@@ -17,8 +16,6 @@ interface ConversationListProps {
   agents: Agent[]
   conversations: Conversation[]
   activeId: string | null
-  search: string
-  onSearch: (value: string) => void
   onSelect: (id: string) => void
   onCreate: () => void
   onCreateAgent: () => void
@@ -32,9 +29,7 @@ const ConversationList = ({
   onCreate,
   onCreateAgent,
   onDelete,
-  onSearch,
   onSelect,
-  search,
 }: ConversationListProps) => {
   const navigate = useNavigate()
   const agentsById = new Map(agents.map((agent) => [agent.id, agent]))
@@ -68,16 +63,6 @@ const ConversationList = ({
           创建智能体
         </Button>
       </div>
-
-      <Input
-        allowClear
-        className="conversation-search"
-        placeholder="搜索对话或消息"
-        prefix={<SearchOutlined />}
-        suffix={<span className="search-shortcut">⌘K</span>}
-        value={search}
-        onChange={(event) => onSearch(event.target.value)}
-      />
 
       <section className="sidebar__section">
         <div className="sidebar__section-title">
