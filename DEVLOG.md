@@ -2330,3 +2330,27 @@
 
 ### Teammate notes
 - This fix serves built static Vite output. It does not start generated Vite dev servers.
+
+## [2026-06-07] M5 Frontend Design Refresh
+
+### 完成内容
+- 按用户提供的 Claude-inspired 设计资料，将前端全局视觉 token、三栏工作台、聊天流、产物卡、输入区、预览面板和 Markdown/code 容器统一为暖纸色、ivory 面板、terracotta 主行动色、serif 标题和 ring shadow 风格。
+- 新增样式守护测试，确保核心设计 token 存在并限制旧的渐变式 chrome 回流。
+- 新增本次改造的 plan/checklist，保持 AgentHub 模块化协作流程。
+
+### 新增/修改文件
+- `docs/plans/M5_FRONTEND_DESIGN_REFRESH_PLAN.md` (新增)
+- `docs/plans/M5_FRONTEND_DESIGN_REFRESH_CHECKLIST.md` (新增)
+- `frontend/src/index.css` (修改)
+- `frontend/tests/designTokens.test.mjs` (新增)
+- `DEVLOG.md` (修改)
+
+### 接口变更
+- 无接口变更；未修改 `packages/shared/types.ts` 或 `docs/API_SPEC.md`。
+
+### 下一步
+- 浏览器桌面与窄屏烟测已完成；后续若继续细化，可针对弹窗和空状态再做一次视觉微调。
+
+### 给其他成员的提醒
+- @小马：本次只改前端样式，不影响 Adapter、API 或 WebSocket 契约。
+- @组长：预览面板、代码/Markdown/diff 容器已换成 warm token；后续新增预览控件请优先复用 `frontend/src/index.css` 的 design tokens。
