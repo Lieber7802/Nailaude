@@ -184,14 +184,15 @@ function updateTaskTimings(
     const currentTiming = taskTimings[task.agentName]
 
     if (task.status === 'running') {
-      taskTimings[task.agentName] =
-        currentTiming && !currentTiming.endedAt ? currentTiming : { startedAt: now }
+      if (!currentTiming) continue
+      taskTimings[task.agentName] = currentTiming.endedAt ? { startedAt: now } : currentTiming
       continue
     }
 
     if (TERMINAL_TASK_STATUSES.has(task.status)) {
+      if (!currentTiming) continue
       taskTimings[task.agentName] = {
-        startedAt: currentTiming?.startedAt ?? now,
+        startedAt: currentTiming.startedAt,
         endedAt: currentTiming?.endedAt ?? now,
       }
     }

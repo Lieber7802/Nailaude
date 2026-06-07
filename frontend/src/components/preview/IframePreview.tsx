@@ -21,7 +21,7 @@ const IframePreview = ({ artifact, onViewportChange, onZoomChange, viewport, zoo
   const { html, previewUrl } = getIframePreviewSource(artifact)
 
   if (!html && !previewUrl) {
-    return <div className="preview-empty">当前产出物暂不支持网页预览</div>
+    return <div className="preview-empty">选择一个网页产物后在此预览</div>
   }
 
   return (

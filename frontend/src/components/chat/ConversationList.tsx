@@ -8,6 +8,7 @@ import {
   SettingOutlined,
 } from '@ant-design/icons'
 import { Button, Empty, Input, Popconfirm } from 'antd'
+import { useNavigate } from 'react-router-dom'
 import type { Agent, Conversation } from '../../services/api'
 import { useUIStore } from '../../stores/uiStore'
 import { formatConversationListTime } from '../../utils/chatUi'
@@ -35,6 +36,7 @@ const ConversationList = ({
   onSelect,
   search,
 }: ConversationListProps) => {
+  const navigate = useNavigate()
   const agentsById = new Map(agents.map((agent) => [agent.id, agent]))
   const setSidebarVisible = useUIStore((state) => state.setSidebarVisible)
 
@@ -145,8 +147,8 @@ const ConversationList = ({
         <Button icon={<SettingOutlined />} type="text">
           设置
         </Button>
-        <Button icon={<ArrowRightOutlined />} type="text">
-          查看全部对话
+        <Button icon={<ArrowRightOutlined />} type="text" onClick={() => navigate('/agents')}>
+          管理智能体
         </Button>
       </div>
     </div>
