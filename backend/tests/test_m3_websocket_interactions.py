@@ -303,7 +303,7 @@ async def test_non_mock_job_uses_deepseek_planner_wrapper(monkeypatch):
 
         async def scalars(self, query):
             self.calls += 1
-            if self.calls <= 2:
+            if self.calls == 1:
                 return Scalars([agent])
             return Scalars([SimpleNamespace(role="user", content="Earlier request")])
 
@@ -365,3 +365,119 @@ async def test_non_mock_job_uses_deepseek_planner_wrapper(monkeypatch):
     assert captured["context"]["teamBoardSummary"]["version"] == 3
     assert captured["context"]["fileTreeSummary"] == ["src/app.py"]
     assert captured["context"]["recentConversationSummary"] == [{"role": "user", "content": "Earlier request"}]
+
+
+@pytest.mark.asyncio
+async def test_non_mock_planner_context_is_scoped_to_dispatch_agents(monkeypatch):
+    selected_agent = SimpleNamespace(
+        id="agent-code",
+        name="代码工匠",
+        description="Builds features",
+        capabilities=["coding"],
+        platform_id="llm",
+    )
+    unmentioned_agent = SimpleNamespace(
+        id="agent-review",
+        name="审查大师",
+        description="Reviews code",
+        capabilities=["review"],
+        platform_id="llm",
+    )
+    conversation = SimpleNamespace(id="conversation-1", participant_ids=["agent-code", "agent-review"])
+    captured = {}
+    updated_at = datetime.now(timezone.utc)
+    project_state = SimpleNamespace(
+        conversation_id=conversation.id,
+        version=2,
+        workspace={},
+        tech_stack=[],
+        file_tree={"paths": ["src/app.py"]},
+        git={},
+        progress_summary="Current project summary",
+        recent_changes=[],
+        warnings=[],
+        updated_at=updated_at,
+    )
+    team_board = SimpleNamespace(
+        conversation_id=conversation.id,
+        version=3,
+        team_members=[],
+        decisions=[],
+        code_standards=[],
+        open_questions=[],
+        progress={},
+        recent_notes=[],
+        updated_at=updated_at,
+    )
+
+    class Scalars:
+        def __init__(self, items):
+            self.items = items
+
+        def all(self):
+            return self.items
+
+    class FakeDB:
+        def __init__(self):
+            self.calls = 0
+
+        async def scalars(self, query):
+            self.calls += 1
+            if self.calls == 1:
+                return Scalars([selected_agent, unmentioned_agent])
+            return Scalars([SimpleNamespace(role="user", content="Earlier request")])
+
+    class FakePlanner:
+        async def plan(self, context, participant_ids, available_agent_ids=None):
+            captured["context"] = context
+            captured["participant_ids"] = participant_ids
+            captured["available_agent_ids"] = available_agent_ids
+            return ReadyPlannerResult(
+                status="ready",
+                tasks=[
+                    {
+                        "id": "implementation",
+                        "title": "Build",
+                        "agentId": "agent-code",
+                        "objective": "Build",
+                        "instruction": "Build",
+                        "acceptanceCriteria": ["Done"],
+                        "accessMode": "write",
+                    }
+                ],
+            )
+
+    class FakeProjectStateService:
+        def __init__(self, db):
+            pass
+
+        async def get_state(self, conversation_id):
+            return project_state
+
+    class FakeTeamProtocolService:
+        def __init__(self, db):
+            pass
+
+        async def get_team_board(self, conversation_id):
+            return team_board
+
+    monkeypatch.setattr(ws_handlers, "OrchestratorPlanner", FakePlanner)
+    monkeypatch.setattr(ws_handlers, "ProjectStateService", FakeProjectStateService)
+    monkeypatch.setattr(ws_handlers, "TeamProtocolService", FakeTeamProtocolService)
+
+    result = await ws_handlers.plan_job(
+        {
+            "conversation": conversation,
+            "content": "@代码工匠 build",
+            "mentions": [{"agentId": "agent-code", "agentName": "代码工匠"}],
+            "agents": [selected_agent],
+            "clarification_answers": [],
+        },
+        FakeDB(),
+    )
+
+    assert result["status"] == "ready"
+    assert captured["participant_ids"] == {"agent-code"}
+    assert captured["available_agent_ids"] == {"agent-code", "agent-review"}
+    assert [agent["id"] for agent in captured["context"]["participants"]] == ["agent-code"]
+    assert [agent["id"] for agent in captured["context"]["availableAgentCatalog"]] == ["agent-code", "agent-review"]
