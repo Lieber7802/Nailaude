@@ -2537,6 +2537,32 @@
 - `cd frontend && npm run build` -> passed.
 - `git diff --check` -> passed.
 
+## [2026-06-08] Codex - Scope LLM planner to mentioned dispatch agents
+
+### Problem judgment
+- In non-mock group runs, explicit `@` mentions narrowed `job["agents"]` for execution, but `plan_job()` still exposed every conversation participant to the LLM planner.
+- The planner could legally assign unmentioned participants such as 审查大师 or 文档专家, then execution failed because those agents were absent from the dispatch agent list.
+
+### Completed
+- Scoped non-mock planner `participants` and `participant_ids` to `job["agents"]`, keeping no-mention behavior unchanged because dispatch resolution already expands no-mention runs to all conversation participants.
+- Kept `availableAgentCatalog` as the full catalog for capability-gap recommendations.
+- Added a regression test for explicit mention subsets in a larger conversation.
+- Created the mention-scoped planner plan/checklist.
+
+### Changed files
+- `backend/app/ws/handlers.py`
+- `backend/tests/test_m3_websocket_interactions.py`
+- `docs/plans/M5_MENTION_SCOPED_PLANNER_PLAN.md`
+- `docs/plans/M5_MENTION_SCOPED_PLANNER_CHECKLIST.md`
+- `DEVLOG.md`
+
+### Interface changes
+- No API, WebSocket payload, shared type, frontend, adapter, or dependency changes.
+
+### Verification
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_websocket_interactions.py -k "planner_context_is_scoped or non_mock_job_uses_deepseek_planner_wrapper"` -> `2 passed`, with the existing Starlette/httpx deprecation warning.
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_websocket_interactions.py` -> `9 passed`, with the existing Starlette/httpx deprecation warning.
+
 ## [2026-06-08] Codex - Fix CDN static preview CSP
 
 ### Problem judgment

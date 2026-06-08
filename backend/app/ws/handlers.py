@@ -496,10 +496,10 @@ async def plan_job(job: dict, db: AsyncSession) -> dict:
         return await OrchestratorService().build_mock_planner_result(
             job["conversation"], job["content"], job["mentions"], agents
         )
-    participant_ids = set(job["conversation"].participant_ids or [])
-    participant_agents = await db.scalars(select(Agent).where(Agent.id.in_(participant_ids)))
+    dispatch_agents = list(agents)
+    participant_ids = {agent.id for agent in dispatch_agents}
     catalog = await db.scalars(select(Agent))
-    participant_agent_list = participant_agents.all()
+    participant_agent_list = dispatch_agents
     catalog_agents = catalog.all()
     project_service = ProjectStateService(db)
     project_state = await project_service.get_state(job["conversation"].id)
