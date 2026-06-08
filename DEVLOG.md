@@ -2592,3 +2592,94 @@
 ### Verification
 - `cd backend && .venv/bin/python -m pytest tests/test_m4_artifact_preview.py` -> `4 passed`, with the existing Starlette/httpx deprecation warning.
 - `curl -s -D - http://127.0.0.1:8000/preview/4a5690e1-ea91-4abe-80db-1690dd431002/index.html -o /tmp/agenthub-preview.html` returned `200 OK` and the updated CSP containing `script-src 'self' 'unsafe-inline' 'unsafe-eval' https:`.
+
+## [2026-06-08] Codex - Refresh sidebar branding to Nailaude
+
+### Completed
+- Added the provided Nailaude logo as a frontend public asset.
+- Replaced the sidebar header home icon and `AgentHub` text with the Nailaude logo and `Nailaude` label.
+- Adjusted brand image sizing and crop styling for the sidebar header.
+- Updated the browser page title and favicon to use Nailaude branding.
+
+### Changed files
+- `frontend/index.html`
+- `frontend/public/brand/nailaude_logo.png`
+- `frontend/src/components/chat/ConversationList.tsx`
+- `frontend/src/index.css`
+- `docs/plans/M5_BRANDING_REFRESH_PLAN.md`
+- `docs/plans/M5_BRANDING_REFRESH_CHECKLIST.md`
+- `DEVLOG.md`
+
+### Interface changes
+- No API, WebSocket, shared type, backend, or dependency changes.
+
+### Verification
+- `cd frontend && npm run build` -> passed.
+- `rg -n "AgentHub|HomeFilled|brand-mark__icon" frontend/src/components/chat/ConversationList.tsx frontend/src/index.css` -> no matches.
+- Browser check at `http://127.0.0.1:5173/workspace` confirmed brand text `Nailaude` and a loaded 1254x1254 logo rendered at 34x34.
+- Browser chrome check at `http://127.0.0.1:5173/workspace` confirmed tab title `Nailaude`, `document.title` `Nailaude`, and favicon `/brand/nailaude_logo.png`.
+
+## [2026-06-08] Codex - Replace builtin agent avatars with Nailaude images
+
+### Completed
+- Added four provided builtin agent avatar images as frontend public assets.
+- Updated builtin agent seed data so 代码工匠, 审查大师, 文档专家, 产品架构师 return stable image avatar URLs.
+- Updated frontend avatar rendering to display image URLs while preserving text/emoji custom avatar fallback.
+
+### Changed files
+- `backend/app/services/seed.py`
+- `backend/tests/test_m1_1_api.py`
+- `docs/API_SPEC.md`
+- `docs/plans/M5_BUILTIN_AGENT_AVATARS_PLAN.md`
+- `docs/plans/M5_BUILTIN_AGENT_AVATARS_CHECKLIST.md`
+- `frontend/public/agent-avatars/code_craftsman.png`
+- `frontend/public/agent-avatars/review_master.png`
+- `frontend/public/agent-avatars/doc_specialist.png`
+- `frontend/public/agent-avatars/product_architect.png`
+- `frontend/src/components/common/AgentAvatar.tsx`
+- `frontend/src/components/chat/ChatArea.tsx`
+- `frontend/src/components/chat/ConversationList.tsx`
+- `frontend/src/components/chat/MentionSelector.tsx`
+- `frontend/src/components/chat/MessageBubble.tsx`
+- `frontend/src/pages/AgentManage.tsx`
+- `frontend/src/index.css`
+- `DEVLOG.md`
+
+### Interface changes
+- No shared type or payload shape changes.
+- Builtin `Agent.avatar` values now use public image paths instead of single-letter text avatars.
+
+### Verification
+- `cd backend && .venv/bin/python -m pytest tests/test_m1_1_api.py -k "agents_are_seeded or seed_refreshes_existing_builtin_agent_prompts"` -> `2 passed`, with the existing Starlette/httpx deprecation warning.
+- `cd frontend && npm run build` -> passed.
+- `curl http://127.0.0.1:8027/api/v1/agents` during smoke returned the four expected `/agent-avatars/*.png` builtin avatar paths.
+- Browser check at `http://127.0.0.1:5174/workspace` confirmed all four builtin agent avatars rendered as loaded images.
+
+## [2026-06-08] Codex - Add custom agent avatar upload
+
+### Completed
+- Added the provided default custom-agent avatar image and made it the create-agent modal default.
+- Replaced the short text avatar input with an image preview, upload button, and reset-to-default action.
+- Added client-side square image resizing to store uploaded custom avatars as data URLs, and widened backend avatar storage to `Text`.
+
+### Changed files
+- `backend/alembic/versions/f3c289e260e9_initial_schema.py`
+- `backend/app/models/agent.py`
+- `backend/tests/test_m1_1_api.py`
+- `docs/API_SPEC.md`
+- `docs/plans/M5_CUSTOM_AGENT_AVATAR_UPLOAD_PLAN.md`
+- `docs/plans/M5_CUSTOM_AGENT_AVATAR_UPLOAD_CHECKLIST.md`
+- `frontend/public/agent-avatars/default_custom_agent.png`
+- `frontend/src/components/chat/AgentCreateModal.tsx`
+- `frontend/src/components/common/AgentAvatar.tsx`
+- `frontend/src/index.css`
+- `DEVLOG.md`
+
+### Interface changes
+- No shared type or REST route shape changes.
+- Custom `Agent.avatar` can now contain resized `data:image/*` URLs in addition to text, emoji, and public image paths.
+
+### Verification
+- `cd backend && .venv/bin/python -m pytest tests/test_m1_1_api.py -k "create_custom_agent_persists_and_lists"` -> `1 passed`, with the existing Starlette/httpx deprecation warning.
+- `cd frontend && npm run build` -> passed.
+- Browser check at `http://127.0.0.1:5174/workspace` confirmed the create-agent modal default preview uses `/agent-avatars/default_custom_agent.png`, exposes an `image/*` file input through the upload button, and keeps the native file input visually hidden.

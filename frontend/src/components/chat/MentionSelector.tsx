@@ -1,5 +1,6 @@
 import { Empty } from 'antd'
 import type { Agent } from '../../services/api'
+import AgentAvatar from '../common/AgentAvatar'
 
 interface MentionSelectorProps {
   agents: Agent[]
@@ -26,7 +27,7 @@ const MentionSelector = ({ agents, onSelect, query, visible }: MentionSelectorPr
       ) : (
         filteredAgents.map((agent) => (
           <button className="mention-selector__item" key={agent.id} type="button" onMouseDown={() => onSelect(agent)}>
-            <span className="agent-row__avatar">{agent.avatar}</span>
+            <AgentAvatar avatar={agent.avatar} className="agent-row__avatar" name={agent.name} />
             <span>
               <strong>{agent.name}</strong>
               <small>{agent.capabilities.slice(0, 2).join(' / ')}</small>

@@ -41,7 +41,7 @@ def upgrade() -> None:
     op.create_table('agents',
     sa.Column('id', sa.String(length=36), nullable=False),
     sa.Column('name', sa.String(length=100), nullable=False),
-    sa.Column('avatar', sa.String(length=50), nullable=False),
+    sa.Column('avatar', sa.Text(), nullable=False),
     sa.Column('description', sa.Text(), nullable=False),
     sa.Column('capabilities', sa.JSON(), nullable=False),
     sa.Column('system_instruction', sa.Text(), nullable=False),

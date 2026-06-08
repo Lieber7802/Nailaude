@@ -1,7 +1,9 @@
-import { ApiOutlined, IdcardOutlined, TagsOutlined, UserAddOutlined } from '@ant-design/icons'
-import { Form, Input, Modal, Select } from 'antd'
-import { useEffect, useMemo } from 'react'
+import { ApiOutlined, ReloadOutlined, TagsOutlined, UploadOutlined, UserAddOutlined } from '@ant-design/icons'
+import { Button, Form, Input, Modal, Select } from 'antd'
+import type { ChangeEvent } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AgentPlatform, CreateAgentInput } from '../../services/api'
+import AgentAvatar from '../common/AgentAvatar'
 
 interface AgentCreateModalProps {
   creating: boolean
@@ -33,6 +35,35 @@ const DEFAULT_CAPABILITY_OPTIONS = [
   '架构',
 ]
 
+const DEFAULT_CUSTOM_AGENT_AVATAR = '/agent-avatars/default_custom_agent.png'
+const AVATAR_IMAGE_SIZE = 256
+
+const readAvatarFile = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file)
+    const image = new Image()
+
+    image.onload = () => {
+      const canvas = document.createElement('canvas')
+      const size = Math.min(image.naturalWidth, image.naturalHeight)
+      const sourceX = (image.naturalWidth - size) / 2
+      const sourceY = (image.naturalHeight - size) / 2
+
+      canvas.width = AVATAR_IMAGE_SIZE
+      canvas.height = AVATAR_IMAGE_SIZE
+      canvas.getContext('2d')?.drawImage(image, sourceX, sourceY, size, size, 0, 0, AVATAR_IMAGE_SIZE, AVATAR_IMAGE_SIZE)
+      URL.revokeObjectURL(objectUrl)
+      resolve(canvas.toDataURL('image/png'))
+    }
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      reject(new Error('图片读取失败'))
+    }
+
+    image.src = objectUrl
+  })
+
 const AgentCreateModal = ({
   creating,
   loadingPlatforms,
@@ -42,6 +73,9 @@ const AgentCreateModal = ({
   platforms,
 }: AgentCreateModalProps) => {
   const [form] = Form.useForm<FormValues>()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [avatarError, setAvatarError] = useState('')
+  const avatarValue = Form.useWatch('avatar', form) || DEFAULT_CUSTOM_AGENT_AVATAR
   const userSelectablePlatforms = useMemo(() => platforms.filter((platform) => platform.id !== 'mock'), [platforms])
   const defaultPlatformId =
     userSelectablePlatforms.find((platform) => platform.status === 'available')?.id || userSelectablePlatforms[0]?.id
@@ -58,6 +92,30 @@ const AgentCreateModal = ({
     }
   }, [defaultPlatformId, form, open])
 
+  const handleAvatarUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      setAvatarError('请选择图片文件')
+      return
+    }
+
+    try {
+      const avatarDataUrl = await readAvatarFile(file)
+      form.setFieldValue('avatar', avatarDataUrl)
+      setAvatarError('')
+    } catch {
+      setAvatarError('头像图片读取失败，请换一张图片重试')
+    }
+  }
+
+  const resetAvatar = () => {
+    form.setFieldValue('avatar', DEFAULT_CUSTOM_AGENT_AVATAR)
+    setAvatarError('')
+  }
+
   return (
     <Modal
       confirmLoading={creating}
@@ -71,7 +129,7 @@ const AgentCreateModal = ({
       <Form
         form={form}
         initialValues={{
-          avatar: 'A',
+          avatar: DEFAULT_CUSTOM_AGENT_AVATAR,
           capabilities: [],
           systemInstruction: '',
         }}
@@ -79,7 +137,7 @@ const AgentCreateModal = ({
         onFinish={(values) => {
           const payload: CreateAgentInput = {
             name: values.name.trim(),
-            avatar: values.avatar.trim() || 'A',
+            avatar: values.avatar.trim() || DEFAULT_CUSTOM_AGENT_AVATAR,
             description: values.description.trim(),
             capabilities: values.capabilities,
             systemInstruction: values.systemInstruction.trim(),
@@ -99,13 +157,32 @@ const AgentCreateModal = ({
           >
             <Input prefix={<UserAddOutlined />} placeholder="例如：产品经理" />
           </Form.Item>
-          <Form.Item
-            name="avatar"
-            label="头像标识"
-            rules={[{ max: 4, message: '头像标识最多 4 个字符' }]}
-          >
-            <Input prefix={<IdcardOutlined />} placeholder="P" />
-          </Form.Item>
+          <div className="agent-avatar-field">
+            <span className="agent-avatar-field__label">头像标识</span>
+            <Form.Item name="avatar" noStyle rules={[{ required: true, message: '请选择头像' }]}>
+              <Input type="hidden" />
+            </Form.Item>
+            <div className="agent-avatar-picker">
+              <AgentAvatar avatar={avatarValue} className="agent-avatar-picker__preview" name="自定义智能体" />
+              <div className="agent-avatar-picker__actions">
+                <Button htmlType="button" icon={<UploadOutlined />} onClick={() => fileInputRef.current?.click()}>
+                  上传图片
+                </Button>
+                <Button htmlType="button" icon={<ReloadOutlined />} onClick={resetAvatar}>
+                  恢复默认
+                </Button>
+              </div>
+              <input
+                accept="image/*"
+                aria-label="上传智能体头像"
+                className="agent-avatar-picker__input"
+                ref={fileInputRef}
+                type="file"
+                onChange={handleAvatarUpload}
+              />
+              {avatarError && <span className="agent-avatar-picker__error">{avatarError}</span>}
+            </div>
+          </div>
         </div>
 
         <Form.Item

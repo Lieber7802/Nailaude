@@ -19,6 +19,7 @@ import { formatTaskDuration, visibleCollaborationAgents, type VisibleCollaborati
 import OrchestratorStatus from '../cards/OrchestratorStatus'
 import OrchestratorInputCard from '../cards/OrchestratorInputCard'
 import OrchestratorApprovalCard from '../cards/OrchestratorApprovalCard'
+import AgentAvatar from '../common/AgentAvatar'
 
 interface ChatAreaProps {
   agents: Agent[]
@@ -63,7 +64,7 @@ const ChatArea = ({
           <div className="chat-title__chips">
             {participantAgents.map((agent) => (
               <span className="agent-chip" key={agent.id}>
-                <span>{agent.avatar}</span>
+                <AgentAvatar avatar={agent.avatar} name={agent.name} />
                 {agent.name}
               </span>
             ))}

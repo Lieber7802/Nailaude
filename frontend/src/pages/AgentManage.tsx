@@ -9,6 +9,7 @@ import { Button, Empty, Popconfirm, Tag, message as antdMessage } from 'antd'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AgentCreateModal from '../components/chat/AgentCreateModal'
+import AgentAvatar from '../components/common/AgentAvatar'
 import { agentApi, platformApi, type Agent, type AgentPlatform, type CreateAgentInput } from '../services/api'
 import { useAgentStore } from '../stores/agentStore'
 
@@ -159,7 +160,7 @@ const AgentManageCard = ({
   onDelete?: () => void
 }) => (
   <article className="agent-manage-card">
-    <div className="agent-manage-card__avatar">{agent.avatar}</div>
+    <AgentAvatar avatar={agent.avatar} className="agent-manage-card__avatar" name={agent.name} />
     <div className="agent-manage-card__body">
       <div className="agent-manage-card__top">
         <strong>{agent.name}</strong>

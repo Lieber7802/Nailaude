@@ -39,7 +39,7 @@ BUILTIN_PLATFORMS = [
 BUILTIN_AGENTS = [
     {
         "name": "产品架构师",
-        "avatar": "P",
+        "avatar": "/agent-avatars/product_architect.png",
         "description": "需求分析与产品架构专家，负责 PRD、项目 SPEC、功能 checklist 和验收标准。",
         "capabilities": ["产品架构", "需求分析", "PRD", "SPEC", "checklist", "验收标准"],
         "system_instruction": (
@@ -66,7 +66,7 @@ BUILTIN_AGENTS = [
     },
     {
         "name": "代码工匠",
-        "avatar": "C",
+        "avatar": "/agent-avatars/code_craftsman.png",
         "description": "全栈开发专家，擅长生成 React、HTML 和 CSS 代码。",
         "capabilities": ["代码生成", "前端", "全栈"],
         "system_instruction": (
@@ -94,7 +94,7 @@ BUILTIN_AGENTS = [
     },
     {
         "name": "审查大师",
-        "avatar": "R",
+        "avatar": "/agent-avatars/review_master.png",
         "description": "代码审查专家，关注质量、性能和安全。",
         "capabilities": ["代码审查", "最佳实践", "安全"],
         "system_instruction": (
@@ -122,7 +122,7 @@ BUILTIN_AGENTS = [
     },
     {
         "name": "文档专家",
-        "avatar": "D",
+        "avatar": "/agent-avatars/doc_specialist.png",
         "description": "交付文档写手，擅长 README、使用说明和项目交付文档。",
         "capabilities": ["README", "使用说明", "技术写作", "交付文档"],
         "system_instruction": (
