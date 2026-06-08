@@ -251,7 +251,7 @@
     {
       "id": "agent-uuid-1",
       "name": "产品架构师",
-      "avatar": "P",
+      "avatar": "/agent-avatars/product_architect.png",
       "description": "需求分析与产品架构专家，负责 PRD、项目 SPEC、功能 checklist 和验收标准。",
       "capabilities": ["产品架构", "需求分析", "PRD", "SPEC", "checklist", "验收标准"],
       "systemInstruction": "...",
@@ -262,7 +262,7 @@
     {
       "id": "agent-uuid-2",
       "name": "代码工匠",
-      "avatar": "C",
+      "avatar": "/agent-avatars/code_craftsman.png",
       "description": "全栈开发专家，擅长生成 React、HTML 和 CSS 代码。",
       "capabilities": ["代码生成", "前端", "全栈"],
       "systemInstruction": "...",
@@ -273,7 +273,7 @@
     {
       "id": "agent-uuid-3",
       "name": "审查大师",
-      "avatar": "R",
+      "avatar": "/agent-avatars/review_master.png",
       "description": "代码审查专家，关注质量、性能和安全。",
       "capabilities": ["代码审查", "最佳实践", "安全"],
       "systemInstruction": "...",
@@ -284,7 +284,7 @@
     {
       "id": "agent-uuid-4",
       "name": "文档专家",
-      "avatar": "D",
+      "avatar": "/agent-avatars/doc_specialist.png",
       "description": "交付文档写手，擅长 README、使用说明和项目交付文档。",
       "capabilities": ["README", "使用说明", "技术写作", "交付文档"],
       "systemInstruction": "...",
@@ -306,7 +306,7 @@
 ```json
 {
   "name": "产品经理",
-  "avatar": "P",
+  "avatar": "/agent-avatars/default_custom_agent.png",
   "description": "擅长将需求整理成结构化的 PRD 文档",
   "capabilities": ["产品", "文档", "需求分析"],
   "systemInstruction": "你是一位资深产品经理，专注于需求文档输出...",
@@ -321,7 +321,7 @@
   "data": {
     "id": "agent-uuid-custom",
     "name": "产品经理",
-    "avatar": "P",
+    "avatar": "/agent-avatars/default_custom_agent.png",
     "description": "擅长将需求整理成结构化的 PRD 文档",
     "capabilities": ["产品", "文档", "需求分析"],
     "systemInstruction": "你是一位资深产品经理，专注于需求文档输出...",

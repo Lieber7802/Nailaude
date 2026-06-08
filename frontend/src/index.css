@@ -214,15 +214,13 @@ button {
   font-weight: 500;
 }
 
-.brand-mark__icon {
-  display: grid;
-  width: 30px;
-  height: 30px;
-  place-items: center;
+.brand-mark__logo {
+  display: block;
+  width: 34px;
+  height: 34px;
   border-radius: 10px;
-  color: var(--ivory);
-  background: var(--terracotta);
-  box-shadow: 0 0 0 1px var(--terracotta);
+  object-fit: cover;
+  box-shadow: 0 0 0 1px rgba(120, 82, 58, 0.12);
 }
 
 .sidebar__primary-actions {
@@ -330,6 +328,14 @@ button {
   color: var(--terracotta);
   background: #f2dfd4;
   font-weight: 500;
+  overflow: hidden;
+}
+
+.agent-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .agent-row small,
@@ -492,10 +498,11 @@ button {
   padding-left: 0;
 }
 
-.agent-chip span {
+.agent-chip .agent-avatar {
   display: inline-grid;
   width: 18px;
   height: 18px;
+  flex: 0 0 18px;
   place-items: center;
   border-radius: 50%;
   background: #f2dfd4;
@@ -523,8 +530,56 @@ button {
 
 .agent-form-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 120px;
+  grid-template-columns: minmax(0, 1fr) 216px;
   gap: 12px;
+}
+
+.agent-avatar-field {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.agent-avatar-field__label {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.agent-avatar-picker {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+}
+
+.agent-avatar-picker__preview {
+  width: 56px;
+  height: 56px;
+  flex-basis: 56px;
+  border-radius: 14px;
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.agent-avatar-picker__actions {
+  display: grid;
+  gap: 8px;
+}
+
+.agent-avatar-picker .agent-avatar-picker__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.agent-avatar-picker__error {
+  grid-column: 1 / -1;
+  color: #b5472f;
+  font-size: 12px;
 }
 
 .agent-manage-page {
@@ -608,11 +663,13 @@ button {
   display: grid;
   width: 42px;
   height: 42px;
+  flex: 0 0 42px;
   place-items: center;
   border-radius: 50%;
   color: var(--terracotta);
   background: var(--brand-soft);
   font-weight: 700;
+  overflow: hidden;
 }
 
 .agent-manage-card__body {

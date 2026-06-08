@@ -8,6 +8,7 @@ import { useArtifactStore } from '../../stores/artifactStore'
 import { useUIStore } from '../../stores/uiStore'
 import { getOrderedMessageArtifacts, getVisibleMessageArtifacts } from '../../utils/artifactCard'
 import { formatChatTime } from '../../utils/chatUi'
+import AgentAvatar from '../common/AgentAvatar'
 import MessageMarkdown from './MessageMarkdown'
 
 interface MessageBubbleProps {
@@ -44,7 +45,7 @@ const MessageBubble = ({ agent, isStreaming = false, message }: MessageBubblePro
     <article className={isUser ? 'message-bubble message-bubble--user' : 'message-bubble'}>
       <div className="message-bubble__meta">
         <span className="message-bubble__author">
-          <span className="message-bubble__avatar">{avatar}</span>
+          <AgentAvatar avatar={avatar} className="message-bubble__avatar" name={authorName} />
           <strong>{authorName}</strong>
           {!isUser && <span className="role-badge">智能体</span>}
           {isStreaming && <LoadingOutlined />}

@@ -28,7 +28,7 @@ class Agent(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    avatar: Mapped[str] = mapped_column(String(50), default="🤖")
+    avatar: Mapped[str] = mapped_column(Text, default="🤖")
     description: Mapped[str] = mapped_column(Text, default="")
     capabilities: Mapped[list] = mapped_column(JSON, default=list)
     system_instruction: Mapped[str] = mapped_column(Text, default="")

@@ -1,7 +1,6 @@
 import {
   ArrowRightOutlined,
   DeleteOutlined,
-  HomeFilled,
   MenuFoldOutlined,
   PlusOutlined,
   SettingOutlined,
@@ -11,6 +10,7 @@ import { useNavigate } from 'react-router-dom'
 import type { Agent, Conversation } from '../../services/api'
 import { useUIStore } from '../../stores/uiStore'
 import { formatConversationListTime } from '../../utils/chatUi'
+import AgentAvatar from '../common/AgentAvatar'
 
 interface ConversationListProps {
   agents: Agent[]
@@ -39,10 +39,8 @@ const ConversationList = ({
     <div className="sidebar">
       <div className="sidebar__header">
         <div className="brand-mark">
-          <span className="brand-mark__icon">
-            <HomeFilled />
-          </span>
-          <strong>AgentHub</strong>
+          <img alt="Nailaude logo" className="brand-mark__logo" src="/brand/nailaude_logo.png" />
+          <strong>Nailaude</strong>
         </div>
         <button
           aria-label="隐藏会话列表"
@@ -71,7 +69,7 @@ const ConversationList = ({
         <div className="agent-list">
           {agents.map((agent) => (
             <div className="agent-row" key={agent.id}>
-              <span className="agent-row__avatar">{agent.avatar}</span>
+              <AgentAvatar avatar={agent.avatar} className="agent-row__avatar" name={agent.name} />
               <div>
                 <strong>{agent.name}</strong>
                 <small>{agent.capabilities.slice(0, 2).join(' / ') || agent.description}</small>

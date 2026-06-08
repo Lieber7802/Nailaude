@@ -21,6 +21,10 @@ def test_agents_are_seeded_and_return_camel_case_fields(client):
     assert "README" in agents_by_name["文档专家"]["systemInstruction"]
     assert "不创建 `index.html`" in agents_by_name["产品架构师"]["systemInstruction"]
     assert "不创建 `index.html`" in agents_by_name["文档专家"]["systemInstruction"]
+    assert agents_by_name["代码工匠"]["avatar"] == "/agent-avatars/code_craftsman.png"
+    assert agents_by_name["审查大师"]["avatar"] == "/agent-avatars/review_master.png"
+    assert agents_by_name["文档专家"]["avatar"] == "/agent-avatars/doc_specialist.png"
+    assert agents_by_name["产品架构师"]["avatar"] == "/agent-avatars/product_architect.png"
     first_agent = payload["data"][0]
     assert "platformId" in first_agent
     assert "isBuiltin" in first_agent
@@ -75,6 +79,7 @@ def test_seed_refreshes_existing_builtin_agent_prompts(tmp_path):
     try:
         refreshed, product = asyncio.run(run_seed_refresh())
         assert refreshed.description != "old description"
+        assert refreshed.avatar == "/agent-avatars/doc_specialist.png"
         assert refreshed.capabilities != ["old"]
         assert "README" in refreshed.system_instruction
         assert product is not None
@@ -108,11 +113,12 @@ def test_platforms_refresh_cli_statuses_from_installed_binaries(client, monkeypa
 
 
 def test_create_custom_agent_persists_and_lists(client):
+    avatar_data_url = "data:image/png;base64," + ("a" * 4096)
     create_response = client.post(
         "/api/v1/agents",
         json={
             "name": "产品经理",
-            "avatar": "P",
+            "avatar": avatar_data_url,
             "description": "将用户需求整理成结构化 PRD 和验收标准。",
             "capabilities": ["产品", "需求分析", "文档"],
             "systemInstruction": "你是资深产品经理，负责澄清需求并输出可执行规格。",
@@ -124,6 +130,7 @@ def test_create_custom_agent_persists_and_lists(client):
     created = create_response.json()
     assert_api_response(created)
     assert created["data"]["name"] == "产品经理"
+    assert created["data"]["avatar"] == avatar_data_url
     assert created["data"]["description"] == "将用户需求整理成结构化 PRD 和验收标准。"
     assert created["data"]["capabilities"] == ["产品", "需求分析", "文档"]
     assert created["data"]["systemInstruction"] == "你是资深产品经理，负责澄清需求并输出可执行规格。"
@@ -136,6 +143,7 @@ def test_create_custom_agent_persists_and_lists(client):
     custom_agents = [agent for agent in listed["data"] if agent["id"] == created["data"]["id"]]
     assert len(custom_agents) == 1
     assert custom_agents[0]["isBuiltin"] is False
+    assert custom_agents[0]["avatar"] == avatar_data_url
 
 
 def test_create_and_list_group_conversation(client):
