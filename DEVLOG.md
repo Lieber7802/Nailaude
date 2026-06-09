@@ -254,7 +254,7 @@
 ### 验证
 - `cd backend && pytest -q` -> 8 项通过
 - `cd frontend && npm run build` -> 通过
-- `cd frontend && npm audit --audit-level=moderate` -> found 0 vulnerabilities
+- `cd frontend && npm audit --audit-level=moderate` -> 0 个漏洞
 
 ### 下一步
 - 若继续 M2，优先基于当前 `user_message`/artifact hydrate 机制完善会话列表、新建会话弹窗和 @mention 交互。
@@ -785,7 +785,7 @@
 ### 验证
 - `opencode --version` -> `1.15.13`
 - `opencode run --help` -> 确认支持 `--format`、`--model`、`--dir` 和 `--dangerously-skip-permissions`。
-- `/tmp/agenthub-test-venv311/bin/python -m pytest backend/tests/test_m3_cli_adapters.py backend/tests/test_m3_process_pool.py backend/tests/test_m3_agent_manager.py` -> `15 passed`
+- `/tmp/agenthub-test-venv311/bin/python -m pytest backend/tests/test_m3_cli_adapters.py backend/tests/test_m3_process_pool.py backend/tests/test_m3_agent_manager.py` -> `15 项通过`
 - `git diff --check` -> 通过
 
 ### 下一步
@@ -856,8 +856,8 @@
 - 无 shared types、REST 或 WebSocket 契约变更。
 
 ### 验证
-- `cd backend && ../.venv/bin/python -m pytest tests/test_m3_cli_adapters.py -q` -> `11 passed`
-- `cd backend && ../.venv/bin/python -m pytest -q` -> `141 passed`
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m3_cli_adapters.py -q` -> `11 项通过`
+- `cd backend && ../.venv/bin/python -m pytest -q` -> `141 项通过`
 - Adapter fake raw JSONL 烟测：聊天输出为简短中文摘要，raw `unknown.raw` / `sessionID` 未进入文本，文件变更仍发出 `file_created`。
 
 ## [2026-06-01] Codex - 内置 Agent 默认切换到 OpenCode
@@ -889,9 +889,9 @@
 
 ### 验证
 - RED：新增 `test_builtin_agents_are_backed_by_opencode` 后，旧 seed 返回 `mock`，测试失败。
-- `cd backend && ../.venv/bin/python -m pytest tests/test_m1_1_api.py::test_builtin_agents_are_backed_by_opencode -q` -> `1 passed`
-- `cd backend && ../.venv/bin/python -m pytest tests/test_m1_1_api.py tests/test_m1_2_websocket.py tests/test_m2_chat_core.py tests/test_m3_websocket_runtime.py tests/test_m3_websocket_interactions.py tests/test_m3_e2e.py tests/test_m4_artifact_preview.py -q` -> `37 passed`
-- `cd backend && ../.venv/bin/python -m pytest -q` -> `142 passed`
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m1_1_api.py::test_builtin_agents_are_backed_by_opencode -q` -> `1 项通过`
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m1_1_api.py tests/test_m1_2_websocket.py tests/test_m2_chat_core.py tests/test_m3_websocket_runtime.py tests/test_m3_websocket_interactions.py tests/test_m3_e2e.py tests/test_m4_artifact_preview.py -q` -> `37 项通过`
+- `cd backend && ../.venv/bin/python -m pytest -q` -> `142 项通过`
 - 本地 `backend/agenthub.db` 查询确认三位内置 Agent 均为 `opencode`。
 
 ## [2026-06-01] Codex - OpenCode 群聊摘要与预览产物修复
@@ -918,9 +918,9 @@
 ### 验证
 - RED：对象型 OpenCode `message` 会把 `sessionID` / dict raw 串进聊天；修复后通过。
 - RED：小程序/预览任务 prompt 未要求 `index.html`；修复后通过。
-- `cd backend && ../.venv/bin/python -m pytest tests/test_m3_cli_adapters.py -q` -> `14 passed`
-- `cd backend && ../.venv/bin/python -m pytest tests/test_m3_cli_adapters.py tests/test_m3_websocket_runtime.py tests/test_m4_artifact_preview.py -q` -> `27 passed`
-- `cd backend && ../.venv/bin/python -m pytest -q` -> `146 passed`
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m3_cli_adapters.py -q` -> `14 项通过`
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m3_cli_adapters.py tests/test_m3_websocket_runtime.py tests/test_m4_artifact_preview.py -q` -> `27 项通过`
+- `cd backend && ../.venv/bin/python -m pytest -q` -> `146 项通过`
 
 ## [2026-06-02] Codex - OpenCode 工具读取内容泄漏修复
 
@@ -941,9 +941,9 @@
 
 ### 验证
 - RED：复现真实泄漏格式 `232: ... <script> ... </content>","metadata"... "sessionID"` 会进入聊天；修复后通过。
-- `cd backend && ../.venv/bin/python -m pytest tests/test_m3_cli_adapters.py -q` -> `15 passed`
-- `cd backend && ../.venv/bin/python -m pytest tests/test_m3_cli_adapters.py tests/test_m3_websocket_runtime.py tests/test_m4_artifact_preview.py -q` -> `28 passed`
-- `cd backend && ../.venv/bin/python -m pytest -q` -> `147 passed`
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m3_cli_adapters.py -q` -> `15 项通过`
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m3_cli_adapters.py tests/test_m3_websocket_runtime.py tests/test_m4_artifact_preview.py -q` -> `28 项通过`
+- `cd backend && ../.venv/bin/python -m pytest -q` -> `147 项通过`
 - 最近群聊消息 raw 残留查询：`0`；artifact 查询仍保留 `webpage index.html` 及相关文档产物。
 
 ## [2026-06-02] Codex - OpenCode assistant 代码块直出修复
@@ -971,9 +971,9 @@
 
 ### 验证
 - RED：新增回归测试前，OpenCode assistant TSX fenced code 会作为 `text_delta` 进入消息 bubble。
-- `cd backend && /private/tmp/agenthub-pytest-venv/bin/python -m pytest tests/test_m3_cli_adapters.py -q` -> `16 passed`
-- `cd backend && /private/tmp/agenthub-pytest-venv/bin/python -m pytest tests/test_m3_cli_adapters.py tests/test_m3_websocket_runtime.py tests/test_m4_artifact_preview.py -q` -> `29 passed`
-- 沙箱内全量测试因 Codex smoke 绑定 `127.0.0.1` 被拒，非沙箱重跑通过：`cd backend && /private/tmp/agenthub-pytest-venv/bin/python -m pytest -q` -> `148 passed`
+- `cd backend && /private/tmp/agenthub-pytest-venv/bin/python -m pytest tests/test_m3_cli_adapters.py -q` -> `16 项通过`
+- `cd backend && /private/tmp/agenthub-pytest-venv/bin/python -m pytest tests/test_m3_cli_adapters.py tests/test_m3_websocket_runtime.py tests/test_m4_artifact_preview.py -q` -> `29 项通过`
+- 沙箱内全量测试因 Codex smoke 绑定 `127.0.0.1` 被拒，非沙箱重跑通过：`cd backend && /private/tmp/agenthub-pytest-venv/bin/python -m pytest -q` -> `148 项通过`
 - `git diff --check` -> 通过。
 
 ## [2026-06-02] Codex - OpenCode DeepSeek 环境注入
@@ -999,8 +999,8 @@
 
 ### 验证
 - RED：新增回归测试前，OpenCode process pool 收到的 `env` 为 `None`。
-- `cd backend && .venv/bin/python -m pytest tests/test_m3_cli_adapters.py::test_opencode_adapter_passes_deepseek_env_to_child_process -q` -> `1 passed`
-- `cd backend && .venv/bin/python -m pytest tests/test_m3_cli_adapters.py -q` -> `17 passed`
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_cli_adapters.py::test_opencode_adapter_passes_deepseek_env_to_child_process -q` -> `1 项通过`
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_cli_adapters.py -q` -> `17 项通过`
 
 ## [2026-06-02] Codex - DeepSeek SOCKS 代理规划卡住修复
 
@@ -1023,8 +1023,8 @@
 
 ### 验证
 - RED：新增回归测试前，普通 `ImportError` 会逃出 planner 并让后台 task 崩溃。
-- `cd backend && .venv/bin/python -m pytest tests/test_m3_planner.py::test_planner_wraps_unexpected_client_errors -q` -> `1 passed`
-- `cd backend && .venv/bin/python -m pytest tests/test_m3_planner.py tests/test_m3_cli_adapters.py -q` -> `24 passed`
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_planner.py::test_planner_wraps_unexpected_client_errors -q` -> `1 项通过`
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_planner.py tests/test_m3_cli_adapters.py -q` -> `24 项通过`
 - `cd backend && .venv/bin/python -c "import socksio; print('ok')"` -> `ok`
 
 ## [2026-06-02] Codex - Workspace 相对路径解析修复
@@ -1058,9 +1058,9 @@
 
 ### 验证
 - RED：新增回归测试前，ProjectState/WorkspaceSnapshot/OpenCode cwd 均解析为 `backend/workspaces/...` 并复现 `Workspace missing`。
-- `cd backend && .venv/bin/python -m pytest tests/test_m3_project_state.py tests/test_m3_workspace_snapshot.py -q` -> `15 passed`
-- `cd backend && .venv/bin/python -m pytest tests/test_m3_cli_adapters.py -q` -> `18 passed`
-- `cd backend && DEEPSEEK_API_KEY= .venv/bin/python -m pytest tests/test_m3_websocket_runtime.py tests/test_m4_artifact_preview.py -q` -> `13 passed`
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_project_state.py tests/test_m3_workspace_snapshot.py -q` -> `15 项通过`
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_cli_adapters.py -q` -> `18 项通过`
+- `cd backend && DEEPSEEK_API_KEY= .venv/bin/python -m pytest tests/test_m3_websocket_runtime.py tests/test_m4_artifact_preview.py -q` -> `13 项通过`
 - 带本机 DeepSeek key 直接跑 runtime/preview 烟测时，1 个用例会因测试环境触发真实摘要器联网而多出 summary unavailable warning；清空 key 后离线测试通过。
 
 ## [2026-06-02] Codex - OpenCode 超时前产物保留修复
@@ -1087,8 +1087,8 @@
 
 ### 验证
 - RED：新增回归测试前，写出 `index.html` 后抛出 `process timed out` 只会得到 error event。
-- `cd backend && .venv/bin/python -m pytest tests/test_m3_cli_adapters.py::test_opencode_adapter_emits_file_events_for_changes_written_before_timeout -q` -> `1 passed`
-- `cd backend && .venv/bin/python -m pytest tests/test_m3_cli_adapters.py -q` -> `19 passed`
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_cli_adapters.py::test_opencode_adapter_emits_file_events_for_changes_written_before_timeout -q` -> `1 项通过`
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_cli_adapters.py -q` -> `19 项通过`
 
 ## [2026-06-02] Codex - OpenCode 手测回归修复
 
@@ -1125,7 +1125,7 @@
 
 ### 验证
 - RED：新增测试前，代码实现任务保持 `accessMode=read`、新会话不创建 workspace、OpenCode 协议碎片会进入 `text_delta`。
-- `cd backend && .venv/bin/python -m pytest tests/test_m3_planner.py tests/test_m1_1_api.py tests/test_m3_cli_adapters.py tests/test_m3_project_state.py tests/test_m3_workspace_snapshot.py tests/test_m4_artifact_preview.py -q` -> `53 passed`
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_planner.py tests/test_m1_1_api.py tests/test_m3_cli_adapters.py tests/test_m3_project_state.py tests/test_m3_workspace_snapshot.py tests/test_m4_artifact_preview.py -q` -> `53 项通过`
 - `cd frontend && npm run build` -> 通过。
 
 ## [2026-06-02] Codex - OpenCode Review 输出兜底修复
@@ -1152,9 +1152,9 @@
 
 ### 验证
 - RED：新增测试前，review 任务只返回 `OpenCode 已完成本次执行 / 未检测到工作区文件变更`。
-- `cd backend && .venv/bin/python -m pytest tests/test_m3_cli_adapters.py::test_opencode_adapter_generates_review_fallback_when_review_returns_no_text -q` -> `1 passed`
-- `cd backend && .venv/bin/python -m pytest tests/test_m3_cli_adapters.py -q` -> `22 passed`
-- `cd backend && .venv/bin/python -m pytest tests/test_m3_planner.py tests/test_m1_1_api.py tests/test_m3_cli_adapters.py tests/test_m4_artifact_preview.py -q` -> `39 passed`
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_cli_adapters.py::test_opencode_adapter_generates_review_fallback_when_review_returns_no_text -q` -> `1 项通过`
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_cli_adapters.py -q` -> `22 项通过`
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_planner.py tests/test_m1_1_api.py tests/test_m3_cli_adapters.py tests/test_m4_artifact_preview.py -q` -> `39 项通过`
 - `git diff --check` -> 通过。
 
 ## [2026-06-02] Codex - Markdown Artifact 预览修复
@@ -1187,7 +1187,7 @@
 
 ### 验证
 - RED：新增测试前，`frontend/src/utils/markdownPreview.ts` 不存在，`npm test` 因模块缺失失败。
-- `cd frontend && npm test` -> `6 passed`
+- `cd frontend && npm test` -> `6 项通过`
 - `cd frontend && npm run build` -> 通过。
 - `git diff --check` -> 通过。
 - 浏览器烟测：`http://127.0.0.1:5174/workspace` 页面可加载，前端控制台 error 数为 0；未启动后端时页面有 API 404 alert，属于环境缺失。
@@ -1215,7 +1215,7 @@
 
 ### 验证
 - RED：新增表格测试前，表格内容被解析为单个 paragraph。
-- `cd frontend && npm test` -> `7 passed`
+- `cd frontend && npm test` -> `7 项通过`
 - `cd frontend && npm run build` -> 通过。
 - `git diff --check` -> 通过。
 
@@ -1247,7 +1247,7 @@
 
 ### 验证
 - RED：新增测试前，`frontend/src/utils/previewControls.ts` 不存在，`npm test` 因模块缺失失败。
-- `cd frontend && npm test` -> `9 passed`
+- `cd frontend && npm test` -> `9 项通过`
 - `cd frontend && npm run build` -> 通过。
 - `git diff --check` -> 通过。
 - 浏览器烟测未完成：本轮 in-app Browser 返回 `Browser is not available: iab`；Vite server 已启动后停止。
@@ -1285,8 +1285,8 @@
 
 ### 验证
 - RED：新增测试最初在 `max_tokens=16`、接受 `ok:false` 健康检查、无变更审查任务失败、缺少 OpenCode server 文本提取器、缺少 `server_runner` adapter 路径等场景失败。
-- WSL 定向测试：`PYTHONPATH=. python -B -m pytest -q -p no:cacheprovider tests/test_m3_llm_client.py tests/test_m3_orchestrator_runtime.py tests/test_m3_cli_adapters.py` -> `42 passed`。
-- WSL 更广 M3 测试：`PYTHONPATH=. python -B -m pytest -q -p no:cacheprovider tests/test_m3_websocket_runtime.py tests/test_m3_e2e.py` -> `12 passed`。
+- WSL 定向测试：`PYTHONPATH=. python -B -m pytest -q -p no:cacheprovider tests/test_m3_llm_client.py tests/test_m3_orchestrator_runtime.py tests/test_m3_cli_adapters.py` -> `42 项通过`。
+- WSL 更广 M3 测试：`PYTHONPATH=. python -B -m pytest -q -p no:cacheprovider tests/test_m3_websocket_runtime.py tests/test_m3_e2e.py` -> `12 项通过`。
 - WSL 真实 Adapter 烟测：`llm_health True`；OpenCode 返回 `OPENCODE_ADAPTER_SERVER_WSL_OK`；Codex 返回 `CODEX_AFTER_FIX_WSL_OK`。
 - WSL 真实群聊烟测：OpenCode 创建 `index.html` 并发出 webpage artifact；Codex 审查文本流式输出；最终 run 为 `completed`；两个任务状态完成；两个批次状态完成；无 warning。
 
@@ -1318,10 +1318,10 @@
 
 ### 验证
 - RED：修复前 `tests/test_m3_orchestrator_runtime.py::test_runtime_passes_task_metadata_to_shared_refresh_when_executor_raises` 因 `KeyError: 'taskId'` 失败。
-- `cd backend; python -B -m pytest -q -p no:cacheprovider tests/test_m3_orchestrator_runtime.py::test_runtime_passes_task_metadata_to_shared_refresh_when_executor_raises` -> `1 passed`。
-- `cd backend; python -B -m pytest -q -p no:cacheprovider tests/test_m3_orchestrator_runtime.py tests/test_m3_team_protocol.py tests/test_m3_project_state.py` -> `31 passed`。
-- `cd backend; python -B -m pytest -q -p no:cacheprovider tests/test_m3_llm_client.py tests/test_m3_cli_adapters.py` -> `31 passed`。
-- `cd backend; python -B -m pytest -q -p no:cacheprovider tests/test_m3_websocket_runtime.py` -> `11 passed`。
+- `cd backend; python -B -m pytest -q -p no:cacheprovider tests/test_m3_orchestrator_runtime.py::test_runtime_passes_task_metadata_to_shared_refresh_when_executor_raises` -> `1 项通过`。
+- `cd backend; python -B -m pytest -q -p no:cacheprovider tests/test_m3_orchestrator_runtime.py tests/test_m3_team_protocol.py tests/test_m3_project_state.py` -> `31 项通过`。
+- `cd backend; python -B -m pytest -q -p no:cacheprovider tests/test_m3_llm_client.py tests/test_m3_cli_adapters.py` -> `31 项通过`。
+- `cd backend; python -B -m pytest -q -p no:cacheprovider tests/test_m3_websocket_runtime.py` -> `11 项通过`。
 
 ### 队友备注
 - 此 Windows workspace 中的本地 `backend/agenthub.db` 仍是旧 schema，没有 M3 run snapshot 表，因此无法从该 DB 查询截图对应的持久化 run。
@@ -1349,9 +1349,9 @@
 - 无生产代码变更。
 
 ### 验证
-- `cd backend && ../.venv/bin/python -m pytest tests/test_m3_validator.py::test_validator_rejects_nonexistent_agent_id tests/test_m3_websocket_interactions.py::test_non_mock_job_uses_deepseek_planner_wrapper` -> `2 passed`。
-- `cd backend && ../.venv/bin/python -m pytest tests/test_m3_validator.py tests/test_m3_websocket_interactions.py` -> `15 passed`。
-- `cd backend && ../.venv/bin/python -m pytest` -> `174 passed`，有 `1 warning` 来自 Starlette/httpx testclient deprecation。
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m3_validator.py::test_validator_rejects_nonexistent_agent_id tests/test_m3_websocket_interactions.py::test_non_mock_job_uses_deepseek_planner_wrapper` -> `2 项通过`。
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m3_validator.py tests/test_m3_websocket_interactions.py` -> `15 项通过`。
+- `cd backend && ../.venv/bin/python -m pytest` -> `174 项通过`，有 `1 个警告` 来自 Starlette/httpx testclient deprecation。
 
 ## [2026-06-04] Codex - 自定义智能体创建 UI
 
@@ -1386,9 +1386,9 @@
 - 无新增依赖。
 
 ### 验证
-- `cd backend && ../.venv/bin/python -m pytest tests/test_m1_1_api.py::test_create_custom_agent_persists_and_lists` -> `1 passed`。
-- `cd backend && ../.venv/bin/python -m pytest tests/test_m1_1_api.py` -> `8 passed`。
-- `cd frontend && npm test` -> `9 passed`。
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m1_1_api.py::test_create_custom_agent_persists_and_lists` -> `1 项通过`。
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m1_1_api.py` -> `8 项通过`。
+- `cd frontend && npm test` -> `9 项通过`。
 - `cd frontend && npm run build` -> 通过。
 - `cd frontend && npm run lint` -> 通过。
 - in-app browser 烟测 `http://localhost:5173/workspace`：打开新增 Agent 弹窗，确认平台加载，提交自定义 Agent，并确认其立即出现在左侧栏。
@@ -1423,8 +1423,8 @@
 - MockAdapter 仍在内部和后端契约中可用，但会从自定义 Agent 创建弹窗中隐藏。
 
 ### 验证
-- `cd backend && ../.venv/bin/python -m pytest tests/test_m1_1_api.py` -> `9 passed`。
-- `cd frontend && npm test` -> `9 passed`。
+- `cd backend && ../.venv/bin/python -m pytest tests/test_m1_1_api.py` -> `9 项通过`。
+- `cd frontend && npm test` -> `9 项通过`。
 - `cd frontend && npm run lint` -> 通过。
 - `cd frontend && npm run build` -> 通过。
 - `curl http://localhost:8000/api/v1/platforms` -> 本机 Codex、OpenCode、LLM 和 Mock 均返回 `available`。
@@ -1472,7 +1472,7 @@
 - 无新增依赖。
 
 ### 验证
-- `cd frontend && npm test` -> `12 passed`。
+- `cd frontend && npm test` -> `12 项通过`。
 - `cd frontend && npm run build` -> 通过；Vite 保留 workspace bundle 既有 chunk-size warning。
 - in-app browser 烟测 `http://127.0.0.1:5173/workspace`：shell、聊天区、两个 resize handle、左右折叠控制均渲染；未出现 `Shared context`；控制台无错误。由于只运行前端 dev server、未启动后端，因此出现 API toast 错误。
 
@@ -1516,7 +1516,7 @@
 - 附件支持在 MVP 中仅限前端：选中文件的元数据会写入消息文本；文件上传/存储仍不在范围内。
 
 ### 验证
-- `cd frontend && npm test` -> `17 passed`。
+- `cd frontend && npm test` -> `17 项通过`。
 - `cd frontend && npm run build` -> 通过；Vite 保留既有 workspace chunk-size warning。
 - 全栈浏览器烟测 `http://127.0.0.1:5173/workspace`：shell 加载且控制台无错误；折叠控制出现在 divider-control 区域；`@代理` 打开 Agent selector；隐藏文件输入支持 `multiple`；`Shared context` 仍未出现。
 
@@ -1543,7 +1543,7 @@
 - `DEVLOG.md`
 
 ### 验证
-- `cd frontend && npm test` -> `18 passed`。
+- `cd frontend && npm test` -> `18 项通过`。
 - `cd frontend && npm run build` -> 通过；Vite 保留既有 workspace chunk-size warning。
 - 浏览器烟测 `http://127.0.0.1:5173/workspace`：折叠控制渲染在顶部栏高度（`y=28`），前端控制台无错误。由于本次视觉检查只运行前端 dev server，出现 API toast 错误。
 
@@ -1568,7 +1568,7 @@
 - `DEVLOG.md`
 
 ### 验证
-- `cd frontend && npm test` -> `18 passed`。
+- `cd frontend && npm test` -> `18 项通过`。
 - `cd frontend && npm run build` -> 通过；Vite 保留既有 workspace chunk-size warning。
 - 浏览器烟测 `http://127.0.0.1:5173/workspace`：左侧 toggle 渲染在 sidebar header 内（`right=277`，与 header 右边缘匹配）；右侧 toggle 渲染为 `全屏预览` 后的最后一个 preview toolbar 按钮；前端控制台无错误。
 
@@ -1590,7 +1590,7 @@
 - `DEVLOG.md`
 
 ### 验证
-- `cd frontend && npm test` -> `18 passed`。
+- `cd frontend && npm test` -> `18 项通过`。
 - `cd frontend && npm run build` -> 通过；Vite 保留既有 workspace chunk-size warning。
 - 浏览器烟测 `http://127.0.0.1:5173/workspace`：折叠恢复按钮默认 `opacity: 0` 且 `pointer-events: none`，并具有受限的 `64 x 88` 边缘热区。
 
@@ -1629,7 +1629,7 @@
 - `DEVLOG.md`
 
 ### 验证
-- `cd frontend && npm test` -> `22 passed`。
+- `cd frontend && npm test` -> `22 项通过`。
 - `cd frontend && npm run build` -> 通过；Vite 保留既有 workspace chunk-size warning。
 - `cd frontend && npm install --package-lock-only --ignore-scripts` -> lockfile 已是最新。
 - 浏览器烟测 `http://127.0.0.1:5173/workspace`：workspace 渲染 Outputs/Preview/Code/Changes tabs，未见应用崩溃。
@@ -1680,10 +1680,10 @@
 - `DEVLOG.md`
 
 ### 验证
-- `cd frontend && npm test` -> `22 passed`。
+- `cd frontend && npm test` -> `22 项通过`。
 - `cd frontend && npm run build` -> 通过。
-- `cd backend && .venv/bin/python -m pytest tests/test_m3_websocket_runtime.py -k "stop_generation"` -> `1 passed`。
-- `cd backend && .venv/bin/python -m pytest tests/test_m3_orchestrator_runtime.py -k "cancel"` -> `4 passed`。
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_websocket_runtime.py -k "stop_generation"` -> `1 项通过`。
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_orchestrator_runtime.py -k "cancel"` -> `4 项通过`。
 
 ### 队友备注
 - Planning LLM 调用不会在请求中途被强制 kill；取消现在会被记录，并阻止同一 run 后续进入 Agent 执行。
@@ -1720,10 +1720,10 @@
 - `DEVLOG.md`
 
 ### 验证
-- `cd frontend && npm test` -> `25 passed`。
+- `cd frontend && npm test` -> `25 项通过`。
 - `cd frontend && npm run build` -> 通过；Vite 保留既有 workspace chunk-size warning。
-- `cd backend && .venv/bin/python -m pytest tests/test_m3_project_state.py -k "summarizer"` -> `2 passed`。
-- `cd backend && .venv/bin/python -m pytest tests/test_m3_team_protocol.py -k "summary_patch"` -> `1 passed`。
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_project_state.py -k "summarizer"` -> `2 项通过`。
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_team_protocol.py -k "summary_patch"` -> `1 项通过`。
 
 ### 队友备注
 - 旧 DeepSeek failure 文本对应的已持久化 project warnings 会在前端状态卡中过滤；新的 refresh 不再写入这些 warnings。
@@ -1752,7 +1752,7 @@
 - `DEVLOG.md`
 
 ### 验证
-- `cd frontend && npm test` -> `26 passed`。
+- `cd frontend && npm test` -> `26 项通过`。
 - `cd frontend && npm run build` -> 通过；Vite 保留既有 workspace chunk-size warning。
 
 ### 队友备注
@@ -1802,7 +1802,7 @@
 
 ### 验证
 - 先写 RED 测试，覆盖 Codex stdin/home 行为、ProcessPool stdin/stdout 错误、bridge 截断/error body/reasoning/tool-call 分组、planner mention/stage 覆盖、validator 不存在 agent 处理、WebSocket planner catalog 复用。
-- WSL 变更区域测试：`PYTHONPATH=. /home/lieber/src/AgentHub/backend/.venv/bin/python -B -m pytest -q -p no:cacheprovider tests/test_m3_planner.py tests/test_m3_validator.py tests/test_m3_websocket_interactions.py::test_non_mock_job_uses_deepseek_planner_wrapper tests/test_m3_deepseek_responses_bridge.py tests/test_m3_process_pool.py tests/test_m3_cli_adapters.py::test_codex_adapter_uses_isolated_home_and_loopback_bridge tests/test_m3_cli_adapters.py::test_codex_adapter_emits_file_events_for_workspace_changes` -> `41 passed`。
+- WSL 变更区域测试：`PYTHONPATH=. /home/lieber/src/AgentHub/backend/.venv/bin/python -B -m pytest -q -p no:cacheprovider tests/test_m3_planner.py tests/test_m3_validator.py tests/test_m3_websocket_interactions.py::test_non_mock_job_uses_deepseek_planner_wrapper tests/test_m3_deepseek_responses_bridge.py tests/test_m3_process_pool.py tests/test_m3_cli_adapters.py::test_codex_adapter_uses_isolated_home_and_loopback_bridge tests/test_m3_cli_adapters.py::test_codex_adapter_emits_file_events_for_workspace_changes` -> `41 项通过`。
 - WSL 直接 Codex handoff 复现前一个 task-3 review blocker：完成并输出 `text_delta`，无 `error`。
 - 通过 `start_services.sh` 重启 WSL 服务；后端、前端、Vite API proxy 健康检查均返回 `200`。
 - WSL 真实三 Agent 链路使用 ASCII prompt 完成四个任务：需求、预览实现、代码审查和 README；最终状态 `completed`；warnings `[]`；artifacts 包含 `index.html` webpage 和 README。
@@ -1849,11 +1849,11 @@
 
 ### 验证
 - 先写 RED 测试，覆盖 Markdown 包裹 JSON 解析、invalid JSON 诊断、宽松 planner alias、复制错误 agent id 修复、文档阶段 write access、分阶段 app DAG 强制。
-- WSL 定向测试：`PYTHONPATH=. /home/lieber/src/AgentHub/backend/.venv/bin/python -B -m pytest -q -p no:cacheprovider tests/test_m3_llm_client.py tests/test_m3_planner.py` -> `26 passed`。
+- WSL 定向测试：`PYTHONPATH=. /home/lieber/src/AgentHub/backend/.venv/bin/python -B -m pytest -q -p no:cacheprovider tests/test_m3_llm_client.py tests/test_m3_planner.py` -> `26 项通过`。
 - WSL 更广检查：
-- `tests/test_m3_websocket_interactions.py` -> `7 passed`。
-- `tests/test_m3_orchestrator_runtime.py` -> `12 passed`。
-- `tests/test_m3_websocket_runtime.py` -> `11 passed`，耗时 129.72s。
+- `tests/test_m3_websocket_interactions.py` -> `7 项通过`。
+- `tests/test_m3_orchestrator_runtime.py` -> `12 项通过`。
+- `tests/test_m3_websocket_runtime.py` -> `11 项通过`，耗时 129.72s。
 - WSL 真实番茄钟 planner-only 稳定性检查使用已持久化的失败 run 输入，10/10 次通过：`failures: []`，`badDag: []`。
 
 ### 队友备注
@@ -1899,10 +1899,10 @@
 
 ### 验证
 - RED 定向测试先因缺少产品架构师、prompt 刷新行为过期、planner 角色分配错误、文档任务触发预览而失败。
-- 实现后定向后端测试：`cd backend && .venv/bin/python -m pytest tests/test_m1_1_api.py tests/test_m3_planner.py tests/test_m3_cli_adapters.py::test_opencode_prompt_does_not_require_preview_for_document_tasks tests/test_m3_cli_adapters.py::test_opencode_prompt_requires_preview_entry_for_system_implementation_requests tests/test_m3_cli_adapters.py::test_opencode_prompt_requires_preview_entry_for_app_generation` -> `32 passed`。
-- 环境无关 fallback warning 回归测试：`cd backend && .venv/bin/python -m pytest tests/test_m3_websocket_runtime.py::test_read_task_retries_safe_execution_fallback_and_surfaces_warning` -> `1 passed`。
-- 后端全量套件：`cd backend && .venv/bin/python -m pytest` -> `197 passed`，有 `1 warning` 来自 Starlette/httpx testclient deprecation。
-- 前端测试：`cd frontend && npm test` -> `26 passed`。
+- 实现后定向后端测试：`cd backend && .venv/bin/python -m pytest tests/test_m1_1_api.py tests/test_m3_planner.py tests/test_m3_cli_adapters.py::test_opencode_prompt_does_not_require_preview_for_document_tasks tests/test_m3_cli_adapters.py::test_opencode_prompt_requires_preview_entry_for_system_implementation_requests tests/test_m3_cli_adapters.py::test_opencode_prompt_requires_preview_entry_for_app_generation` -> `32 项通过`。
+- 环境无关 fallback warning 回归测试：`cd backend && .venv/bin/python -m pytest tests/test_m3_websocket_runtime.py::test_read_task_retries_safe_execution_fallback_and_surfaces_warning` -> `1 项通过`。
+- 后端全量套件：`cd backend && .venv/bin/python -m pytest` -> `197 项通过`，有 `1 个警告` 来自 Starlette/httpx testclient deprecation。
+- 前端测试：`cd frontend && npm test` -> `26 项通过`。
 - 前端构建：`cd frontend && npm run build` -> 通过；Vite 保留既有 chunk-size warning。
 
 ### 队友备注
@@ -1939,7 +1939,7 @@
 - 无新增依赖。
 
 ### 验证
-- 前端测试：`cd frontend && npm test` -> `28 passed`。
+- 前端测试：`cd frontend && npm test` -> `28 项通过`。
 - 前端构建：`cd frontend && npm run build` -> 通过；Vite 保留既有 chunk-size warning。
 - 浏览器烟测：侧边栏加号打开“新增自定义智能体”；聊天头部“+ 添加智能体”为选中会话打开“添加已有智能体”。
 
@@ -1985,7 +1985,7 @@
 
 ### 验证
 - 交互式 zsh 下确认 Node/npm 可用：`node` 位于 `/home/yangyu/.nvm/versions/node/v24.16.0/bin/node`，`npm` 位于 `/home/yangyu/.nvm/versions/node/v24.16.0/bin/npm`。
-- 前端测试：`cd frontend && zsh -lic 'npm test'` -> `31 passed`。
+- 前端测试：`cd frontend && zsh -lic 'npm test'` -> `31 项通过`。
 - 前端构建：`cd frontend && zsh -lic 'npm run build'` -> 通过；Vite 保留既有的 chunk size warning。
 - 补丁检查：`git diff --check` -> 通过。
 
@@ -2020,7 +2020,7 @@
 - 未新增依赖。
 
 ### 验证
-- 前端测试：`cd frontend && zsh -lic 'npm test'` -> `33 passed`。
+- 前端测试：`cd frontend && zsh -lic 'npm test'` -> `33 项通过`。
 - 前端构建：`cd frontend && zsh -lic 'npm run build'` -> 通过；Vite 保留既有 chunk size warning。
 - 补丁检查：`git diff --check` -> 通过。
 
@@ -2049,7 +2049,7 @@
 - 未新增依赖。
 
 ### 验证
-- 前端测试：`cd frontend && zsh -lic 'npm test'` -> `34 passed`。
+- 前端测试：`cd frontend && zsh -lic 'npm test'` -> `34 项通过`。
 - 前端构建：`cd frontend && zsh -lic 'npm run build'` -> 通过；Vite 保留既有 chunk size warning。
 - 补丁检查：`git diff --check` -> 通过。
 
@@ -2077,7 +2077,7 @@
 - 未新增依赖。
 
 ### 验证
-- 前端测试：`cd frontend && zsh -lic 'npm test'` -> `35 passed`。
+- 前端测试：`cd frontend && zsh -lic 'npm test'` -> `35 项通过`。
 - 前端构建：`cd frontend && zsh -lic 'npm run build'` -> 通过；Vite 保留既有 chunk size warning。
 - 补丁检查：`git diff --check` -> 通过。
 
@@ -2117,10 +2117,10 @@
 - 未新增依赖。
 
 ### 验证
-- 目标后端测试：`python -m pytest backend/tests/test_m1_1_api.py::test_create_conversation_accepts_workspace_folder_name backend/tests/test_m1_1_api.py::test_create_conversation_rejects_workspace_name_that_escapes_root backend/tests/test_m3_cli_adapters.py::test_opencode_prompt_requires_preview_entry_for_app_generation backend/tests/test_m3_cli_adapters.py::test_codex_prompt_includes_generated_project_dev_server_safety` -> `4 passed`。
-- 相关后端套件：`python -m pytest backend/tests/test_m1_1_api.py backend/tests/test_m3_cli_adapters.py` -> `39 passed`。
-- 完整后端测试：`python -m pytest backend/tests` -> `200 passed`。
-- 前端测试：`npm test` -> `36 passed`。
+- 目标后端测试：`python -m pytest backend/tests/test_m1_1_api.py::test_create_conversation_accepts_workspace_folder_name backend/tests/test_m1_1_api.py::test_create_conversation_rejects_workspace_name_that_escapes_root backend/tests/test_m3_cli_adapters.py::test_opencode_prompt_requires_preview_entry_for_app_generation backend/tests/test_m3_cli_adapters.py::test_codex_prompt_includes_generated_project_dev_server_safety` -> `4 项通过`。
+- 相关后端套件：`python -m pytest backend/tests/test_m1_1_api.py backend/tests/test_m3_cli_adapters.py` -> `39 项通过`。
+- 完整后端测试：`python -m pytest backend/tests` -> `200 项通过`。
+- 前端测试：`npm test` -> `36 项通过`。
 - 前端构建：`npm run build` -> 通过；Vite 保留既有 chunk size warning。
 
 ## [2026-06-06] Codex - 关闭高风险写入审批弹窗
@@ -2149,9 +2149,9 @@
 - 未新增依赖。
 
 ### 验证
-- 先跑新目标测试确认旧逻辑红灯：`backend/.venv/bin/python -m pytest backend/tests/test_m3_websocket_interactions.py::test_risky_write_plan_executes_without_approval_prompt backend/tests/test_m3_websocket_interactions.py::test_approval_response_without_paused_job_returns_error backend/tests/test_m3_websocket_interactions.py::test_risky_write_tasks_do_not_have_elevated_approval_reason` -> `2 failed, 1 passed`。
-- 修改后目标测试：同上命令 -> `3 passed`。
-- 相关后端套件：`backend/.venv/bin/python -m pytest backend/tests/test_m3_websocket_interactions.py` -> `8 passed`。
+- 先跑新目标测试确认旧逻辑红灯：`backend/.venv/bin/python -m pytest backend/tests/test_m3_websocket_interactions.py::test_risky_write_plan_executes_without_approval_prompt backend/tests/test_m3_websocket_interactions.py::test_approval_response_without_paused_job_returns_error backend/tests/test_m3_websocket_interactions.py::test_risky_write_tasks_do_not_have_elevated_approval_reason` -> `2 项失败，1 项通过`。
+- 修改后目标测试：同上命令 -> `3 项通过`。
+- 相关后端套件：`backend/.venv/bin/python -m pytest backend/tests/test_m3_websocket_interactions.py` -> `8 项通过`。
 - 补丁检查：`git diff --check` -> 通过。
 
 ## [2026-06-06] Codex - 移除 accessMode 运行时读写权限语义
@@ -2191,9 +2191,9 @@
 - 未新增依赖。
 
 ### 验证
-- 新回归测试先红灯：目标测试组在旧逻辑下 `7 failed, 1 passed`，覆盖 scheduler、runtime workspace、no-change 失败、handoff metadata、OpenCode review fallback、preview/dev-server contract。
-- 受影响后端套件：`backend/.venv/bin/python -m pytest backend/tests/test_m3_scheduler.py backend/tests/test_m3_orchestrator_runtime.py backend/tests/test_m3_handoff_builder.py backend/tests/test_m3_websocket_runtime.py backend/tests/test_m3_cli_adapters.py` -> `57 passed`。
-- 完整后端测试：`backend/.venv/bin/python -m pytest backend/tests` -> `203 passed`。
+- 新回归测试先红灯：目标测试组在旧逻辑下 `7 项失败，1 项通过`，覆盖 scheduler、runtime workspace、no-change 失败、handoff metadata、OpenCode review fallback、preview/dev-server contract。
+- 受影响后端套件：`backend/.venv/bin/python -m pytest backend/tests/test_m3_scheduler.py backend/tests/test_m3_orchestrator_runtime.py backend/tests/test_m3_handoff_builder.py backend/tests/test_m3_websocket_runtime.py backend/tests/test_m3_cli_adapters.py` -> `57 项通过`。
+- 完整后端测试：`backend/.venv/bin/python -m pytest backend/tests` -> `203 项通过`。
 
 ## [2026-06-06] Codex - 产物卡片列表折叠与预览优先排序
 
@@ -2222,8 +2222,8 @@
 - 未新增依赖。
 
 ### 验证
-- RED 测试确认旧逻辑失败：`cd frontend && npm test` -> `4 failed`，覆盖网页优先、HTML/README 优先、默认 3 个和折叠后优先级展示。
-- 修改后前端测试：`cd frontend && npm test` -> `39 passed`。
+- RED 测试确认旧逻辑失败：`cd frontend && npm test` -> `4 项失败`，覆盖网页优先、HTML/README 优先、默认 3 个和折叠后优先级展示。
+- 修改后前端测试：`cd frontend && npm test` -> `39 项通过`。
 - 前端构建：`cd frontend && npm run build` -> 通过；Vite 保留既有 chunk size warning。
 - 补丁检查：`git diff --check` -> 通过。
 - 未单独运行浏览器手工 smoke；多产物折叠和排序已由 `frontend/tests/artifactCard.test.mjs` 覆盖。
@@ -2254,26 +2254,26 @@
 - Planner 行为变化：合法 participant `agentId` 由 LLM 输出主导，后端只做低侵入修复和结构校验。
 
 ### 验证
-- 新增测试先红灯：`PYTHONPATH=backend backend/.venv/bin/python -m pytest backend/tests/test_m3_planner.py -q` -> `4 failed, 19 passed`。
-- 修改后目标测试：`PYTHONPATH=backend backend/.venv/bin/python -m pytest backend/tests/test_m3_planner.py -q` -> `23 passed`。
-- 编排 smoke：`backend/.venv/bin/python -m pytest backend/tests/test_m3_planner.py backend/tests/test_m3_websocket_interactions.py backend/tests/test_m3_websocket_runtime.py -q` -> `42 passed`。
-- 完整后端测试：`backend/.venv/bin/python -m pytest backend/tests` -> `208 passed, 1 warning`。
+- 新增测试先红灯：`PYTHONPATH=backend backend/.venv/bin/python -m pytest backend/tests/test_m3_planner.py -q` -> `4 项失败，19 项通过`。
+- 修改后目标测试：`PYTHONPATH=backend backend/.venv/bin/python -m pytest backend/tests/test_m3_planner.py -q` -> `23 项通过`。
+- 编排 smoke：`backend/.venv/bin/python -m pytest backend/tests/test_m3_planner.py backend/tests/test_m3_websocket_interactions.py backend/tests/test_m3_websocket_runtime.py -q` -> `42 项通过`。
+- 完整后端测试：`backend/.venv/bin/python -m pytest backend/tests` -> `208 项通过，1 个警告`。
 - 补丁检查：`git diff --check` -> 通过。
 - 未重复浏览器手测电商页面；新增 planner 回归测试已覆盖同一类“页面 + 需求”导致产品架构师缺失的失败路径。
 
-## [2026-06-06] Codex - Stop generation cancels paused single chat runs
+## [2026-06-06] Codex - 停止生成支持取消暂停中的单聊任务
 
-### Problem judgment
-- The terminate button could fail for a current single chat run paused at clarification or approval.
-- Backend `stop_generation` only cancelled active runtime execution or queued jobs; paused jobs stayed in `paused_jobs` and never emitted a `cancelled` snapshot.
+### 问题判断
+- 当前单聊任务暂停在澄清或审批阶段时，停止生成按钮可能失效。
+- 后端 `stop_generation` 只会取消正在执行或排队中的任务；暂停任务会留在 `paused_jobs`，且不会推送 `cancelled` 快照。
 
-### Completed
-- Added a WebSocket cancellation helper that covers active runs, queued runs, and paused runs.
-- Handled the active/paused race where a run has emitted `awaiting_input` but the queue worker has not yet completed the active slot.
-- Added a regression test proving a paused single chat run is cancelled and cannot be resumed afterward.
-- Updated the API spec note for `stop_generation` paused-run semantics.
+### 完成内容
+- 新增 WebSocket 取消辅助逻辑，覆盖运行中、排队中和暂停中的任务。
+- 处理运行态与暂停态竞态：任务已推送 `awaiting_input`，但队列 worker 尚未释放运行槽位。
+- 增加回归测试，证明暂停中的单聊任务可被取消，且取消后不能继续恢复。
+- 更新 API 规范中 `stop_generation` 对暂停任务的语义说明。
 
-### Changed files
+### 新增/修改文件
 - `backend/app/ws/handlers.py`
 - `backend/tests/test_m3_websocket_runtime.py`
 - `docs/API_SPEC.md`
@@ -2281,33 +2281,33 @@
 - `docs/plans/M4_STOP_GENERATION_PAUSED_RUN_CHECKLIST.md`
 - `DEVLOG.md`
 
-### Interface changes
-- No WebSocket payload shape or shared type changes.
-- `stop_generation` now also cancels runs paused in `awaiting_input` / `awaiting_approval`.
-- No new dependencies.
+### 接口变更
+- 无 WebSocket payload 结构或共享类型变化。
+- `stop_generation` 现在也会取消暂停在 `awaiting_input` / `awaiting_approval` 的任务。
+- 无新增依赖。
 
-### Verification
-- RED regression first hung waiting for `cancelled`, matching the reported bug.
-- Focused tests: `cd backend && ../.venv/bin/python -m pytest -vv tests/test_m3_websocket_runtime.py::test_stop_generation_cancels_paused_input_run tests/test_m3_websocket_runtime.py::test_stop_generation_cancels_active_run` -> `2 passed`, `1 warning`.
-- WebSocket runtime smoke: `cd backend && ../.venv/bin/python -m pytest tests/test_m3_websocket_runtime.py` -> `12 passed`, `1 warning`.
+### 验证
+- 回归测试先红灯，等待 `cancelled` 时卡住，与反馈问题一致。
+- 定向测试： `cd backend && ../.venv/bin/python -m pytest -vv tests/test_m3_websocket_runtime.py::test_stop_generation_cancels_paused_input_run tests/test_m3_websocket_runtime.py::test_stop_generation_cancels_active_run` -> `2 项通过`，`1 个警告`。
+- WebSocket 运行时烟测： `cd backend && ../.venv/bin/python -m pytest tests/test_m3_websocket_runtime.py` -> `12 项通过`，`1 个警告`。
 
-### Teammate notes
-- The existing frontend button wiring is unchanged; it benefits from the broader backend cancellation semantics.
+### 给其他成员的提醒
+- 前端按钮接线保持不变，会直接受益于后端更完整的取消语义。
 
-## [2026-06-06] Codex - Vite HTML preview renders built assets
+## [2026-06-06] Codex - Vite HTML 预览支持构建产物资源
 
-### Problem judgment
-- Generated Vite projects can produce `dist/index.html` with root-relative asset URLs like `/assets/app.js`.
-- The right preview previously preferred iframe `srcDoc` for HTML artifacts, so those assets resolved against the AgentHub frontend origin instead of the conversation preview route.
-- Even when opening `/preview/{conversation}/dist/index.html`, backend HTML responses returned root-relative Vite asset URLs unchanged.
+### 问题判断
+- 生成的 Vite 项目可能产出 `dist/index.html`，其中包含 `/assets/app.js` 这类根相对资源地址。
+- 右侧预览此前对 HTML 产物优先使用 iframe `srcDoc`，导致资源会按 AgentHub 前端源解析，而不是按会话预览路由解析。
+- 即使打开 `/preview/{conversation}/dist/index.html`，后端 HTML 响应也会原样返回 Vite 根相对资源地址。
 
-### Completed
-- Frontend HTML artifacts with `previewUrl` now load through iframe `src`, preserving the preview route as the document URL.
-- Backend preview HTML responses rewrite root-relative `src` / `href` asset URLs into the current preview directory, e.g. `/assets/app.js` -> `/preview/{conversation}/dist/assets/app.js`.
-- Added focused frontend and backend regressions for Vite-style built HTML previews.
-- Updated Preview API docs for the asset rewrite behavior.
+### 完成内容
+- 带 `previewUrl` 的前端 HTML 产物现在通过 iframe `src` 加载，让预览路由成为文档 URL。
+- 后端预览 HTML 响应会把根相对 `src` / `href` 资源地址改写到当前预览目录，例如 `/assets/app.js` -> `/preview/{conversation}/dist/assets/app.js`。
+- 增加前后端定向回归测试，覆盖 Vite 风格构建后 HTML 预览。
+- 更新 Preview API 文档，说明资源地址改写行为。
 
-### Changed files
+### 新增/修改文件
 - `backend/app/services/preview_service.py`
 - `backend/tests/test_m1_1_api.py`
 - `frontend/src/components/preview/IframePreview.tsx`
@@ -2318,20 +2318,20 @@
 - `docs/plans/M5_VITE_HTML_PREVIEW_FIX_CHECKLIST.md`
 - `DEVLOG.md`
 
-### Interface changes
-- No shared type, REST payload, or WebSocket payload shape changes.
-- Existing `/preview/{conversation_id}/{file_path}` route now rewrites HTML asset URLs for preview correctness.
-- No new dependencies.
+### 接口变更
+- 无共享类型、REST payload 或 WebSocket payload 结构变化。
+- 现有 `/preview/{conversation_id}/{file_path}` 路由现在会改写 HTML 资源地址，以保证预览正确。
+- 无新增依赖。
 
-### Verification
-- RED tests first failed with missing frontend helper and unchanged `/assets/*` backend HTML.
-- Frontend targeted/all tests: `cd frontend && npm test` -> `40 passed`.
-- Backend targeted preview/API tests: `cd backend && ../.venv/bin/python -m pytest tests/test_m1_1_api.py tests/test_m3_websocket_runtime.py::test_group_opencode_preview_request_emits_webpage_artifact` -> `14 passed`, `1 warning`.
+### 验证
+- 回归测试先红灯，表现为缺少前端辅助逻辑，且后端 HTML 中 `/assets/*` 未被改写。
+- 前端定向/完整测试： `cd frontend && npm test` -> `40 项通过`.
+- 后端预览/API 定向测试： `cd backend && ../.venv/bin/python -m pytest tests/test_m1_1_api.py tests/test_m3_websocket_runtime.py::test_group_opencode_preview_request_emits_webpage_artifact` -> `14 项通过`，`1 个警告`。
 
-### Teammate notes
-- This fix serves built static Vite output. It does not start generated Vite dev servers.
+### 给其他成员的提醒
+- 该修复面向已构建的 Vite 静态产物，不会启动生成项目的 Vite dev server。
 
-## [2026-06-07] M5 Frontend Design Refresh
+## [2026-06-07] M5 前端视觉刷新
 
 ### 完成内容
 - 按用户提供的 Claude-inspired 设计资料，将前端全局视觉 token、三栏工作台、聊天流、产物卡、输入区、预览面板和 Markdown/code 容器统一为暖纸色、ivory 面板、terracotta 主行动色、serif 标题和 ring shadow 风格。
@@ -2355,54 +2355,54 @@
 - @小马：本次只改前端样式，不影响 Adapter、API 或 WebSocket 契约。
 - @组长：预览面板、代码/Markdown/diff 容器已换成 warm token；后续新增预览控件请优先复用 `frontend/src/index.css` 的 design tokens。
 
-## [2026-06-07] Codex - Left sidebar scroll bugfix
+## [2026-06-07] Codex - 左侧边栏滚动修复
 
-### Problem judgment
-- The left pane clipped long content because the conversation list did not reliably occupy the remaining flex height.
-- A long built-in/custom agent list could consume the sidebar vertical space and shrink the conversation list to 0 height, leaving conversations unreachable.
+### 问题判断
+- 左侧栏长内容会被裁切，因为会话列表没有稳定占满剩余 flex 高度。
+- 内置/自定义 Agent 列表过长时会占满侧边栏垂直空间，把会话列表压到 0 高度，导致会话不可达。
 
-### Completed
-- Added explicit scroll containment for the sidebar.
-- Capped the common agent list height and made it independently scrollable.
-- Made the conversation list flex into remaining space and keep its own vertical scrolling.
-- Added a CSS regression test covering the sidebar/list scroll constraints.
+### 完成内容
+- 为侧边栏增加明确的滚动容器约束。
+- 限制常用 Agent 列表高度，并让它可以独立滚动。
+- 让会话列表占据剩余空间，并保留自己的纵向滚动。
+- 增加 CSS 回归测试，覆盖侧边栏和列表滚动约束。
 
-### Changed files
+### 新增/修改文件
 - `frontend/src/index.css`
 - `frontend/tests/sidebarLayout.test.mjs`
 - `docs/plans/M5_UI_BUGFIX_PLAN.md`
 - `docs/plans/M5_UI_BUGFIX_CHECKLIST.md`
 - `DEVLOG.md`
 
-### Interface changes
-- No API, WebSocket, shared type, or dependency changes.
+### 接口变更
+- 无 API、WebSocket、共享类型或依赖变化。
 
-### Verification
-- RED regression first failed on missing `.conversation-list` flex sizing.
-- `cd frontend && npm test` -> `44 passed`.
-- `cd frontend && npm run build` -> passed, with the existing Vite chunk-size warning.
-- Browser smoke at `http://127.0.0.1:5174/workspace`: with 20 conversation rows, `.conversation-list` had `overflow-y: auto`, positive height, and wheel scroll changed `scrollTop` from `0` to `620`.
+### 验证
+- 回归测试先红灯，问题是缺少 `.conversation-list` flex 尺寸约束。
+- `cd frontend && npm test` -> `44 项通过`.
+- `cd frontend && npm run build` -> 通过, 带有既有 Vite chunk-size 警告.
+- 浏览器烟测 `http://127.0.0.1:5174/workspace`：20 条会话时，`.conversation-list` 具备 `overflow-y: auto`、正高度，滚轮可将 `scrollTop` 从 `0` 改到 `620`。
 
-### Teammate notes
-- The fix is CSS-only and scoped to the left sidebar layout. It should not affect chat, preview, backend, or Adapter behavior.
+### 给其他成员的提醒
+- 该修复仅涉及 CSS，并限制在左侧边栏布局内，不应影响聊天、预览、后端或 Adapter 行为。
 
-## [2026-06-07] Codex - Workspace polish and custom agent management
+## [2026-06-07] Codex - 工作台体验打磨与自定义 Agent 管理
 
-### Problem judgment
-- The workspace empty state exposed Mock implementation copy, and the right preview showed an unsupported-webpage message when no output existed.
-- Markdown preview kept card-like spacing in fullscreen instead of using the available panel area.
-- Runtime durations were derived from frontend-local timestamps, so refresh-triggered snapshots could create misleading fresh timers.
-- `/agents` was still a placeholder page despite backend support for custom Agent CRUD.
+### 问题判断
+- 工作台空状态暴露了 Mock 实现文案，右侧预览在没有产物时显示了“不支持网页”的提示。
+- Markdown 预览在全屏时仍保留卡片式间距，没有充分利用面板空间。
+- 运行耗时来自前端本地时间戳，刷新触发的快照可能生成误导性的全新计时。
+- 后端已经支持自定义 Agent CRUD，但 `/agents` 仍是占位页面。
 
-### Completed
-- Replaced workspace and preview empty-state copy with product-facing text.
-- Defaulted the right panel to the output list when no artifact is active.
-- Added fullscreen Markdown CSS so Markdown preview fills the preview body.
-- Adjusted runtime timing so status snapshots without a local start event do not create fake durations after refresh.
-- Implemented `/agents` with custom/builtin sections, create modal reuse, custom Agent delete flow, and a workspace sidebar entry.
-- Added frontend regression tests for copy, Markdown fullscreen styling, agent management capability, and refresh timing.
+### 完成内容
+- 将工作台和预览空状态替换为面向产品体验的文案。
+- 没有激活产物时，右侧面板默认显示产物列表。
+- 增加全屏 Markdown CSS，让 Markdown 预览填满预览主体。
+- 调整运行耗时逻辑，避免没有本地开始事件的状态快照在刷新后生成假耗时。
+- 实现 `/agents` 页面，包含自定义/内置分区、创建弹窗复用、自定义 Agent 删除流程和工作台侧边栏入口。
+- 增加前端回归测试，覆盖文案、Markdown 全屏样式、Agent 管理能力和刷新耗时。
 
-### Changed files
+### 新增/修改文件
 - `frontend/src/components/chat/ChatArea.tsx`
 - `frontend/src/components/chat/ConversationList.tsx`
 - `frontend/src/components/preview/IframePreview.tsx`
@@ -2418,37 +2418,37 @@
 - `docs/plans/M5_UI_BUGFIX_CHECKLIST.md`
 - `DEVLOG.md`
 
-### Interface changes
-- No REST/WebSocket/shared-type contract changes.
-- Frontend API client now exposes existing `PATCH /agents/{id}` and `DELETE /agents/{id}` helpers.
-- No new dependencies.
+### 接口变更
+- 无 REST、WebSocket 或共享类型契约变化。
+- 前端 API client 现在暴露既有 `PATCH /agents/{id}` 和 `DELETE /agents/{id}` 辅助方法。
+- 无新增依赖。
 
-### Verification
-- RED regressions first failed on old empty-state copy, missing fullscreen Markdown CSS, placeholder Agent page, and refresh-created fake durations.
-- `cd frontend && npm test` -> `48 passed`.
-- `cd frontend && npm run build` -> passed.
-- Browser smoke at `http://127.0.0.1:5174/workspace` and `/agents`: old copy absent, output empty state visible, Agent management page reachable, custom/builtin sections rendered, and custom delete buttons present.
+### 验证
+- 回归测试先红灯，覆盖旧空状态文案、缺失的全屏 Markdown CSS、占位 Agent 页面和刷新产生假耗时。
+- `cd frontend && npm test` -> `48 项通过`.
+- `cd frontend && npm run build` -> 通过。
+- 浏览器烟测 `http://127.0.0.1:5174/workspace` 和 `/agents`：旧文案已消失，产物空状态可见，Agent 管理页可访问，自定义/内置分区渲染正常，自定义删除按钮存在。
 
-### Teammate notes
-- Builtin Agents remain non-deletable in the UI and backend, preserving seed roles and Mock-first workflows.
+### 给其他成员的提醒
+- 内置 Agent 在 UI 和后端都保持不可删除，以保留种子角色和 Mock-first 工作流。
 
-## [2026-06-08] Codex - Vite preview, runtime timing, and sidebar cleanup
+## [2026-06-08] Codex - Vite 预览、运行耗时与侧边栏清理
 
-### Problem judgment
-- Vite source projects cannot be previewed by serving `index.html` as static HTML because `/src/*.tsx`, Vite transforms, and dev-only module URLs require `npm run dev`.
-- Agent duration display still depended on frontend-local timing for active runs, so refreshes could lose or skew elapsed time.
-- The left sidebar search box was malfunctioning and not required for the current MVP.
-- Conversation rows and the left pane default width were too roomy for repeated scanning.
+### 问题判断
+- Vite 源码项目不能通过静态服务 `index.html` 预览，因为 `/src/*.tsx`、Vite 转换和开发态模块 URL 依赖 `npm run dev`。
+- Agent 耗时展示仍依赖前端本地计时，刷新后可能丢失或扭曲已耗时长。
+- 左侧边栏搜索框存在异常，且当前 MVP 不需要该入口。
+- 会话行和左侧栏默认宽度偏松，不利于高频浏览。
 
-### Completed
-- Added backend Vite workspace detection, on-demand `npm run dev` startup, `/preview/{conversation_id}/*` proxying, absolute URL rewriting, and lifespan cleanup for spawned dev servers.
-- Added backend authoritative task `startedAt` / `endedAt` timestamps in Orchestrator runtime snapshots.
-- Updated shared `Task` and `API_SPEC.md` to document the timing fields.
-- Changed frontend runtime duration display to use backend task timestamps only.
-- Removed sidebar search UI/state/request wiring.
-- Compacted the left pane default width, drag clamp, and conversation row spacing.
+### 完成内容
+- 增加后端 Vite 工作区识别、按需启动 `npm run dev`、`/preview/{conversation_id}/*` 代理、绝对 URL 改写和派生 dev server 生命周期清理。
+- 在 Orchestrator 运行时快照中增加以后端为准的任务 `startedAt` / `endedAt` 时间戳。
+- 更新共享 `Task` 和 `API_SPEC.md`，记录耗时字段。
+- 前端运行耗时展示改为只使用后端任务时间戳。
+- 移除侧边栏搜索 UI、状态和请求接线。
+- 压缩左侧栏默认宽度、拖拽范围和会话行间距。
 
-### Changed files
+### 新增/修改文件
 - `backend/app/main.py`
 - `backend/app/services/preview_service.py`
 - `backend/app/services/orchestrator_runtime.py`
@@ -2468,34 +2468,34 @@
 - `docs/plans/M5_UI_BUGFIX_CHECKLIST.md`
 - `DEVLOG.md`
 
-### Interface changes
-- `Task` now allows optional `startedAt` and `endedAt` ISO timestamps.
-- Existing `/preview/{conversation_id}/{file_path}` URLs remain unchanged; Vite dev-server proxying is internal.
-- No new npm or pip dependencies.
+### 接口变更
+- `Task` 现在允许可选的 `startedAt` 和 `endedAt` ISO 时间戳。
+- 现有 `/preview/{conversation_id}/{file_path}` URL 保持不变；Vite dev-server 代理属于内部实现。
+- 无新增 npm 或 pip 依赖。
 
-### Verification
-- `cd backend && .venv/bin/python -m pytest tests/test_m3_orchestrator_runtime.py tests/test_m4_artifact_preview.py` -> `19 passed`, with the existing `httpx` deprecation warning from Starlette TestClient.
-- `cd frontend && npm test -- runtimeStore.test.mjs sidebarLayout.test.mjs` -> `51 passed`.
-- `cd frontend && npm run build` -> passed.
+### 验证
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_orchestrator_runtime.py tests/test_m4_artifact_preview.py` -> `19 项通过`，带有 Starlette TestClient 既有 `httpx` 弃用警告.
+- `cd frontend && npm test -- runtimeStore.test.mjs sidebarLayout.test.mjs` -> `51 项通过`.
+- `cd frontend && npm run build` -> 通过。
 
-### Teammate notes
-- Vite previews require the generated workspace to have runnable npm dependencies available, matching the user's local `npm run dev` expectation.
-- Backend `GET /conversations?...&search=` compatibility remains; only the broken left-side search entry point was removed from the frontend.
+### 给其他成员的提醒
+- Vite 预览要求生成工作区具备可运行的 npm 依赖，这与用户本地执行 `npm run dev` 的预期一致。
+- 后端 `GET /conversations?...&search=` 兼容性保留；仅移除了前端损坏的左侧搜索入口。
 
-## [2026-06-08] Codex - Roll back sidebar compacting
+## [2026-06-08] Codex - 回滚侧边栏紧凑化
 
-### Problem judgment
-- The previous sidebar compacting change for issue 4 was not the desired direction.
-- The Vite preview, backend timing, and search removal fixes should remain in place.
+### 问题判断
+- 上一轮针对问题 4 的侧边栏紧凑化不是期望方向。
+- Vite 预览、后端计时和搜索移除修复应继续保留。
 
-### Completed
-- Restored left pane default width from `260px` back to `300px`.
-- Restored left pane drag clamp from `220-360px` back to `240-440px`.
-- Restored sidebar padding/gap and conversation row height/padding to the prior layout.
-- Adjusted the sidebar regression test to keep only the search-removal assertion.
-- Updated the M5 UI bugfix plan/checklist to remove the compact-row scope.
+### 完成内容
+- 将左侧栏默认宽度从 `260px` 恢复到 `300px`。
+- 将左侧栏拖拽范围从 `220-360px` 恢复到 `240-440px`。
+- 恢复侧边栏 padding/gap 和会话行高度/padding 到之前布局。
+- 调整侧边栏回归测试，仅保留搜索移除断言。
+- 更新 M5 UI 修复 plan/checklist，移除紧凑行范围。
 
-### Changed files
+### 新增/修改文件
 - `frontend/src/stores/uiStore.ts`
 - `frontend/src/index.css`
 - `frontend/tests/sidebarLayout.test.mjs`
@@ -2503,81 +2503,81 @@
 - `docs/plans/M5_UI_BUGFIX_CHECKLIST.md`
 - `DEVLOG.md`
 
-### Interface changes
-- No API, WebSocket, shared type, or dependency changes.
+### 接口变更
+- 无 API、WebSocket、共享类型或依赖变化。
 
-### Verification
-- `cd frontend && npm test -- sidebarLayout.test.mjs runtimeStore.test.mjs` -> `51 passed`.
-- `cd frontend && npm run build` -> passed.
-- `git diff --check` -> passed.
+### 验证
+- `cd frontend && npm test -- sidebarLayout.test.mjs runtimeStore.test.mjs` -> `51 项通过`.
+- `cd frontend && npm run build` -> 通过。
+- `git diff --check` -> 通过。
 
-## [2026-06-08] Codex - Fix stretched conversation rows
+## [2026-06-08] Codex - 修复会话行被拉伸
 
-### Problem judgment
-- The red-boxed conversation rows were becoming oversized because `.conversation-list` fills the remaining sidebar height as a CSS grid.
-- With only a few conversations, grid auto rows could stretch to consume extra vertical space.
+### 问题判断
+- 红框标注的会话行变得过大，因为 `.conversation-list` 会作为 CSS grid 填满侧边栏剩余高度。
+- 当会话较少时，grid 自动行会拉伸并占据额外垂直空间。
 
-### Completed
-- Added `align-content: start` to `.conversation-list` so extra height stays below the rows.
-- Added `grid-auto-rows: max-content` so each conversation row keeps content-sized height.
-- Added a sidebar regression test for the stretched-row case.
+### 完成内容
+- 为 `.conversation-list` 增加 `align-content: start`，让额外高度留在行下方。
+- 增加 `grid-auto-rows: max-content`，让每个会话行保持内容高度。
+- 增加侧边栏回归测试，覆盖会话行拉伸场景。
 
-### Changed files
+### 新增/修改文件
 - `frontend/src/index.css`
 - `frontend/tests/sidebarLayout.test.mjs`
 - `docs/plans/M5_UI_BUGFIX_PLAN.md`
 - `docs/plans/M5_UI_BUGFIX_CHECKLIST.md`
 - `DEVLOG.md`
 
-### Interface changes
-- No API, WebSocket, shared type, or dependency changes.
+### 接口变更
+- 无 API、WebSocket、共享类型或依赖变化。
 
-### Verification
-- `cd frontend && npm test -- sidebarLayout.test.mjs` -> `52 passed`.
-- `cd frontend && npm run build` -> passed.
-- `git diff --check` -> passed.
+### 验证
+- `cd frontend && npm test -- sidebarLayout.test.mjs` -> `52 项通过`.
+- `cd frontend && npm run build` -> 通过。
+- `git diff --check` -> 通过。
 
-## [2026-06-08] Codex - Scope LLM planner to mentioned dispatch agents
+## [2026-06-08] Codex - 将 LLM 规划范围限制到被提及的调度 Agent
 
-### Problem judgment
-- In non-mock group runs, explicit `@` mentions narrowed `job["agents"]` for execution, but `plan_job()` still exposed every conversation participant to the LLM planner.
-- The planner could legally assign unmentioned participants such as 审查大师 or 文档专家, then execution failed because those agents were absent from the dispatch agent list.
+### 问题判断
+- 在非 mock 群聊任务中，显式 `@` 已将执行用的 `job["agents"]` 缩小，但 `plan_job()` 仍把所有会话参与者暴露给 LLM planner。
+- planner 可能合法分配未被提及的参与者，例如审查大师或文档专家；随后执行阶段因这些 Agent 不在调度列表中而失败。
 
-### Completed
-- Scoped non-mock planner `participants` and `participant_ids` to `job["agents"]`, keeping no-mention behavior unchanged because dispatch resolution already expands no-mention runs to all conversation participants.
-- Kept `availableAgentCatalog` as the full catalog for capability-gap recommendations.
-- Added a regression test for explicit mention subsets in a larger conversation.
-- Created the mention-scoped planner plan/checklist.
+### 完成内容
+- 将非 mock planner 的 `participants` 和 `participant_ids` 限制到 `job["agents"]`；无提及时行为不变，因为调度解析已把无提及任务扩展到所有会话参与者。
+- 保留完整 `availableAgentCatalog`，用于能力缺口推荐。
+- 增加回归测试，覆盖较大群聊中的显式提及子集。
+- 创建 mention-scoped planner 的 plan/checklist。
 
-### Changed files
+### 新增/修改文件
 - `backend/app/ws/handlers.py`
 - `backend/tests/test_m3_websocket_interactions.py`
 - `docs/plans/M5_MENTION_SCOPED_PLANNER_PLAN.md`
 - `docs/plans/M5_MENTION_SCOPED_PLANNER_CHECKLIST.md`
 - `DEVLOG.md`
 
-### Interface changes
-- No API, WebSocket payload, shared type, frontend, adapter, or dependency changes.
+### 接口变更
+- 无 API、WebSocket payload、共享类型、前端、adapter 或依赖变化。
 
-### Verification
-- `cd backend && .venv/bin/python -m pytest tests/test_m3_websocket_interactions.py -k "planner_context_is_scoped or non_mock_job_uses_deepseek_planner_wrapper"` -> `2 passed`, with the existing Starlette/httpx deprecation warning.
-- `cd backend && .venv/bin/python -m pytest tests/test_m3_websocket_interactions.py` -> `9 passed`, with the existing Starlette/httpx deprecation warning.
+### 验证
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_websocket_interactions.py -k "planner_context_is_scoped or non_mock_job_uses_deepseek_planner_wrapper"` -> `2 项通过`，带有既有 Starlette/httpx 弃用警告.
+- `cd backend && .venv/bin/python -m pytest tests/test_m3_websocket_interactions.py` -> `9 项通过`，带有既有 Starlette/httpx 弃用警告.
 
-## [2026-06-08] Codex - Fix CDN static preview CSP
+## [2026-06-08] Codex - 修复 CDN 静态预览 CSP
 
-### Problem judgment
-- The user's tested `index.html` was a generated static page, not a Vite source project.
-- It loaded React, ReactDOM, Babel standalone, Google Fonts, and images from HTTPS CDNs.
-- The preview CSP only allowed self-hosted scripts plus inline scripts, so CDN runtime scripts were blocked and the React root stayed blank.
+### 问题判断
+- 用户测试的 `index.html` 是生成后的静态页面，不是 Vite 源码项目。
+- 页面从 HTTPS CDN 加载 React、ReactDOM、Babel standalone、Google Fonts 和图片。
+- 预览 CSP 只允许同源脚本和内联脚本，导致 CDN 运行时脚本被阻止，React 根节点保持空白。
 
-### Completed
-- Expanded Preview CSP to allow HTTPS scripts/styles/fonts/images/connects inside the iframe.
-- Added `unsafe-eval` for Babel standalone generated pages that run `type="text/babel"` in-browser.
-- Kept `frame-ancestors 'self'` and the existing iframe sandbox boundary.
-- Added a backend regression test for CDN/Babel static preview pages.
-- Updated Preview API docs and the Vite preview plan/checklist.
+### 完成内容
+- 扩展 Preview CSP，允许 iframe 内使用 HTTPS 脚本、样式、字体、图片和连接。
+- 为浏览器内运行 `type="text/babel"` 的 Babel standalone 生成页增加 `unsafe-eval`。
+- 保留 `frame-ancestors 'self'` 和既有 iframe sandbox 边界。
+- 增加后端回归测试，覆盖 CDN/Babel 静态预览页面。
+- 更新 Preview API 文档和 Vite 预览 plan/checklist。
 
-### Changed files
+### 新增/修改文件
 - `backend/app/services/preview_service.py`
 - `backend/tests/test_m4_artifact_preview.py`
 - `docs/API_SPEC.md`
@@ -2585,23 +2585,24 @@
 - `docs/plans/M5_VITE_HTML_PREVIEW_FIX_CHECKLIST.md`
 - `DEVLOG.md`
 
-### Interface changes
-- No route, payload, shared type, or dependency changes.
-- Preview response CSP is intentionally less restrictive for iframe-rendered generated pages.
+### 接口变更
+- 无路由、payload、共享类型或依赖变化。
+- Preview 响应 CSP 有意放宽，以支持 iframe 中渲染的生成页面。
 
-### Verification
-- `cd backend && .venv/bin/python -m pytest tests/test_m4_artifact_preview.py` -> `4 passed`, with the existing Starlette/httpx deprecation warning.
-- `curl -s -D - http://127.0.0.1:8000/preview/4a5690e1-ea91-4abe-80db-1690dd431002/index.html -o /tmp/agenthub-preview.html` returned `200 OK` and the updated CSP containing `script-src 'self' 'unsafe-inline' 'unsafe-eval' https:`.
+### 验证
+- `cd backend && .venv/bin/python -m pytest tests/test_m4_artifact_preview.py` -> `4 项通过`，带有既有 Starlette/httpx 弃用警告.
+- `curl -s -D - http://127.0.0.1:8000/preview/4a5690e1-ea91-4abe-80db-1690dd431002/index.html -o /tmp/agenthub-preview.html` 返回 `200 OK`，并包含更新后的 CSP `script-src 'self' 'unsafe-inline' 'unsafe-eval' https:`.
 
-## [2026-06-08] Codex - Refresh sidebar branding to Nailaude
 
-### Completed
-- Added the provided Nailaude logo as a frontend public asset.
-- Replaced the sidebar header home icon and `AgentHub` text with the Nailaude logo and `Nailaude` label.
-- Adjusted brand image sizing and crop styling for the sidebar header.
-- Updated the browser page title and favicon to use Nailaude branding.
+## [2026-06-08] Codex - 刷新侧边栏 Nailaude 品牌
 
-### Changed files
+### 完成内容
+- 将用户提供的 Nailaude logo 添加为前端公共资源。
+- 将侧边栏头部 home 图标和 `AgentHub` 文本替换为 Nailaude logo 和 `Nailaude` 标签。
+- 调整侧边栏头部品牌图片尺寸和裁剪样式。
+- 更新浏览器页面标题和 favicon，使用 Nailaude 品牌。
+
+### 新增/修改文件
 - `frontend/index.html`
 - `frontend/public/brand/nailaude_logo.png`
 - `frontend/src/components/chat/ConversationList.tsx`
@@ -2610,23 +2611,23 @@
 - `docs/plans/M5_BRANDING_REFRESH_CHECKLIST.md`
 - `DEVLOG.md`
 
-### Interface changes
-- No API, WebSocket, shared type, backend, or dependency changes.
+### 接口变更
+- 无 API、WebSocket、共享类型、后端或依赖变化。
 
-### Verification
-- `cd frontend && npm run build` -> passed.
-- `rg -n "AgentHub|HomeFilled|brand-mark__icon" frontend/src/components/chat/ConversationList.tsx frontend/src/index.css` -> no matches.
-- Browser check at `http://127.0.0.1:5173/workspace` confirmed brand text `Nailaude` and a loaded 1254x1254 logo rendered at 34x34.
-- Browser chrome check at `http://127.0.0.1:5173/workspace` confirmed tab title `Nailaude`, `document.title` `Nailaude`, and favicon `/brand/nailaude_logo.png`.
+### 验证
+- `cd frontend && npm run build` -> 通过。
+- `rg -n "AgentHub|HomeFilled|brand-mark__icon" frontend/src/components/chat/ConversationList.tsx frontend/src/index.css` -> 无匹配。
+- 浏览器检查 `http://127.0.0.1:5173/workspace` 确认 品牌文本 `Nailaude` 以及已加载的 1254x1254 logo，渲染尺寸为 34x34。
+- 浏览器标签栏检查 `http://127.0.0.1:5173/workspace` 确认 标签标题 `Nailaude`, `document.title` 为 `Nailaude`，favicon 为 `/brand/nailaude_logo.png`。
 
-## [2026-06-08] Codex - Replace builtin agent avatars with Nailaude images
+## [2026-06-08] Codex - 使用 Nailaude 图片替换内置 Agent 头像
 
-### Completed
-- Added four provided builtin agent avatar images as frontend public assets.
-- Updated builtin agent seed data so 代码工匠, 审查大师, 文档专家, 产品架构师 return stable image avatar URLs.
-- Updated frontend avatar rendering to display image URLs while preserving text/emoji custom avatar fallback.
+### 完成内容
+- 将四张用户提供的内置 Agent 头像图片添加为前端公共资源。
+- 更新内置 Agent 种子数据，使代码工匠、审查大师、文档专家、产品架构师返回稳定的图片头像 URL。
+- 更新前端头像渲染，支持显示图片 URL，同时保留文本/emoji 自定义头像兜底。
 
-### Changed files
+### 新增/修改文件
 - `backend/app/services/seed.py`
 - `backend/tests/test_m1_1_api.py`
 - `docs/API_SPEC.md`
@@ -2645,24 +2646,24 @@
 - `frontend/src/index.css`
 - `DEVLOG.md`
 
-### Interface changes
-- No shared type or payload shape changes.
-- Builtin `Agent.avatar` values now use public image paths instead of single-letter text avatars.
+### 接口变更
+- 无共享类型或 payload 结构变化。
+- 内置 `Agent.avatar` 现在使用公共图片路径，不再使用单字母文本头像。
 
-### Verification
-- `cd backend && .venv/bin/python -m pytest tests/test_m1_1_api.py -k "agents_are_seeded or seed_refreshes_existing_builtin_agent_prompts"` -> `2 passed`, with the existing Starlette/httpx deprecation warning.
-- `cd frontend && npm run build` -> passed.
-- `curl http://127.0.0.1:8027/api/v1/agents` during smoke returned the four expected `/agent-avatars/*.png` builtin avatar paths.
-- Browser check at `http://127.0.0.1:5174/workspace` confirmed all four builtin agent avatars rendered as loaded images.
+### 验证
+- `cd backend && .venv/bin/python -m pytest tests/test_m1_1_api.py -k "agents_are_seeded or seed_refreshes_existing_builtin_agent_prompts"` -> `2 项通过`，带有既有 Starlette/httpx 弃用警告.
+- `cd frontend && npm run build` -> 通过。
+- `curl http://127.0.0.1:8027/api/v1/agents` 烟测期间返回 预期的四个 `/agent-avatars/*.png` 内置头像路径。
+- 浏览器检查 `http://127.0.0.1:5174/workspace` 确认四个内置 Agent 头像均以已加载图片形式渲染。
 
-## [2026-06-08] Codex - Add custom agent avatar upload
+## [2026-06-08] Codex - 新增自定义 Agent 头像上传
 
-### Completed
-- Added the provided default custom-agent avatar image and made it the create-agent modal default.
-- Replaced the short text avatar input with an image preview, upload button, and reset-to-default action.
-- Added client-side square image resizing to store uploaded custom avatars as data URLs, and widened backend avatar storage to `Text`.
+### 完成内容
+- 添加用户提供的默认自定义 Agent 头像，并将其作为创建 Agent 弹窗默认值。
+- 将短文本头像输入替换为图片预览、上传按钮和恢复默认操作。
+- 增加客户端方形图片缩放，将上传的自定义头像保存为 data URL，并把后端头像存储扩展为 `Text`。
 
-### Changed files
+### 新增/修改文件
 - `backend/alembic/versions/f3c289e260e9_initial_schema.py`
 - `backend/app/models/agent.py`
 - `backend/tests/test_m1_1_api.py`
@@ -2675,11 +2676,11 @@
 - `frontend/src/index.css`
 - `DEVLOG.md`
 
-### Interface changes
-- No shared type or REST route shape changes.
-- Custom `Agent.avatar` can now contain resized `data:image/*` URLs in addition to text, emoji, and public image paths.
+### 接口变更
+- 无共享类型或 REST 路由结构变化。
+- 自定义 `Agent.avatar` 现在除文本、emoji 和公共图片路径外，也可包含缩放后的 `data:image/*` URL。
 
-### Verification
-- `cd backend && .venv/bin/python -m pytest tests/test_m1_1_api.py -k "create_custom_agent_persists_and_lists"` -> `1 passed`, with the existing Starlette/httpx deprecation warning.
-- `cd frontend && npm run build` -> passed.
-- Browser check at `http://127.0.0.1:5174/workspace` confirmed the create-agent modal default preview uses `/agent-avatars/default_custom_agent.png`, exposes an `image/*` file input through the upload button, and keeps the native file input visually hidden.
+### 验证
+- `cd backend && .venv/bin/python -m pytest tests/test_m1_1_api.py -k "create_custom_agent_persists_and_lists"` -> `1 项通过`，带有既有 Starlette/httpx 弃用警告.
+- `cd frontend && npm run build` -> 通过。
+- 浏览器检查 `http://127.0.0.1:5174/workspace` 确认 创建 Agent 弹窗默认预览使用 `/agent-avatars/default_custom_agent.png`，通过上传按钮暴露 `image/*` 文件输入，并保持原生文件输入在视觉上隐藏。
