@@ -1,5 +1,5 @@
 """
-AgentHub Backend - FastAPI Application Entry Point
+Nailaude Backend - FastAPI Application Entry Point
 """
 from contextlib import asynccontextmanager
 
@@ -31,7 +31,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="AgentHub API",
+    title="Nailaude API",
     description="IM-style Multi-Agent Collaboration Workstation",
     version="0.1.0",
     lifespan=lifespan,
@@ -70,4 +70,4 @@ async def request_validation_exception_handler(_, exc: RequestValidationError):
 
 @app.get("/health")
 async def health_check():
-    return {"status": "ok", "service": "agenthub-backend"}
+    return {"status": "ok", "service": "nailaude-backend"}

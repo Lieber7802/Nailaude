@@ -1,6 +1,6 @@
 # M3 Optimization Checklist
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use the AgentHub module development workflow, systematic-debugging, and test-driven-development. Fix items in priority order. Add a failing regression test before each behavior change. Do not mark an item complete until its verification command passes.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use the Nailaude module development workflow, systematic-debugging, and test-driven-development. Fix items in priority order. Add a failing regression test before each behavior change. Do not mark an item complete until its verification command passes.
 
 ## Goal
 

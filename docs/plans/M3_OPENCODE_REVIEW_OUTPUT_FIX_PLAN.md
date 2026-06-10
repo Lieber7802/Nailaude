@@ -2,7 +2,7 @@
 
 ## Goal
 
-Fix reviewer-agent turns where OpenCode performs a read-only review but returns only protocol/tool events, causing AgentHub to display a generic execution summary such as `未检测到工作区文件变更。`
+Fix reviewer-agent turns where OpenCode performs a read-only review but returns only protocol/tool events, causing Nailaude to display a generic execution summary such as `未检测到工作区文件变更。`
 
 ## Scope
 

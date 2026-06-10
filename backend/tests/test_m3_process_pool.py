@@ -104,10 +104,10 @@ async def test_process_pool_limits_cli_concurrency_across_pool_instances(tmp_pat
 async def test_process_pool_passes_explicit_environment_to_child_process(tmp_path):
     pool = ProcessPool(default_timeout=2)
     env = os.environ.copy()
-    env["AGENTHUB_CHILD_ENV"] = "isolated"
+    env["NAILAUDE_CHILD_ENV"] = "isolated"
 
     result = await pool.run(
-        [sys.executable, "-c", "import os; print(os.environ['AGENTHUB_CHILD_ENV'])"],
+        [sys.executable, "-c", "import os; print(os.environ['NAILAUDE_CHILD_ENV'])"],
         cwd=str(tmp_path),
         env=env,
     )

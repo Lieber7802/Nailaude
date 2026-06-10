@@ -2,7 +2,7 @@
 
 ## Goal
 
-Run the AgentHub Codex adapter through an isolated Codex CLI instance backed by the DeepSeek API without reading, mutating, or reusing the active Codex Desktop configuration.
+Run the Nailaude Codex adapter through an isolated Codex CLI instance backed by the DeepSeek API without reading, mutating, or reusing the active Codex Desktop configuration.
 
 ## Scope
 
@@ -26,14 +26,14 @@ Run the AgentHub Codex adapter through an isolated Codex CLI instance backed by 
 2. That package resource has an application-identity ACL and cannot be started by the FastAPI backend process.
 3. Runnable Codex CLI cache binaries exist under `%LOCALAPPDATA%\OpenAI\Codex\bin`.
 4. Current Codex CLI releases require custom providers to use the Responses wire API.
-5. DeepSeek documents an OpenAI-compatible Chat Completions endpoint, so AgentHub needs a backend-only local protocol bridge.
+5. DeepSeek documents an OpenAI-compatible Chat Completions endpoint, so Nailaude needs a backend-only local protocol bridge.
 
 ## Implementation Steps
 
 1. Translate Codex Responses request input, tools, and tool results into DeepSeek Chat Completions payloads.
 2. Translate DeepSeek SSE text and function-call deltas into Codex Responses SSE events.
 3. Bind the bridge to loopback only with a per-run bearer token.
-4. Generate a temporary Codex home and provider config for each AgentHub task.
+4. Generate a temporary Codex home and provider config for each Nailaude task.
 5. Pass the isolated home and bridge token only to the spawned Codex subprocess.
 6. Resolve a runnable Windows cached CLI before falling back to PATH.
 7. Run the Windows CLI directly on the host with `danger-full-access` because

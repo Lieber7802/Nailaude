@@ -77,7 +77,7 @@ class LLMProviderAdapter(AgentAdapter):
         system_instruction = str(
             context.get("systemInstruction")
             or context.get("system_instruction")
-            or "You are an AgentHub assistant. Return concise, useful results."
+            or "You are a Nailaude assistant. Return concise, useful results."
         )
         agent_name = context.get("agentName") or context.get("agent_name")
         if agent_name:

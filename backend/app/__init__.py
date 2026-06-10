@@ -1,1 +1,1 @@
-"""AgentHub Backend Application"""
+"""Nailaude Backend Application"""

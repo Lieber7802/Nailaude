@@ -2,7 +2,7 @@
 
 ## Goal
 
-Refresh the AgentHub frontend visual system to match the provided Claude-inspired design reference while preserving the current chat, artifact, preview, and WebSocket behavior.
+Refresh the Nailaude frontend visual system to match the provided Claude-inspired design reference while preserving the current chat, artifact, preview, and WebSocket behavior.
 
 ## Scope
 

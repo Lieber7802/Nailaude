@@ -2,7 +2,7 @@
 
 ## Goal
 
-Improve conversation workspace naming UX and prevent generated preview projects from hijacking the AgentHub frontend dev port or opening browser windows automatically.
+Improve conversation workspace naming UX and prevent generated preview projects from hijacking the Nailaude frontend dev port or opening browser windows automatically.
 
 ## Scope
 
@@ -23,7 +23,7 @@ Improve conversation workspace naming UX and prevent generated preview projects 
 1. Add tests for bare workspace names, generated-project prompt safety, and frontend work directory normalization.
 2. Implement backend normalization helpers and use them for create/update conversation flows.
 3. Update new conversation modal label/placeholder and submit normalized workspace names.
-4. Add adapter prompt constraints to avoid `server.open`, `open: true`, fixed AgentHub ports, and commands that auto-open browsers.
+4. Add adapter prompt constraints to avoid `server.open`, `open: true`, fixed Nailaude ports, and commands that auto-open browsers.
 5. Run targeted tests, broader frontend/backend verification, and record DEVLOG.
 
 ## Tests

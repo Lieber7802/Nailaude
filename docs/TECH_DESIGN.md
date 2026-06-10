@@ -1,4 +1,4 @@
-# AgentHub 技术设计文档
+# Nailaude 技术设计文档
 
 > 版本：v1.0 | 更新日期：2026-05-21 | 基于 PRD v1.6
 
@@ -81,7 +81,7 @@
 ## 三、项目目录结构
 
 ```
-AgentHub/
+Nailaude/
 ├── docs/                          # 文档
 │   ├── PRD.md
 │   ├── TECH_DESIGN.md
@@ -1559,7 +1559,7 @@ npm run dev  # http://localhost:5173
 
 ```bash
 # 后端配置
-DATABASE_URL=sqlite+aiosqlite:///./agenthub.db
+DATABASE_URL=sqlite+aiosqlite:///./nailaude.db
 DEEPSEEK_API_KEY=your_deepseek_api_key
 OPENAI_API_KEY=your_openai_api_key
 OPENCODE_BINARY_PATH=/usr/local/bin/opencode

@@ -87,14 +87,14 @@
 ## [2026-05-24] Codex - AI 模块化开发流程沉淀
 
 ### 完成内容
-- 新增 `docs/AI_WORKFLOW.md`，明确 AgentHub 标准模块化开发流程
-- 新增项目本地 skill `agenthub-module-development`
+- 新增 `docs/AI_WORKFLOW.md`，明确 Nailaude 标准模块化开发流程
+- 新增项目本地 skill `nailaude-module-development`
 - 更新 `AGENTS.md`，将 plan/checklist/test/verify/DEVLOG 流程纳入 AI 编码规则
 
 ### 新增/修改文件
 - `docs/AI_WORKFLOW.md` (新增)
-- `.agents/skills/agenthub-module-development/SKILL.md` (新增)
-- `.agents/skills/agenthub-module-development/agents/openai.yaml` (新增)
+- `.agents/skills/nailaude-module-development/SKILL.md` (新增)
+- `.agents/skills/nailaude-module-development/agents/openai.yaml` (新增)
 - `AGENTS.md` (修改)
 - `DEVLOG.md` (修改)
 
@@ -102,7 +102,7 @@
 - 无契约变更，未修改 `packages/shared/types.ts` 或 `docs/API_SPEC.md`
 
 ### 下一步
-- 后续模块任务先使用 `agenthub-module-development` 流程生成 plan/checklist，再进入实现
+- 后续模块任务先使用 `nailaude-module-development` 流程生成 plan/checklist，再进入实现
 
 ### 给其他成员的提醒
 - @小马：做 Adapter/LLMProvider 前先按 `docs/AI_WORKFLOW.md` 建对应计划和 checklist
@@ -197,7 +197,7 @@
 ### 完成内容
 - 新增 M1 验收 checklist
 - 完成后端 pytest、前端 build 和浏览器端 Mock 闭环验证
-- 清理本地验收产生的 `agenthub.db` 和 `frontend/dist`
+- 清理本地验收产生的 `nailaude.db` 和 `frontend/dist`
 
 ### 新增/修改文件
 - `docs/plans/M1_ACCEPTANCE_CHECKLIST.md` (新增)
@@ -383,7 +383,7 @@
 ### 验证
 - `cd frontend && npm run lint` -> 通过
 - `cd frontend && npm run build` -> 通过
-- 浏览器烟测：聊天顶部显示“X 个代理参与”和更新时间；桌面/平板/手机预览按钮均能切换 active；缩放按钮能更新到 `125%`；AgentHub 页面 console 无 error。
+- 浏览器烟测：聊天顶部显示“X 个代理参与”和更新时间；桌面/平板/手机预览按钮均能切换 active；缩放按钮能更新到 `125%`；Nailaude 页面 console 无 error。
 
 ### 下一步
 - 优先从 `docs/TECH_DEBT.md` 中挑选低成本高收益项继续补齐，例如 `@ 代理` 快捷按钮打开 mention selector、产物卡“预览”自动切换右侧预览 Tab、编辑会话标题。
@@ -392,7 +392,7 @@
 
 ### 完成内容
 - 新增 `M2_UI_POLISH` plan/checklist，明确本轮只做前端视觉优化，不修改后端、共享类型或 API 契约。
-- 按参考图重塑三栏工作台：左侧 AgentHub 品牌区、橙色新建按钮、常用代理卡片、对话列表卡片和底部操作。
+- 按参考图重塑三栏工作台：左侧 Nailaude 品牌区、橙色新建按钮、常用代理卡片、对话列表卡片和底部操作。
 - 优化聊天区：顶部会话标题、参与 Agent chip、派生协作状态、消息卡片、协作状态卡和输入工具条。
 - 优化产物卡片：从代码块展示改为文件产物行，包含图标、文件名、类型/大小、生成状态和预览按钮。
 - 重写右侧 PreviewPanel，支持 `产出物 | 预览 | 变更` 三 Tab；HTML artifact 通过前端 `iframe srcDoc` 预览，暂不依赖后端 Preview Service。
@@ -499,7 +499,7 @@
 
 ### 完成内容
 - 当前工作已在 `codex-m4-artifact-preview-system` 分支上继续。
-- 按 `agenthub-module-development` workflow 新增 `M4_ARTIFACT_PREVIEW` plan/checklist，确认洋芋当前阶段负责 M4 产物与预览系统。
+- 按 `nailaude-module-development` workflow 新增 `M4_ARTIFACT_PREVIEW` plan/checklist，确认洋芋当前阶段负责 M4 产物与预览系统。
 - 新增 M4 后端测试用例，覆盖 Mock 生成网页产物、`/preview/{conversation_id}/index.html` 原始文件预览、FileWatcher 修改 diff。
 - 实现 `FileWatcherService` 目录快照与 created/modified/deleted 变更检测，输出契约内 `DiffData`。
 - 实现 `ArtifactService`：从 `file_created/file_modified` AgentEvent 生成 webpage/code/diff Artifact，写入 workspace 文件，并生成 preview URL。
@@ -785,7 +785,7 @@
 ### 验证
 - `opencode --version` -> `1.15.13`
 - `opencode run --help` -> 确认支持 `--format`、`--model`、`--dir` 和 `--dangerously-skip-permissions`。
-- `/tmp/agenthub-test-venv311/bin/python -m pytest backend/tests/test_m3_cli_adapters.py backend/tests/test_m3_process_pool.py backend/tests/test_m3_agent_manager.py` -> `15 项通过`
+- `/tmp/nailaude-test-venv311/bin/python -m pytest backend/tests/test_m3_cli_adapters.py backend/tests/test_m3_process_pool.py backend/tests/test_m3_agent_manager.py` -> `15 项通过`
 - `git diff --check` -> 通过
 
 ### 下一步
@@ -803,7 +803,7 @@
 - 新增 Windows CLI 解析逻辑：优先使用 `%LOCALAPPDATA%\OpenAI\Codex\bin` 下可运行的 Codex Desktop 缓存，再回退到 PATH。
 - 确认当前 Codex CLI 版本拒绝自定义 Provider 使用 `wire_api = "chat"`，要求使用 Responses 传输格式。
 - 新增仅绑定本地回环地址、逐任务启动的 Responses 转 Chat 桥接服务，将 Codex 请求转发到后端配置的 DeepSeek 聊天补全 API。
-- 新增逐次随机 桥接令牌、临时 `CODEX_HOME` 配置和子进程环境隔离，使 AgentHub 不会读取或修改活跃的 Codex Desktop 配置。
+- 新增逐次随机 桥接令牌、临时 `CODEX_HOME` 配置和子进程环境隔离，使 Nailaude 不会读取或修改活跃的 Codex Desktop 配置。
 - 扩展 `ProcessPool`，支持显式注入子进程环境变量。
 - 更新 `ProcessPool`：以主进程返回码作为权威状态，在有限时间内排空继承的 Windows 管道句柄，避免 Codex shell tool 执行后的假超时。
 - 验证 `workspace-write` 会在 `windows sandbox: spawn setup refresh` 期间失败，且 `unelevated` 变通方案 无法写入任务 workspace 后，新增 Windows Codex `danger-full-access` 本机直接执行。非 Windows Codex 任务仍使用 `workspace-write`。
@@ -820,9 +820,9 @@
 - `cd backend && python -m pytest tests/test_m3_process_pool.py tests/test_m3_deepseek_responses_bridge.py tests/test_m3_cli_adapters.py tests/test_m3_codex_cli_smoke.py -q` -> `18 项通过`
 - `cd backend && python -m pytest -q` -> `137 项通过`
 - `git diff --check` -> 通过
-- 真实缓存 Codex CLI 伪上游烟测：CLI 从 `%LOCALAPPDATA%\OpenAI\Codex\bin` 解析，调用本地回环桥接服务；桥接服务发出 DeepSeek 聊天补全请求，AgentHub 依次收到 `text_delta: OK` 和 `done`。
+- 真实缓存 Codex CLI 伪上游烟测：CLI 从 `%LOCALAPPDATA%\OpenAI\Codex\bin` 解析，调用本地回环桥接服务；桥接服务发出 DeepSeek 聊天补全请求，Nailaude 依次收到 `text_delta: OK` 和 `done`。
 - 真实 DeepSeek 文本烟测：隔离缓存 Codex CLI 健康检查返回 `True`，并返回 `LIVE_CODEX_DEEPSEEK_OK`。
-- 真实 DeepSeek 文件烟测：隔离缓存 Codex CLI 创建 `live_codex_deepseek_smoke.txt`，内容为 `LIVE_FILE_OK\n`；AgentHub 依次发出 `text_delta`、`file_created` 和 `done`。
+- 真实 DeepSeek 文件烟测：隔离缓存 Codex CLI 创建 `live_codex_deepseek_smoke.txt`，内容为 `LIVE_FILE_OK\n`；Nailaude 依次发出 `text_delta`、`file_created` 和 `done`。
 
 ### 执行说明
 - Windows CLI 任务有意使用 `danger-full-access` 直接在本机运行，因为上游 Windows sandbox 辅助程序 无法在此主机初始化。
@@ -892,14 +892,14 @@
 - `cd backend && ../.venv/bin/python -m pytest tests/test_m1_1_api.py::test_builtin_agents_are_backed_by_opencode -q` -> `1 项通过`
 - `cd backend && ../.venv/bin/python -m pytest tests/test_m1_1_api.py tests/test_m1_2_websocket.py tests/test_m2_chat_core.py tests/test_m3_websocket_runtime.py tests/test_m3_websocket_interactions.py tests/test_m3_e2e.py tests/test_m4_artifact_preview.py -q` -> `37 项通过`
 - `cd backend && ../.venv/bin/python -m pytest -q` -> `142 项通过`
-- 本地 `backend/agenthub.db` 查询确认三位内置 Agent 均为 `opencode`。
+- 本地 `backend/nailaude.db` 查询确认三位内置 Agent 均为 `opencode`。
 
 ## [2026-06-01] Codex - OpenCode 群聊摘要与预览产物修复
 
 ### 完成内容
 - 修复 OpenCode JSON 输出解析：对象型 `message`、工具 payload、`sessionID` 等 raw 结构不再直接进入聊天 `text_delta`。
 - 保留简短中文执行摘要和工作过程提示；完整文件内容继续只通过 artifact 卡片展示。
-- 对写入型“小程序/页面/预览”等任务追加 AgentHub 预览约束，明确要求创建或更新 `index.html`。
+- 对写入型“小程序/页面/预览”等任务追加 Nailaude 预览约束，明确要求创建或更新 `index.html`。
 - 如果 OpenCode 第一轮只写了 README/文档、没有任何 HTML 预览入口，会自动追加一次聚焦修复执行，要求补齐 `index.html`。
 - 新增群聊 WebSocket 回归，确认 opencode 群聊任务能广播 `webpage` artifact 且带 `/preview/{conversationId}/index.html`。
 
@@ -971,9 +971,9 @@
 
 ### 验证
 - RED：新增回归测试前，OpenCode assistant TSX fenced code 会作为 `text_delta` 进入消息 bubble。
-- `cd backend && /private/tmp/agenthub-pytest-venv/bin/python -m pytest tests/test_m3_cli_adapters.py -q` -> `16 项通过`
-- `cd backend && /private/tmp/agenthub-pytest-venv/bin/python -m pytest tests/test_m3_cli_adapters.py tests/test_m3_websocket_runtime.py tests/test_m4_artifact_preview.py -q` -> `29 项通过`
-- 沙箱内全量测试因 Codex smoke 绑定 `127.0.0.1` 被拒，非沙箱重跑通过：`cd backend && /private/tmp/agenthub-pytest-venv/bin/python -m pytest -q` -> `148 项通过`
+- `cd backend && /private/tmp/nailaude-pytest-venv/bin/python -m pytest tests/test_m3_cli_adapters.py -q` -> `16 项通过`
+- `cd backend && /private/tmp/nailaude-pytest-venv/bin/python -m pytest tests/test_m3_cli_adapters.py tests/test_m3_websocket_runtime.py tests/test_m4_artifact_preview.py -q` -> `29 项通过`
+- 沙箱内全量测试因 Codex smoke 绑定 `127.0.0.1` 被拒，非沙箱重跑通过：`cd backend && /private/tmp/nailaude-pytest-venv/bin/python -m pytest -q` -> `148 项通过`
 - `git diff --check` -> 通过。
 
 ## [2026-06-02] Codex - OpenCode DeepSeek 环境注入
@@ -1067,7 +1067,7 @@
 
 ### 当前问题判断
 - 手测会话 `opencode-test` 在 03:43 的代码工匠任务已不是仍在执行：数据库记录显示任务状态为 `failed`，错误为 `process timed out`。
-- OpenCode 在超时前已写出 `/Users/yangyu/code/AgentHub/workspaces/opencode-test/index.html`，但旧 adapter 在 `ProcessPoolError` 分支只发 error，不扫描超时前的文件变更，因此前端没有产物卡片。
+- OpenCode 在超时前已写出 `/Users/yangyu/code/Nailaude/workspaces/opencode-test/index.html`，但旧 adapter 在 `ProcessPoolError` 分支只发 error，不扫描超时前的文件变更，因此前端没有产物卡片。
 
 ### 完成内容
 - OpenCode adapter 在 `ProcessPoolError` 后会重新扫描 workspace。
@@ -1324,7 +1324,7 @@
 - `cd backend; python -B -m pytest -q -p no:cacheprovider tests/test_m3_websocket_runtime.py` -> `11 项通过`。
 
 ### 队友备注
-- 此 Windows workspace 中的本地 `backend/agenthub.db` 仍是旧 schema，没有 M3 run snapshot 表，因此无法从该 DB 查询截图对应的持久化 run。
+- 此 Windows workspace 中的本地 `backend/nailaude.db` 仍是旧 schema，没有 M3 run snapshot 表，因此无法从该 DB 查询截图对应的持久化 run。
 - 可见的 `'taskId'` warning 已在 runtime/shared-state 边界通过自动回归测试覆盖。
 
 ## [2026-06-04] Codex - M3 Planner 校验回归测试修复
@@ -1551,7 +1551,7 @@
 
 ### 问题判断
 - 期望的折叠按钮位置是在各面板顶部工具栏内部，而不是漂浮在面板分隔线上。
-- 左侧按钮应与 AgentHub logo 行对齐，并位于左侧对话栏右边缘。
+- 左侧按钮应与 Nailaude logo 行对齐，并位于左侧对话栏右边缘。
 - 右侧按钮应位于预览工具栏中，紧跟全屏按钮右侧。
 
 ### 完成内容
@@ -1763,20 +1763,20 @@
 ### 问题判断
 - Windows 侧手动修复移除了可见的 `Shared state refresh warning: 'taskId'`，但 WSL 真实 run 仍会在 Codex review handoff 阶段失败。
 - 根因是多层叠加：
-- 运行中的 WSL 服务必须加载 `/mnt/d/AgentHub/backend`，而不是过期的 Linux clone。
+- 运行中的 WSL 服务必须加载 `/mnt/d/Nailaude/backend`，而不是过期的 Linux clone。
 - Codex 隔离 `CODEX_HOME` 放在 `/tmp` 下会被 Codex CLI helper-bin setup 拒绝。
 - 将大 prompt 作为 argv 传入并隐式关闭 stdin，会让 Codex 进程行为变得脆弱。
 - DeepSeek Responses bridge 丢失了关键协议细节：大型 tool output 无界转发、DeepSeek 400 body 被隐藏、thinking mode 的 `reasoning_content` 未回放、连续 Responses `function_call` items 被转换成非法 Chat Completions 消息顺序。
 - Planner prompt/validation 允许明确三 Agent 的课堂签到请求坍缩成两个 generic index/README 任务。
 
 ### 完成内容
-- `CodexAdapter` 现在在 `~/.cache/agenthub/codex` 或 `AGENTHUB_CODEX_HOME_ROOT` 下创建隔离 home，并通过 stdin 使用 `codex exec -` 发送 prompt。
+- `CodexAdapter` 现在在 `~/.cache/nailaude/codex` 或 `NAILAUDE_CODEX_HOME_ROOT` 下创建隔离 home，并通过 stdin 使用 `codex exec -` 发送 prompt。
 - `ProcessPool` 现在支持显式 stdin 文本，为非交互子进程关闭 stdin，并在 stderr 为空时报告 stdout。
 - `DeepSeekResponsesBridge` 现在会截断超大 tool output，包含 DeepSeek error response body，按 tool call 存储/回放 `reasoning_content`，并在 tool output 前合并连续 function calls。
 - `OrchestratorPlanner` 现在执行上下文覆盖校验，当显式 mentions 或请求的需求/实现/审查/文档阶段缺失时会重规划。
 - `planner_prompt` 现在明确要求保留多 Agent 分阶段工作流。
 - `ws/handlers.py` 现在在复用前一次性 materialize participant/catalog scalar results，保留 available-agent 校验。
-- `start_services.sh` 从 `/mnt/d/AgentHub/backend` 启动后端，并从 Linux dependency tree 启动前端，使用 `VITE_BACKEND_TARGET=http://localhost:8026`。
+- `start_services.sh` 从 `/mnt/d/Nailaude/backend` 启动后端，并从 Linux dependency tree 启动前端，使用 `VITE_BACKEND_TARGET=http://localhost:8026`。
 
 ### 修改文件
 - `backend/app/adapters/codex.py`
@@ -1802,7 +1802,7 @@
 
 ### 验证
 - 先写 RED 测试，覆盖 Codex stdin/home 行为、ProcessPool stdin/stdout 错误、bridge 截断/error body/reasoning/tool-call 分组、planner mention/stage 覆盖、validator 不存在 agent 处理、WebSocket planner catalog 复用。
-- WSL 变更区域测试：`PYTHONPATH=. /home/lieber/src/AgentHub/backend/.venv/bin/python -B -m pytest -q -p no:cacheprovider tests/test_m3_planner.py tests/test_m3_validator.py tests/test_m3_websocket_interactions.py::test_non_mock_job_uses_deepseek_planner_wrapper tests/test_m3_deepseek_responses_bridge.py tests/test_m3_process_pool.py tests/test_m3_cli_adapters.py::test_codex_adapter_uses_isolated_home_and_loopback_bridge tests/test_m3_cli_adapters.py::test_codex_adapter_emits_file_events_for_workspace_changes` -> `41 项通过`。
+- WSL 变更区域测试：`PYTHONPATH=. /home/lieber/src/Nailaude/backend/.venv/bin/python -B -m pytest -q -p no:cacheprovider tests/test_m3_planner.py tests/test_m3_validator.py tests/test_m3_websocket_interactions.py::test_non_mock_job_uses_deepseek_planner_wrapper tests/test_m3_deepseek_responses_bridge.py tests/test_m3_process_pool.py tests/test_m3_cli_adapters.py::test_codex_adapter_uses_isolated_home_and_loopback_bridge tests/test_m3_cli_adapters.py::test_codex_adapter_emits_file_events_for_workspace_changes` -> `41 项通过`。
 - WSL 直接 Codex handoff 复现前一个 task-3 review blocker：完成并输出 `text_delta`，无 `error`。
 - 通过 `start_services.sh` 重启 WSL 服务；后端、前端、Vite API proxy 健康检查均返回 `200`。
 - WSL 真实三 Agent 链路使用 ASCII prompt 完成四个任务：需求、预览实现、代码审查和 README；最终状态 `completed`；warnings `[]`；artifacts 包含 `index.html` webpage 和 README。
@@ -1849,7 +1849,7 @@
 
 ### 验证
 - 先写 RED 测试，覆盖 Markdown 包裹 JSON 解析、invalid JSON 诊断、宽松 planner alias、复制错误 agent id 修复、文档阶段 write access、分阶段 app DAG 强制。
-- WSL 定向测试：`PYTHONPATH=. /home/lieber/src/AgentHub/backend/.venv/bin/python -B -m pytest -q -p no:cacheprovider tests/test_m3_llm_client.py tests/test_m3_planner.py` -> `26 项通过`。
+- WSL 定向测试：`PYTHONPATH=. /home/lieber/src/Nailaude/backend/.venv/bin/python -B -m pytest -q -p no:cacheprovider tests/test_m3_llm_client.py tests/test_m3_planner.py` -> `26 项通过`。
 - WSL 更广检查：
 - `tests/test_m3_websocket_interactions.py` -> `7 项通过`。
 - `tests/test_m3_orchestrator_runtime.py` -> `12 项通过`。
@@ -2085,13 +2085,13 @@
 
 ### 问题判断
 - 新建对话表单要求用户理解并输入 `workspaces/xxx`，裸目录名会被后端拒绝，体验不友好。
-- 生成项目可能写入 `server.open` / `open: true` 或硬编码 `5173`，导致运行生成项目时自动弹浏览器窗口并与 AgentHub 主前端端口混淆。
+- 生成项目可能写入 `server.open` / `open: true` 或硬编码 `5173`，导致运行生成项目时自动弹浏览器窗口并与 Nailaude 主前端端口混淆。
 
 ### 完成内容
 - 后端 `workDir` 规范化支持裸目录名：`todo-app` 会保存为 `workspaces/todo-app`，空值仍自动生成唯一目录，逃逸路径仍拒绝。
 - 新建对话弹窗将“工作目录（留空自动生成）”改为“工作目录名称”，placeholder 改为直接输入 `todo-app` 的心智模型。
 - 前端提交时统一把目录名补成 `workspaces/<name>`，保留已输入 `workspaces/<name>` 的兼容行为。
-- OpenCode/Codex Adapter 增加生成项目前端 dev-server prompt 约束：不设置 `server.open` / `open: true`，不硬编码 AgentHub 端口，验证优先用 build/test/typecheck。
+- OpenCode/Codex Adapter 增加生成项目前端 dev-server prompt 约束：不设置 `server.open` / `open: true`，不硬编码 Nailaude 端口，验证优先用 build/test/typecheck。
 - WebSocket 测试改用项目内相对 workspace 并清理临时目录，避免完整测试后留下 `D:/` 残留。
 
 ### 修改文件
@@ -2298,7 +2298,7 @@
 
 ### 问题判断
 - 生成的 Vite 项目可能产出 `dist/index.html`，其中包含 `/assets/app.js` 这类根相对资源地址。
-- 右侧预览此前对 HTML 产物优先使用 iframe `srcDoc`，导致资源会按 AgentHub 前端源解析，而不是按会话预览路由解析。
+- 右侧预览此前对 HTML 产物优先使用 iframe `srcDoc`，导致资源会按 Nailaude 前端源解析，而不是按会话预览路由解析。
 - 即使打开 `/preview/{conversation}/dist/index.html`，后端 HTML 响应也会原样返回 Vite 根相对资源地址。
 
 ### 完成内容
@@ -2336,7 +2336,7 @@
 ### 完成内容
 - 按用户提供的 Claude-inspired 设计资料，将前端全局视觉 token、三栏工作台、聊天流、产物卡、输入区、预览面板和 Markdown/code 容器统一为暖纸色、ivory 面板、terracotta 主行动色、serif 标题和 ring shadow 风格。
 - 新增样式守护测试，确保核心设计 token 存在并限制旧的渐变式 chrome 回流。
-- 新增本次改造的 plan/checklist，保持 AgentHub 模块化协作流程。
+- 新增本次改造的 plan/checklist，保持 Nailaude 模块化协作流程。
 
 ### 新增/修改文件
 - `docs/plans/M5_FRONTEND_DESIGN_REFRESH_PLAN.md` (新增)
@@ -2591,14 +2591,14 @@
 
 ### 验证
 - `cd backend && .venv/bin/python -m pytest tests/test_m4_artifact_preview.py` -> `4 项通过`，带有既有 Starlette/httpx 弃用警告.
-- `curl -s -D - http://127.0.0.1:8000/preview/4a5690e1-ea91-4abe-80db-1690dd431002/index.html -o /tmp/agenthub-preview.html` 返回 `200 OK`，并包含更新后的 CSP `script-src 'self' 'unsafe-inline' 'unsafe-eval' https:`.
+- `curl -s -D - http://127.0.0.1:8000/preview/4a5690e1-ea91-4abe-80db-1690dd431002/index.html -o /tmp/nailaude-preview.html` 返回 `200 OK`，并包含更新后的 CSP `script-src 'self' 'unsafe-inline' 'unsafe-eval' https:`.
 
 
 ## [2026-06-08] Codex - 刷新侧边栏 Nailaude 品牌
 
 ### 完成内容
 - 将用户提供的 Nailaude logo 添加为前端公共资源。
-- 将侧边栏头部 home 图标和 `AgentHub` 文本替换为 Nailaude logo 和 `Nailaude` 标签。
+- 将侧边栏头部 home 图标和 `Nailaude` 文本替换为 Nailaude logo 和 `Nailaude` 标签。
 - 调整侧边栏头部品牌图片尺寸和裁剪样式。
 - 更新浏览器页面标题和 favicon，使用 Nailaude 品牌。
 
@@ -2616,7 +2616,7 @@
 
 ### 验证
 - `cd frontend && npm run build` -> 通过。
-- `rg -n "AgentHub|HomeFilled|brand-mark__icon" frontend/src/components/chat/ConversationList.tsx frontend/src/index.css` -> 无匹配。
+- `rg -n "Nailaude|HomeFilled|brand-mark__icon" frontend/src/components/chat/ConversationList.tsx frontend/src/index.css` -> 无匹配。
 - 浏览器检查 `http://127.0.0.1:5173/workspace` 确认 品牌文本 `Nailaude` 以及已加载的 1254x1254 logo，渲染尺寸为 34x34。
 - 浏览器标签栏检查 `http://127.0.0.1:5173/workspace` 确认 标签标题 `Nailaude`, `document.title` 为 `Nailaude`，favicon 为 `/brand/nailaude_logo.png`。
 
@@ -2684,3 +2684,48 @@
 - `cd backend && .venv/bin/python -m pytest tests/test_m1_1_api.py -k "create_custom_agent_persists_and_lists"` -> `1 项通过`，带有既有 Starlette/httpx 弃用警告.
 - `cd frontend && npm run build` -> 通过。
 - 浏览器检查 `http://127.0.0.1:5174/workspace` 确认 创建 Agent 弹窗默认预览使用 `/agent-avatars/default_custom_agent.png`，通过上传按钮暴露 `image/*` 文件输入，并保持原生文件输入在视觉上隐藏。
+
+## [2026-06-10] Codex - PROJECT_RENAME 正式命名为 nailaude
+
+### 完成内容
+- 将项目内旧产品命名统一收敛为 nailaude/Nailaude/NAILAUDE，覆盖文档、后端服务标题、默认 SQLite 文件名、Mock 预览页面、Adapter prompt、Codex 隔离目录和环境变量。
+- 将项目 skill 路径和元数据统一为 `.agents/skills/nailaude-module-development/`。
+- 重写根 `README.md`，补齐项目定位、核心能力、技术栈、目录结构、启动方式、验证命令、开发流程和 Adapter 配置说明。
+
+### 新增/修改文件
+- `README.md` (重写)
+- `AGENTS.md`, `docs/AI_WORKFLOW.md`, `docs/API_SPEC.md`, `docs/PRD.md`, `docs/TECH_DESIGN.md`, `docs/TASK_BREAKDOWN.md`, `docs/交付文档/AI_COLLABORATION_PROCESS.md` (命名更新)
+- `.agents/skills/nailaude-module-development/` (项目 skill 路径改名)
+- `backend/app/`, `backend/tests/`, `backend/.env.example`, `backend/alembic.ini` (运行时命名、默认配置和测试断言更新)
+- `docs/plans/PROJECT_RENAME_PLAN.md`, `docs/plans/PROJECT_RENAME_CHECKLIST.md` (新增)
+
+### 接口变更
+- 未修改 `packages/shared/types.ts` 的结构或 API payload 形状。
+- 默认本地数据库文件名改为 `nailaude.db`；Codex 相关项目环境变量改为 `NAILAUDE_CODEX_HOME_ROOT` 与 `NAILAUDE_CODEX_BRIDGE_TOKEN`。
+
+### 下一步
+- 如果外部部署脚本、CI secret 或本机 `.env` 仍使用旧环境变量名，需要同步迁移到 `NAILAUDE_` 前缀。
+
+### 给其他成员的提醒
+- @小马：Codex Adapter 的隔离 home 和 bridge token 变量已改名，联调文档或本机脚本需要同步。
+- @洋芋：交付文档和 README 已统一为 nailaude，后续截图/演示文案请沿用新品牌名。
+
+## [2026-06-10] Codex - README 奶龙风格文案调整
+
+### 完成内容
+- 将根 `README.md` 从偏工程说明书的语气调整为更活泼、亲近、贴合奶龙主题的项目介绍。
+- 保留原有技术栈、目录结构、启动命令、验证命令、开发流程和 Adapter 配置说明。
+- 新增“奶龙味在哪里”段落，明确项目在可爱形象与工程可靠性之间的定位。
+
+### 新增/修改文件
+- `README.md` (修改)
+- `DEVLOG.md` (修改)
+
+### 接口变更
+- 无 API、WebSocket、共享类型、后端或依赖变化。
+
+### 验证
+- `rg -n "AgentHub|agenthub|AGENTHUB" README.md` -> 无匹配。
+
+### 给其他成员的提醒
+- 后续面向用户的介绍文案可以继续沿用“奶龙项目搭子”的亲近表达，但命令、契约和验证信息仍要保持清晰准确。

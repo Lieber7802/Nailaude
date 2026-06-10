@@ -10,7 +10,7 @@
 
 ## 一、设计原则
 
-AgentHub 不重复实现 Codex 和 OpenCode 已具备的源码探索与上下文工程能力。
+Nailaude 不重复实现 Codex 和 OpenCode 已具备的源码探索与上下文工程能力。
 
 Orchestrator 只补充 CLI Agent 无法天然获取的协作信息：
 

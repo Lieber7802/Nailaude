@@ -2,7 +2,7 @@
 
 ## Goal
 
-Complete the M3 Codex CLI adapter path now that `codex` is available on this machine. The adapter should use the current non-interactive Codex CLI, stream useful text through AgentHub events, and surface file changes as standard artifact-producing events.
+Complete the M3 Codex CLI adapter path now that `codex` is available on this machine. The adapter should use the current non-interactive Codex CLI, stream useful text through Nailaude events, and surface file changes as standard artifact-producing events.
 
 ## Scope
 

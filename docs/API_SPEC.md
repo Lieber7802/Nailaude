@@ -1,4 +1,4 @@
-# AgentHub API 规范文档
+# Nailaude API 规范文档
 
 > 版本：v1.1 | 基于 PRD v1.6 + TECH_DESIGN v1.1 + shared/types.ts  
 > Base URL: `http://localhost:8000/api/v1`  
@@ -553,7 +553,7 @@
 - 直接返回静态文件内容（HTML/CSS/JS/图片）
 - 响应 Header 包含 `Content-Type` 和 CSP 安全头；为支持 Agent 生成的 CDN 静态页，Preview CSP 允许 `https:` 资源、inline script/style，以及 Babel standalone 等运行时转换依赖的 `unsafe-eval`
 - 支持相对路径资源引用
-- HTML 响应会将 Vite 构建产物常见的根相对资源（如 `/assets/app.js`）改写到当前文件所在的 Preview 目录，避免 iframe 请求落到 AgentHub 应用根路径
+- HTML 响应会将 Vite 构建产物常见的根相对资源（如 `/assets/app.js`）改写到当前文件所在的 Preview 目录，避免 iframe 请求落到 Nailaude 应用根路径
 - Vite 源码项目可在同一路径下由后端代理 `npm run dev` 结果，前端 previewUrl 契约不变
 - 不返回 `ApiResponse` 包装，直接返回文件原始内容
 

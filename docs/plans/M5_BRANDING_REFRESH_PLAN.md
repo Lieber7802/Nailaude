@@ -27,7 +27,7 @@ Replace the app branding with the Nailaude logo image and update the visible pro
 ## Tests
 
 - Run the frontend production build.
-- Run a targeted source check for the old `AgentHub` sidebar brand text.
+- Run a targeted source check for the old `Nailaude` sidebar brand text.
 - Verify the browser title and favicon link in the running app.
 
 ## Out of Scope

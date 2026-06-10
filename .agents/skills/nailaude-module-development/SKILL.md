@@ -1,13 +1,13 @@
 ---
-name: agenthub-module-development
-description: Use when implementing AgentHub modules, M-series milestone tasks, backend/frontend features, agent adapters, artifact flows, WebSocket work, or checklist-driven project changes in the AgentHub repository.
+name: nailaude-module-development
+description: Use when implementing Nailaude modules, M-series milestone tasks, backend/frontend features, agent adapters, artifact flows, WebSocket work, or checklist-driven project changes in the Nailaude repository.
 ---
 
-# AgentHub Module Development
+# Nailaude Module Development
 
 ## Overview
 
-Use this project skill to keep AgentHub development modular, contract-first, Mock-first, and verifiable. It coordinates project-specific rules with the usual plan, TDD, execution, and verification workflows.
+Use this project skill to keep Nailaude development modular, contract-first, Mock-first, and verifiable. It coordinates project-specific rules with the usual plan, TDD, execution, and verification workflows.
 
 ## Required Workflow
 
@@ -31,7 +31,7 @@ Use this project skill to keep AgentHub development modular, contract-first, Moc
    - Keep REST/WS contracts aligned with `API_SPEC.md` and `packages/shared/types.ts`.
    - If `packages/shared/types.ts` changes, update `docs/API_SPEC.md` in the same task.
 
-5. **Respect AgentHub constraints**
+5. **Respect Nailaude constraints**
    - Preserve `MockAdapter`; it is a permanent fallback.
    - For new Agent behavior, make Mock cover the scenario before real LLM/CLI integration.
    - Keep `backend/adapters/` business-agnostic.

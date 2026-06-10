@@ -21,7 +21,7 @@
 
 ## Architecture
 
-M3 将现有 `backend/app/ws/handlers.py` 中的 M2 串行流程拆成小型服务：Planner 负责语义规划，Validator 和 Scheduler 负责确定性验证与批次推导，Runtime 负责队列、执行、取消和状态快照。Codex/OpenCode CLI 自主管理源码上下文，AgentHub 只通过轻量 `AgentHandoffEnvelope` 传递任务边界和协作信息。
+M3 将现有 `backend/app/ws/handlers.py` 中的 M2 串行流程拆成小型服务：Planner 负责语义规划，Validator 和 Scheduler 负责确定性验证与批次推导，Runtime 负责队列、执行、取消和状态快照。Codex/OpenCode CLI 自主管理源码上下文，Nailaude 只通过轻量 `AgentHandoffEnvelope` 传递任务边界和协作信息。
 
 ## Tech Stack
 

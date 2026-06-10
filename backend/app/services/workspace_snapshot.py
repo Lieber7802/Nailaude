@@ -35,7 +35,7 @@ class WorkspaceSnapshotService:
         self.max_total_size = max_total_size
 
     def create_batch_snapshot(self, work_dir: str) -> BatchSnapshot:
-        root_path = tempfile.mkdtemp(prefix="agenthub-snapshot-")
+        root_path = tempfile.mkdtemp(prefix="nailaude-snapshot-")
         source_path = str(Path(root_path, "source"))
         warnings = self._copy_safe(resolve_workspace_path(work_dir), Path(source_path))
         return BatchSnapshot(

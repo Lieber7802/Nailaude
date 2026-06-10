@@ -41,7 +41,7 @@ class MockAdapter(AgentAdapter):
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AgentHub Mock Page</title>
+  <title>Nailaude Mock Page</title>
   <style>
     body { font-family: system-ui, sans-serif; margin: 0; padding: 48px; background: #f7f8fa; color: #1f2329; }
     main { max-width: 720px; margin: 0 auto; background: white; border: 1px solid #e5e6eb; border-radius: 8px; padding: 32px; }
@@ -51,7 +51,7 @@ class MockAdapter(AgentAdapter):
 <body>
   <!-- mock-generation: MOCK_GENERATION_ID -->
   <main>
-    <h1>AgentHub Mock 页面</h1>
+    <h1>Nailaude Mock 页面</h1>
     <p>这是 MockAdapter 为当前任务生成的演示产物。</p>
     <button>开始体验</button>
   </main>

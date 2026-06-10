@@ -296,7 +296,7 @@ class OpenCodeAdapter(AgentAdapter):
         review_contract = self._review_contract(instruction, public_context)
         return (
             f"{instruction}\n\n"
-            "AgentHub handoff context follows as JSON. Respect the task boundary, "
+            "Nailaude handoff context follows as JSON. Respect the task boundary, "
             "write files only inside the provided workspace, and summarize the result.\n"
             f"{review_contract}"
             f"{preview_contract}"
@@ -570,7 +570,7 @@ class OpenCodeAdapter(AgentAdapter):
         if not self._is_review_task(instruction, context):
             return ""
         return (
-            "AgentHub review contract: 本任务是只读代码审查。不要修改、创建或删除文件。"
+            "Nailaude review contract: 本任务是只读代码审查。不要修改、创建或删除文件。"
             "必须在最终回复中用中文输出可执行审查意见，至少包含：总体结论、主要问题、改进建议。"
             "如果未发现严重问题，也要说明可维护性、可访问性、性能或安全方面的后续建议。\n"
         )
@@ -662,7 +662,7 @@ class OpenCodeAdapter(AgentAdapter):
         if not self._should_require_preview_entry(instruction, context):
             return ""
         return (
-            "AgentHub preview contract: 用户要求的是可预览应用/页面/小程序。"
+            "Nailaude preview contract: 用户要求的是可预览应用/页面/小程序。"
             "必须创建或更新 index.html 作为右侧预览入口，并把主要交互、样式和脚本放在可直接打开的前端文件中。"
             "不要只创建 README.md、说明文档或纯文字总结；README 只能作为补充。\n"
         )
@@ -744,12 +744,12 @@ class OpenCodeAdapter(AgentAdapter):
     def _build_preview_repair_prompt(self, instruction: str, context: dict) -> str:
         dev_server_contract = generated_project_dev_server_contract(context)
         return (
-            "上一轮执行没有创建可供 AgentHub 右侧预览的 HTML 入口。"
+            "上一轮执行没有创建可供 Nailaude 右侧预览的 HTML 入口。"
             "必须创建或更新 index.html，实现用户要求的可交互小程序/页面。"
             "不要只创建 README.md 或说明文字；必须产出可直接在浏览器 iframe 中打开的 index.html。\n\n"
             f"{dev_server_contract}"
             f"原始用户要求：{instruction}\n\n"
-            "AgentHub handoff context follows as JSON.\n"
+            "Nailaude handoff context follows as JSON.\n"
             f"{json.dumps(context, ensure_ascii=False, default=str)}"
         )
 

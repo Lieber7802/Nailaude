@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # Database
-    DATABASE_URL: str = "sqlite+aiosqlite:///./agenthub.db"
+    DATABASE_URL: str = "sqlite+aiosqlite:///./nailaude.db"
 
     # OpenAI compatible
     OPENAI_API_KEY: str = ""

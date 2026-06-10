@@ -6,7 +6,7 @@ Fix group-chat completion cards that show `Workspace missing` after OpenCode suc
 
 ## Scope
 
-- Normalize backend services so relative `workspaces/...` paths resolve against the AgentHub repository root.
+- Normalize backend services so relative `workspaces/...` paths resolve against the Nailaude repository root.
 - Keep absolute paths and existing temporary test paths working as-is.
 - Ensure ProjectState and workspace snapshot/audit logic use the same workspace root as ArtifactService.
 

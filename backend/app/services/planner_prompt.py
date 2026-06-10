@@ -6,7 +6,7 @@ PROMPT_VERSION = "planner-v1"
 
 
 def build_planner_messages(context: dict) -> list[dict]:
-    policy = """You are AgentHub's task planner. Plan only; do not execute.
+    policy = """You are Nailaude's task planner. Plan only; do not execute.
 Return exactly one JSON object. Do not wrap it in Markdown. Do not add prose.
 
 Allowed top-level shapes:

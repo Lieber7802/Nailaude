@@ -2,7 +2,7 @@
 
 ## Goal
 
-Remove AgentHub's elevated write approval gate so workspace-bound coding tasks run without showing the "Allow execution" approval card.
+Remove Nailaude's elevated write approval gate so workspace-bound coding tasks run without showing the "Allow execution" approval card.
 
 ## Scope
 
@@ -15,7 +15,7 @@ Remove AgentHub's elevated write approval gate so workspace-bound coding tasks r
 
 - `packages/shared/types.ts` remains unchanged for backward compatibility with existing frontend code and persisted snapshots.
 - The backend should no longer emit `orchestrator_approval_required` for write task risk hints.
-- Existing CLI adapters already run non-interactively; this change only removes AgentHub's own Orchestrator approval pause.
+- Existing CLI adapters already run non-interactively; this change only removes Nailaude's own Orchestrator approval pause.
 
 ## Implementation Steps
 

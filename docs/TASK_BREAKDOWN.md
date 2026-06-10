@@ -1,4 +1,4 @@
-# AgentHub 任务拆解与分工
+# Nailaude 任务拆解与分工
 
 > 版本：v1.0 | 基于 PRD v1.6 + TECH_DESIGN v1.1  
 > 总工期：20 天 | 团队：3 人

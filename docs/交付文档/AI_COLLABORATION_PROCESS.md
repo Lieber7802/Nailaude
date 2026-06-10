@@ -40,9 +40,9 @@ AI 参与项目时，需要先知道“项目是什么、边界在哪里、按�
 
 ### 3.2 自定义项目 skill
 
-除了系统本身提供的一些通用 skill，我们还根据 nailaude 的开发标准工作流，自定义了项目级 skill：`.agents/skills/agenthub-module-development/SKILL.md`。
+除了系统本身提供的一些通用 skill，我们还根据 nailaude 的开发标准工作流，自定义了项目级 skill：`.agents/skills/nailaude-module-development/SKILL.md`。
 
-这个 skill 不是凭空生成的，而是把项目已有规则固化为可重复执行的流程：先读契约、定义模块边界、创建计划和 checklist、测试先行、遵守 Mock-first 和模块职责、运行验证、更新 DEVLOG。这样不同 AI 助手在参与 AgentHub/nailaude 开发时，不需要重新理解一遍协作方式，而是可以直接沿着同一套工作流推进。
+这个 skill 不是凭空生成的，而是把项目已有规则固化为可重复执行的流程：先读契约、定义模块边界、创建计划和 checklist、测试先行、遵守 Mock-first 和模块职责、运行验证、更新 DEVLOG。这样不同 AI 助手在参与 nailaude 开发时，不需要重新理解一遍协作方式，而是可以直接沿着同一套工作流推进。
 
 ### 3.3 契约文档
 
