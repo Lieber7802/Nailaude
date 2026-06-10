@@ -38,7 +38,7 @@ Orchestrator 不直接替代子智能体执行专业任务。它的核心职责�
 
 nailaude 的协作上下文按用途分层。主智能体规划任务时只读取摘要层信息，子智能体执行任务时再获得更具体的任务交接信息。
 
-![会话共享上下文分层](assets/technical-context-layers.png)
+![会话共享上下文分层](assets/technical-context-layers-v2.png)
 
 ### 4.1 PlannerContext
 
@@ -68,7 +68,7 @@ PlannerContext 是主智能体规划任务时使用的上下文。它由用户�
 
 ## 5. 多智能体协作运行流程
 
-![多智能体协作运行流程](assets/technical-agent-runtime-flow.png)
+![多智能体协作运行流程](assets/technical-agent-runtime-flow-v2.png)
 
 一次复杂任务通常会被拆成多个阶段。例如：
 
