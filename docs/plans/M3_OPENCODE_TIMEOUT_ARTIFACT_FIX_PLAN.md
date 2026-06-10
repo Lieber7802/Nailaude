@@ -2,7 +2,7 @@
 
 ## Goal
 
-When OpenCode times out after already writing workspace files, surface those file changes as AgentHub artifacts instead of leaving the chat with an empty failed agent message.
+When OpenCode times out after already writing workspace files, surface those file changes as Nailaude artifacts instead of leaving the chat with an empty failed agent message.
 
 ## Scope
 

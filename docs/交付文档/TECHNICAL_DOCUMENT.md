@@ -15,30 +15,7 @@ Orchestrator 不直接替代子智能体执行专业任务。它的核心职责�
 
 ## 2. 总体架构
 
-```text
-用户
-  |
-  | REST / WebSocket
-  v
-前端工作台
-  |
-  | 会话、消息、@ 提及、协作状态、预览面板
-  v
-FastAPI 后端
-  |
-  |-- Conversation / Message / Agent API
-  |-- WebSocket 运行通道
-  |-- Orchestrator：规划、校验、调度、运行
-  |-- Team Protocol：团队共享状态
-  |-- Project State：项目事实摘要
-  |-- Artifact / Preview：产物与预览
-  v
-Agent Adapter 层
-  |
-  |-- OpenCode / Codex / LLM Provider / Mock
-  v
-会话工作目录与智能体产物
-```
+![总体架构图](assets/technical-overall-architecture.png)
 
 前端负责把多智能体协作过程可视化：聊天流、任务状态、产物卡片和右侧预览。后端负责会话持久化、任务规划、Agent 调用、共享状态维护和产物生成。
 
@@ -61,22 +38,7 @@ Agent Adapter 层
 
 nailaude 的协作上下文按用途分层。主智能体规划任务时只读取摘要层信息，子智能体执行任务时再获得更具体的任务交接信息。
 
-```text
-Layer 0 用户意图
-  用户原始请求、@ 提及、澄清回答
-
-Layer 1 参与者
-  当前会话智能体、能力标签、角色说明
-
-Layer 2 项目状态
-  工作目录、文件树、Git 状态、近期变更、项目摘要
-
-Layer 3 团队协作
-  Team Board、Team Notes、团队决策、代码规范、开放问题
-
-Layer 4 任务交接
-  当前任务、验收标准、依赖结果、导航建议、上下文预算
-```
+![会话共享上下文分层](assets/technical-context-layers-v2.png)
 
 ### 4.1 PlannerContext
 
@@ -106,35 +68,7 @@ PlannerContext 是主智能体规划任务时使用的上下文。它由用户�
 
 ## 5. 多智能体协作运行流程
 
-```text
-用户发送消息
-  |
-  v
-解析 @ 与本轮参与智能体
-  |
-  v
-构建共享上下文
-  |
-  v
-Planner 生成任务计划
-  |
-  v
-Validator 校验计划
-  |
-  v
-Scheduler 按依赖生成批次
-  |
-  v
-Runtime 调用子智能体执行
-  |
-  |-- 收集文本回复
-  |-- 收集文件变化
-  |-- 收集团队便签
-  |-- 生成产物卡片
-  |-- 刷新 Team Board / Project State
-  v
-WebSocket 推送状态与产物
-```
+![多智能体协作运行流程](assets/technical-agent-runtime-flow-v2.png)
 
 一次复杂任务通常会被拆成多个阶段。例如：
 
@@ -208,21 +142,7 @@ Team Board 更像团队白板，记录决策和协作约定；Project State 更�
 
 智能体输出文件事件后，系统会将其转成 Artifact：
 
-```text
-file_created / file_modified
-  |
-  v
-ArtifactService
-  |
-  |-- 写入工作目录
-  |-- 推断产物类型
-  |-- 生成 previewUrl 或 diffData
-  v
-WebSocket artifact event
-  |
-  v
-前端产物卡片 + 右侧预览面板
-```
+![产物与预览闭环](assets/technical-artifact-preview-loop.png)
 
 预览系统支持：
 
@@ -268,32 +188,7 @@ nailaude 使用 WebSocket 承载主要运行流。后端会推送：
 
 系统还保留 Mock Adapter，保证核心协作链路在没有外部模型或 CLI 的情况下也能验证和演示。
 
-## 11. 启动方式
-
-后端：
-
-```bash
-cd backend
-.venv/bin/python -m uvicorn app.main:app --reload --port 8000
-```
-
-前端：
-
-```bash
-cd frontend
-npm run dev
-```
-
-默认地址：
-
-```text
-前端：http://localhost:5173
-后端：http://127.0.0.1:8000
-WebSocket：ws://127.0.0.1:8000/ws/{conversation_id}
-Preview：http://127.0.0.1:8000/preview/{conversation_id}/*
-```
-
-## 12. 后续技术演进
+## 11. 后续技术演进
 
 1. 更细粒度的工作区权限和沙箱隔离。
 2. 更完整的 Agent 间讨论与冲突仲裁。

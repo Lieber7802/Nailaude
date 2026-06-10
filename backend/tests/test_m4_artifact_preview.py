@@ -53,7 +53,7 @@ def test_mock_websocket_generates_webpage_artifact_and_preview_file(client, crea
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
     assert "frame-ancestors 'self'" in response.headers["content-security-policy"]
-    assert "AgentHub Mock 页面" in response.text
+    assert "Nailaude Mock 页面" in response.text
 
 
 def test_vite_source_preview_uses_dev_server_proxy(client, monkeypatch, create_agent):

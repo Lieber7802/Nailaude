@@ -154,7 +154,7 @@ def test_create_and_list_group_conversation(client):
         json={
             "title": "Todo App 开发",
             "type": "group",
-            "workDir": "D:/AgentHub/workspaces/todo-app",
+            "workDir": "D:/Nailaude/workspaces/todo-app",
             "participantIds": [agent_id],
         },
     )
@@ -163,7 +163,7 @@ def test_create_and_list_group_conversation(client):
     created = create_response.json()
     assert_api_response(created)
     assert created["data"]["title"] == "Todo App 开发"
-    assert created["data"]["workDir"] == "D:/AgentHub/workspaces/todo-app"
+    assert created["data"]["workDir"] == "D:/Nailaude/workspaces/todo-app"
     assert created["data"]["participantIds"] == [agent_id]
 
     list_response = client.get("/api/v1/conversations?page=1&pageSize=10&search=Todo")
@@ -302,7 +302,7 @@ def test_rest_message_fallback_persists_user_message_only(client):
         json={
             "title": "Message Test",
             "type": "single",
-            "workDir": "D:/AgentHub/workspaces/message-test",
+            "workDir": "D:/Nailaude/workspaces/message-test",
             "participantIds": [agent_id],
         },
     ).json()["data"]

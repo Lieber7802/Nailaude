@@ -532,7 +532,7 @@ async def test_opencode_prompt_requires_preview_entry_for_app_generation(tmp_pat
     assert "不要只创建 README.md" in prompt
     assert "右侧预览" in prompt
     assert "不要设置 server.open、open: true" in prompt
-    assert "不要硬编码 AgentHub 正在使用的端口" in prompt
+    assert "不要硬编码 Nailaude 正在使用的端口" in prompt
     assert "不要运行会自动打开浏览器窗口的命令" in prompt
 
 
@@ -545,7 +545,7 @@ def test_codex_prompt_includes_generated_project_dev_server_safety(tmp_path):
     )
 
     assert "不要设置 server.open、open: true" in prompt
-    assert "不要硬编码 AgentHub 正在使用的端口" in prompt
+    assert "不要硬编码 Nailaude 正在使用的端口" in prompt
     assert "不要运行会自动打开浏览器窗口的命令" in prompt
 
 
@@ -621,7 +621,7 @@ async def test_opencode_repairs_preview_request_when_first_run_only_writes_readm
     ]
 
     assert len(pool.commands) == 2
-    assert "上一轮执行没有创建可供 AgentHub 右侧预览的 HTML 入口" in pool.commands[1][-1]
+    assert "上一轮执行没有创建可供 Nailaude 右侧预览的 HTML 入口" in pool.commands[1][-1]
     created_files = [event.content for event in events if event.type == "file_created"]
     assert created_files == ["README.md", "index.html"]
     index_event = next(event for event in events if event.content == "index.html")
@@ -674,20 +674,20 @@ async def test_codex_adapter_uses_isolated_home_and_loopback_bridge(tmp_path, mo
     pool = CodexJsonPool()
     codex_home_root = tmp_path / "codex-homes"
     monkeypatch.setenv("CODEX_THREAD_ID", "desktop-thread")
-    monkeypatch.setenv("AGENTHUB_CODEX_HOME_ROOT", str(codex_home_root))
+    monkeypatch.setenv("NAILAUDE_CODEX_HOME_ROOT", str(codex_home_root))
     adapter = CodexAdapter(pool=pool, binary_path="codex", bridge_factory=fake_bridge_factory)
 
     events = [event async for event in adapter.run_task(str(tmp_path), "build", {})]
 
     assert events[-1].type == "done"
-    assert pool.env["AGENTHUB_CODEX_BRIDGE_TOKEN"] == "bridge-token"
+    assert pool.env["NAILAUDE_CODEX_BRIDGE_TOKEN"] == "bridge-token"
     assert pool.env["CODEX_HOME"] != str(tmp_path)
     assert Path(pool.env["CODEX_HOME"]).parent == codex_home_root
     assert pool.command[-1] == "-"
-    assert pool.stdin_text and "AgentHub handoff context follows as JSON" in pool.stdin_text
+    assert pool.stdin_text and "Nailaude handoff context follows as JSON" in pool.stdin_text
     assert "CODEX_THREAD_ID" not in pool.env
     assert 'base_url = "http://127.0.0.1:12345"' in pool.config
-    assert 'env_key = "AGENTHUB_CODEX_BRIDGE_TOKEN"' in pool.config
+    assert 'env_key = "NAILAUDE_CODEX_BRIDGE_TOKEN"' in pool.config
     assert 'wire_api = "responses"' in pool.config
     assert "[windows]" not in pool.config
 

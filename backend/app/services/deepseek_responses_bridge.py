@@ -362,7 +362,7 @@ class DeepSeekResponsesBridge:
             tail_chars = available - head_chars
             omitted = max(0, len(text) - head_chars - tail_chars)
             marker = (
-                f"\n\n[AgentHub truncated {omitted} chars from {label} "
+                f"\n\n[Nailaude truncated {omitted} chars from {label} "
                 "to keep the DeepSeek bridge request valid.]\n\n"
             )
 

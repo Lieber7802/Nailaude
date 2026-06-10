@@ -99,7 +99,7 @@ class CodexAdapter(AgentAdapter):
         prompt = self._build_prompt(instruction, context)
         try:
             async with self.bridge_factory() as bridge:
-                with tempfile.TemporaryDirectory(prefix="agenthub-codex-", dir=str(self._codex_home_root())) as codex_home:
+                with tempfile.TemporaryDirectory(prefix="nailaude-codex-", dir=str(self._codex_home_root())) as codex_home:
                     self._write_isolated_config(Path(codex_home), bridge.base_url)
                     result = await self.pool.run(
                         [
@@ -141,18 +141,18 @@ class CodexAdapter(AgentAdapter):
         return True
 
     def _codex_home_root(self) -> Path:
-        root = Path(os.environ.get("AGENTHUB_CODEX_HOME_ROOT") or Path.home() / ".cache" / "agenthub" / "codex")
+        root = Path(os.environ.get("NAILAUDE_CODEX_HOME_ROOT") or Path.home() / ".cache" / "nailaude" / "codex")
         root.mkdir(parents=True, exist_ok=True)
         return root
 
     def _write_isolated_config(self, codex_home: Path, bridge_base_url: str) -> None:
         config = (
             f"model = {json.dumps(settings.DEEPSEEK_MODEL)}\n"
-            'model_provider = "agenthub_deepseek"\n\n'
-            "[model_providers.agenthub_deepseek]\n"
-            'name = "AgentHub DeepSeek Bridge"\n'
+            'model_provider = "nailaude_deepseek"\n\n'
+            "[model_providers.nailaude_deepseek]\n"
+            'name = "Nailaude DeepSeek Bridge"\n'
             f"base_url = {json.dumps(bridge_base_url)}\n"
-            'env_key = "AGENTHUB_CODEX_BRIDGE_TOKEN"\n'
+            'env_key = "NAILAUDE_CODEX_BRIDGE_TOKEN"\n'
             'wire_api = "responses"\n'
             "request_max_retries = 0\n"
             "stream_max_retries = 0\n"
@@ -163,7 +163,7 @@ class CodexAdapter(AgentAdapter):
     def _isolated_env(self, codex_home: str, bridge_token: str) -> dict[str, str]:
         env = os.environ.copy()
         env["CODEX_HOME"] = codex_home
-        env["AGENTHUB_CODEX_BRIDGE_TOKEN"] = bridge_token
+        env["NAILAUDE_CODEX_BRIDGE_TOKEN"] = bridge_token
         for name in ("CODEX_THREAD_ID", "CODEX_INTERNAL_ORIGINATOR_OVERRIDE"):
             env.pop(name, None)
         return env
@@ -177,7 +177,7 @@ class CodexAdapter(AgentAdapter):
         dev_server_contract = generated_project_dev_server_contract(public_context)
         return (
             f"{instruction}\n\n"
-            "AgentHub handoff context follows as JSON. Respect the task boundary, "
+            "Nailaude handoff context follows as JSON. Respect the task boundary, "
             "write files only inside the provided workspace, and summarize the result.\n"
             f"{dev_server_contract}"
             f"{json.dumps(public_context, ensure_ascii=False, default=str)}"

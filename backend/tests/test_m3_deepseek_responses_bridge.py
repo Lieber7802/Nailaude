@@ -37,7 +37,7 @@ def test_bridge_converts_codex_responses_input_and_tools_to_deepseek_chat():
                     "name": "shell_command",
                     "arguments": '{"command":"pwd"}',
                 },
-                {"type": "function_call_output", "call_id": "call-1", "output": "D:/AgentHub"},
+                {"type": "function_call_output", "call_id": "call-1", "output": "D:/Nailaude"},
             ],
             "tools": [
                 {
@@ -66,7 +66,7 @@ def test_bridge_converts_codex_responses_input_and_tools_to_deepseek_chat():
                 }
             ],
         },
-        {"role": "tool", "tool_call_id": "call-1", "content": "D:/AgentHub"},
+        {"role": "tool", "tool_call_id": "call-1", "content": "D:/Nailaude"},
     ]
     assert payload["tools"] == [
         {
@@ -101,7 +101,7 @@ def test_bridge_truncates_large_tool_outputs_before_forwarding_to_deepseek_chat(
     assert len(tool_message["content"]) < 7_000
     assert "HEAD" in tool_message["content"]
     assert "TAIL" in tool_message["content"]
-    assert "AgentHub truncated" in tool_message["content"]
+    assert "Nailaude truncated" in tool_message["content"]
 
 
 def test_bridge_groups_consecutive_function_calls_before_tool_outputs():

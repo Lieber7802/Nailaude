@@ -1,14 +1,14 @@
-# AgentHub 多 Agent 协作平台：课题原稿与理解说明
+# Nailaude 多 Agent 协作平台：课题原稿与理解说明
 
 ## 一、课题原稿整理
 
-# AgentHub - 多 Agent 协作平台设计
+# Nailaude - 多 Agent 协作平台设计
 
-## 课题：AgentHub - 多 Agent 协作平台
+## 课题：Nailaude - 多 Agent 协作平台
 
 ## 课题背景
 
-通过对话式交互创建网页、Workflow 等产物。本课题要求学生构建一个该业务的简化实战版：**多 Agent 协作平台（AgentHub）**。
+通过对话式交互创建网页、Workflow 等产物。本课题要求学生构建一个该业务的简化实战版：**多 Agent 协作平台（Nailaude）**。
 
 平台采用 **IM 聊天作为核心交互范式**。用户像使用飞书 / 微信一样，通过新建对话、发送消息的方式与不同 AI Agent 进行交互。每个 Agent 就是一个“聊天对象”，用户可以：
 
@@ -106,7 +106,7 @@
 
 ## 1. 课题核心定位
 
-本课题要求构建一个简化实战版的 **多 Agent 协作平台 AgentHub**。
+本课题要求构建一个简化实战版的 **多 Agent 协作平台 Nailaude**。
 
 它的核心不是从零实现一个全新的底层 Agent，也不是复刻 Claude Code、Codex 或 OpenCode，而是做一个类似飞书 / 微信 / Slack 的 **IM 聊天式 Agent 工作台**。
 
@@ -114,7 +114,7 @@
 
 一句话理解：
 
-> AgentHub 是一个把多个 Agent 接入到统一聊天界面中，并支持多 Agent 协作、产物预览、代码 Diff 和部署发布的 AI 工作台。
+> Nailaude 是一个把多个 Agent 接入到统一聊天界面中，并支持多 Agent 协作、产物预览、代码 Diff 和部署发布的 AI 工作台。
 
 ---
 
@@ -273,7 +273,7 @@ Agent 的回复不应该只是一段文本。
 | 文件   | 附件卡片               |
 | 部署   | 部署状态卡片             |
 
-这个功能是区分普通聊天产品和 AgentHub 的关键。
+这个功能是区分普通聊天产品和 Nailaude 的关键。
 
 ---
 
@@ -305,9 +305,9 @@ Agent 生成静态 HTML
 
 ## 4. 对几个模糊概念的解释
 
-## 4.1 “AgentHub”到底是什么？
+## 4.1 “Nailaude”到底是什么？
 
-AgentHub 可以理解成：
+Nailaude 可以理解成：
 
 > 多个 AI Agent 的统一入口和协作工作台。
 
@@ -454,7 +454,7 @@ MVP 阶段可以把 Skill / Rule 做成配置化能力，不需要做复杂插�
 
 更准确的项目理解是：
 
-> AgentHub 是一个 IM 式多 Agent 协作平台。它通过统一 Agent Adapter 接入 Claude Code、Codex、OpenCode 等外部 Agent，通过 Orchestrator 实现群聊中的任务分派和结果汇总，通过产物卡片展示代码、网页、文档、Diff 和部署状态，从而让用户像使用聊天工具一样完成 AI 协作开发和内容生成。
+> Nailaude 是一个 IM 式多 Agent 协作平台。它通过统一 Agent Adapter 接入 Claude Code、Codex、OpenCode 等外部 Agent，通过 Orchestrator 实现群聊中的任务分派和结果汇总，通过产物卡片展示代码、网页、文档、Diff 和部署状态，从而让用户像使用聊天工具一样完成 AI 协作开发和内容生成。
 
 ---
 
@@ -504,7 +504,7 @@ MVP 阶段可以把 Skill / Rule 做成配置化能力，不需要做复杂插�
 
 虽然这个课题不是主打自研底层 Harness，但仍然可以保留轻量 Harness 能力。
 
-这里的 Harness 应该服务于 AgentHub 的产品主线，包括：
+这里的 Harness 应该服务于 Nailaude 的产品主线，包括：
 
 * Agent Adapter：统一接入不同 Agent；
 * Orchestrator：负责多 Agent 调度；
@@ -612,6 +612,6 @@ System Prompt：你是产品经理，负责把用户需求整理成 PRD。
 
 更准确地说：
 
-> AgentHub 要做的是“Claude Code / Codex / OpenCode 等 Agent 的统一协作工作台”，核心价值在于 IM 式交互、多 Agent 调度、产物卡片展示、代码 Diff、网页预览和部署发布。
+> Nailaude 要做的是“Claude Code / Codex / OpenCode 等 Agent 的统一协作工作台”，核心价值在于 IM 式交互、多 Agent 调度、产物卡片展示、代码 Diff、网页预览和部署发布。
 
 ```

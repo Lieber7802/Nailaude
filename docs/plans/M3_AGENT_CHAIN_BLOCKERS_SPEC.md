@@ -23,7 +23,7 @@ Observed in WSL with Linux-native OpenCode 1.15.13:
 
 - `opencode run --format json --model deepseek/deepseek-v4-flash ...` returned rc 0.
 - stdout contained only `{"type":"step_start", ...}` for a text-only prompt.
-- AgentHub therefore emitted a fallback message such as "OpenCode completed..." instead of the model's final response.
+- Nailaude therefore emitted a fallback message such as "OpenCode completed..." instead of the model's final response.
 - `opencode serve` health was true and `/session/:id/message` returned the nested model text, including `OPENCODE_SERVER_WSL_OK`.
 
 Root cause: the CLI one-shot stdout stream is not a reliable source of final assistant text for the current OpenCode version. The server API is the more stable programmatic boundary.

@@ -55,9 +55,17 @@ nailaude 的设计目标是把 AI 从“临时问答工具”变成“可以参�
 
 当智能体生成 HTML、React/Vite 项目或 Markdown 文件时，nailaude 会把产物转成卡片，并在右侧预览面板中展示网页、代码、变更和文档。用户不用离开聊天流，就能判断结果是否符合预期。
 
+![产物卡片与右侧产物列表](assets/product-scene-artifact-list.png)
+
+![变更查看与 Diff 展示](assets/product-scene-diff-view.png)
+
 **场景四：自定义智能体**
 
 用户可以创建自己的智能体，设置名称、头像、能力标签、角色说明和系统指令。内置智能体提供默认协作骨架，自定义智能体补充团队自己的角色分工。
+
+![智能体管理与创建入口](assets/product-scene-agent-management.png)
+
+![创建自定义智能体](assets/product-scene-agent-create.png)
 
 ## 4. 品牌与视觉方向
 
@@ -116,7 +124,7 @@ nailaude
 | 会话 Conversation | 一个项目协作空间 | 绑定参与智能体、工作目录、消息和运行状态 |
 | 消息 Message | 对话中的一条内容 | 用户、智能体、主智能体或团队活动的持久记录 |
 | 产物 Artifact | AI 交付结果 | 代码、网页、Diff、文档、日志等结构化输出 |
-| 主智能体 Orchestrator | 调度和同步状态的人 | planner、validator、scheduler、runtime 的组合 |
+| 主智能体 Orchestrator | 幕后的任务协调者（用户不直接 @） | 不属于可见 Agent，是 planner、validator、scheduler、runtime 的组合 |
 | Team Board | 团队共享看板 | 记录规范、进度、决策、便签和项目状态 |
 
 ## 7. 内置智能体设计

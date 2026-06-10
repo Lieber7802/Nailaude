@@ -42,7 +42,7 @@ It supersedes earlier illustrative Team Board and Project State examples in
     "version": 2,
     "workspace": {
       "name": "demo",
-      "workDir": "D:/AgentHub/workspaces/demo",
+      "workDir": "D:/Nailaude/workspaces/demo",
       "scannedAt": "2026-05-31T10:00:00Z",
       "fingerprint": "sha256"
     },

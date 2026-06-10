@@ -1,6 +1,6 @@
-# AgentHub AI 模块化开发标准流程
+# Nailaude AI 模块化开发标准流程
 
-> 本流程用于 AgentHub 后续所有模块化开发：M 系列里程碑、后端/前端功能、WebSocket、Adapter、Artifact、预览系统和测试补齐。
+> 本流程用于 Nailaude 后续所有模块化开发：M 系列里程碑、后端/前端功能、WebSocket、Adapter、Artifact、预览系统和测试补齐。
 
 ## 核心原则
 
@@ -94,9 +94,9 @@ Checklist 要可勾选、可验证，避免“完善错误处理”这类不可�
 
 本仓库提供项目本地 skill：
 
-`/.agents/skills/agenthub-module-development/SKILL.md`
+`/.agents/skills/nailaude-module-development/SKILL.md`
 
-当任务涉及 AgentHub 模块开发、里程碑执行、后端/前端功能、Adapter、Artifact、WebSocket 或 checklist-driven work 时，AI 助手应优先使用该 skill。
+当任务涉及 Nailaude 模块开发、里程碑执行、后端/前端功能、Adapter、Artifact、WebSocket 或 checklist-driven work 时，AI 助手应优先使用该 skill。
 
 ## 推荐命名
 

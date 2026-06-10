@@ -10,30 +10,7 @@ nailaude 本身是一个多 Agent 协作系统，开发过程中也大量使用 
 
 项目采用的标准流程如下：
 
-```text
-接收任务
-  |
-  v
-读取项目契约
-  |
-  v
-创建/更新 plan 和 checklist
-  |
-  v
-测试先行或确认验证方式
-  |
-  v
-按模块边界实现
-  |
-  v
-运行目标测试和必要烟测
-  |
-  v
-更新 checklist 和 DEVLOG
-  |
-  v
-总结交接
-```
+![AI 协作开发总流程](assets/ai-collaboration-workflow.png)
 
 这套流程的核心目标是让 AI 每一步都有依据：先理解项目上下文，再明确修改范围，然后通过测试验证，最后沉淀给后续开发者和后续 AI 助手。
 
@@ -63,9 +40,9 @@ AI 参与项目时，需要先知道“项目是什么、边界在哪里、按�
 
 ### 3.2 自定义项目 skill
 
-除了系统本身提供的一些通用 skill，我们还根据 nailaude 的开发标准工作流，自定义了项目级 skill：`.agents/skills/agenthub-module-development/SKILL.md`。
+除了系统本身提供的一些通用 skill，我们还根据 nailaude 的开发标准工作流，自定义了项目级 skill：`.agents/skills/nailaude-module-development/SKILL.md`。
 
-这个 skill 不是凭空生成的，而是把项目已有规则固化为可重复执行的流程：先读契约、定义模块边界、创建计划和 checklist、测试先行、遵守 Mock-first 和模块职责、运行验证、更新 DEVLOG。这样不同 AI 助手在参与 AgentHub/nailaude 开发时，不需要重新理解一遍协作方式，而是可以直接沿着同一套工作流推进。
+这个 skill 不是凭空生成的，而是把项目已有规则固化为可重复执行的流程：先读契约、定义模块边界、创建计划和 checklist、测试先行、遵守 Mock-first 和模块职责、运行验证、更新 DEVLOG。这样不同 AI 助手在参与 nailaude 开发时，不需要重新理解一遍协作方式，而是可以直接沿着同一套工作流推进。
 
 ### 3.3 契约文档
 

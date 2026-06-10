@@ -1,6 +1,6 @@
 # M1 Optimization Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use the AgentHub module development workflow and test-driven-development. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use the Nailaude module development workflow and test-driven-development. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Turn the M1 happy-path implementation into a sturdier baseline by fixing persistence recovery, WebSocket error handling, REST error consistency, frontend connection races, basic path safety, and demo copy.
 

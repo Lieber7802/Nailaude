@@ -11,7 +11,7 @@
 
 - [x] `cd backend && pytest -q` 通过。
 - [x] `cd frontend && npm run build` 通过。
-- [x] Skill 校验通过：`agenthub-module-development` 有效。
+- [x] Skill 校验通过：`nailaude-module-development` 有效。
 
 ## 浏览器验收
 

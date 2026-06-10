@@ -103,7 +103,7 @@ Prompt 使用版本化模板，例如 `planner-v1`。
 
 ```text
 [System Policy]
-你是 AgentHub 的任务规划器，只负责规划，不执行任务。
+你是 Nailaude 的任务规划器，只负责规划，不执行任务。
 
 [Planning Rules]
 - 使用最少且必要的任务完成目标。

@@ -1,4 +1,4 @@
-# AgentHub Technical Debt
+# Nailaude Technical Debt
 
 ## M2 UI Interaction Debt
 

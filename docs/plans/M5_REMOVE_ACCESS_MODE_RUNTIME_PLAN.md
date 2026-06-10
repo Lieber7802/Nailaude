@@ -2,7 +2,7 @@
 
 ## Goal
 
-Stop using planner-assigned read/write access as an operational permission model. All AgentHub tasks run inside the real conversation workspace, and accessMode no longer controls scheduling, workspace isolation, fallback, or success/failure.
+Stop using planner-assigned read/write access as an operational permission model. All Nailaude tasks run inside the real conversation workspace, and accessMode no longer controls scheduling, workspace isolation, fallback, or success/failure.
 
 ## Scope
 

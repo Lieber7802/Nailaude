@@ -2,7 +2,7 @@
 
 ## Goal
 
-Fix the three WSL/macOS-first blockers in the real AgentHub multi-agent chain: OpenCode output fidelity, DeepSeek health false negatives, and review-task false failures.
+Fix the three WSL/macOS-first blockers in the real Nailaude multi-agent chain: OpenCode output fidelity, DeepSeek health false negatives, and review-task false failures.
 
 ## Scope
 

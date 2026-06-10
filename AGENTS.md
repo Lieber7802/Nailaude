@@ -1,13 +1,13 @@
 # AGENTS.md — AI 编码助手协作指南
 
-> 本文档指导 Claude Code、Codex、OpenCode 等 AI 编码助手参与 AgentHub 项目开发。  
+> 本文档指导 Claude Code、Codex、OpenCode 等 AI 编码助手参与 Nailaude 项目开发。  
 > 修改代码前请先阅读本文件。
 
 ---
 
 ## 项目目标
 
-AgentHub 是一个 **IM 式多 Agent 协作工作台**（20 天比赛 MVP）：
+Nailaude 是一个 **IM 式多 Agent 协作工作台**（20 天比赛 MVP）：
 
 - 用户通过聊天界面与多个 AI Agent 交互（单聊 / 群聊）
 - Orchestrator 自动拆解任务、分派给不同 Agent、汇总结果
@@ -42,7 +42,7 @@ AgentHub 是一个 **IM 式多 Agent 协作工作台**（20 天比赛 MVP）：
 ## 目录结构
 
 ```
-AgentHub/
+Nailaude/
 ├── AGENTS.md                 ← 你正在读的文件
 ├── frontend/                 # React SPA
 │   └── src/
@@ -106,7 +106,7 @@ AgentHub/
 
 `接收任务 → 读取契约 → 生成/更新 plan 和 checklist → 测试先行 → 按 plan 实现 → 运行验证 → 更新 DEVLOG → 总结交接`
 
-详细流程见 `docs/AI_WORKFLOW.md`。如果当前 AI 环境支持项目 skill，应使用 `.agents/skills/agenthub-module-development/SKILL.md`。
+详细流程见 `docs/AI_WORKFLOW.md`。如果当前 AI 环境支持项目 skill，应使用 `.agents/skills/nailaude-module-development/SKILL.md`。
 
 ### 修改前
 
